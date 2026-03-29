@@ -430,6 +430,7 @@ function MovieDetail(props: Props) {
       }}
       ListHeaderComponentStyle={[styles.mainContainer, { marginBottom: 12 }]}
       ListHeaderComponent={ListHeaderComponent}
+      ListFooterComponent={null}
       extraData={colorScheme}
       // estimatedItemSize={60}
       showsVerticalScrollIndicator={false}

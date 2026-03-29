@@ -38,7 +38,6 @@ import DialogManager from '../../utils/dialogManager';
 import setHistory from '../../utils/historyControl';
 import { FilmDetail_Stream, FilmDetails_Detail, FilmEpisode } from '../../utils/scrapers/film';
 import ImageLoading from '../misc/ImageLoading';
-
 type ModifiedFilmSeason = (
   | { type: 'season'; text: string }
   | ({ type: 'episode' } & FilmEpisode)
@@ -560,6 +559,7 @@ function FilmDetail(props: Props) {
         }}
         ListHeaderComponentStyle={[styles.mainContainer, { marginBottom: 12 }]}
         ListHeaderComponent={ListHeaderComponent}
+        ListFooterComponent={null}
         extraData={colorScheme}
         // estimatedItemSize={60}
         showsVerticalScrollIndicator={false}

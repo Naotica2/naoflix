@@ -108,7 +108,7 @@ function VideoPlayer({
       uri: streamingURL,
       metadata: {
         title,
-        artist: 'AniFlix',
+        artist: 'NaoFlix',
         artwork: thumbnailURL,
       },
       headers: {

@@ -445,6 +445,7 @@ function AniDetail(props: Props) {
             <Text style={globalStyles.text}>Tidak ada episode</Text>
           </View>
         }
+        ListFooterComponent={null}
         extraData={colorScheme}
         showsVerticalScrollIndicator={false}
       />

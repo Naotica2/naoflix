@@ -1,6 +1,7 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+apply plugin: "com.google.gms.google-services"
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
@@ -125,8 +126,8 @@ android {
         applicationId "com.pirles.anime"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 220
-        versionName "v1.2.0"
+        versionCode 221
+        versionName "v1.2.1"
     }
     signingConfigs {
         debug {
@@ -136,10 +137,16 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file('anime.keystore')
-            storePassword 'pirlesaja321'
-            keyAlias 'prAnime'
-            keyPassword 'pirlesaja321'
+            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
+                storeFile file(MYAPP_UPLOAD_STORE_FILE)
+                storePassword MYAPP_UPLOAD_STORE_PASSWORD
+                keyAlias MYAPP_UPLOAD_KEY_ALIAS
+                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
+            } else {
+                // Warning: No keystore credentials provided.
+                // You can add MYAPP_UPLOAD_STORE_FILE etc. to ~/.gradle/gradle.properties
+                // For now, falling back to debug keystore or you can uncomment below to hardcode (NOT RECOMMENDED for public repos)
+            }
         }
     }
     buildTypes {

@@ -52,6 +52,7 @@ import { getFilmDetails } from '../../utils/scrapers/film';
 import { throttle } from '../../utils/throttle';
 import Skeleton from '../misc/Skeleton';
 import VideoPlayer, { parseSubtitles, PlayerRef } from '../VideoPlayer';
+import CommentSection from '../Comments/CommentSection';
 
 type Props = NativeStackScreenProps<RootStackNavigator, 'Video_Film'>;
 
@@ -754,6 +755,12 @@ function Video_Film(props: Props) {
           onPress={downloadFilm}>
           Download video / subtitle
         </Button>
+        <View style={{ marginVertical: 10 }}>
+          <CommentSection
+            contentId={data.detailLink ?? props.route.params.link}
+            contentType="film" 
+          />
+        </View>
       </ScrollView>
     </View>
   );
