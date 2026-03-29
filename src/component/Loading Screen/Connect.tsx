@@ -180,7 +180,7 @@ function Loading(props: Props) {
     signal.addEventListener('abort', onAbort);
 
     const data = await fetch(
-      'https://api.github.com/repos/Naotica2/NaoFlix/releases?per_page=1',
+      'https://api.github.com/repos/Naotica2/naoflix/releases?per_page=1',
       {
         signal: abort.signal,
         headers: {

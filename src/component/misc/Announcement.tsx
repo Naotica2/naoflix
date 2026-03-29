@@ -15,7 +15,7 @@ export default function Announcement() {
 
   useEffect(() => {
     fetch(
-      'https://raw.githubusercontent.com/Naotica2/NaoFlix/refs/heads/master/Announcement.md',
+      'https://raw.githubusercontent.com/Naotica2/naoflix/refs/heads/master/Announcement.md',
     )
       .then(async data => {
         if (!data.ok) return;
