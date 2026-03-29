@@ -3383,20 +3383,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-navigation/bottom-tabs@npm:^7.15.5":
-  version: 7.15.5
-  resolution: "@react-navigation/bottom-tabs@npm:7.15.5"
+"@react-navigation/bottom-tabs@npm:^7.15.9":
+  version: 7.15.9
+  resolution: "@react-navigation/bottom-tabs@npm:7.15.9"
   dependencies:
-    "@react-navigation/elements": ^2.9.10
+    "@react-navigation/elements": ^2.9.14
     color: ^4.2.3
     sf-symbols-typescript: ^2.1.0
   peerDependencies:
-    "@react-navigation/native": ^7.1.33
+    "@react-navigation/native": ^7.2.2
     react: ">= 18.2.0"
     react-native: "*"
     react-native-safe-area-context: ">= 4.0.0"
     react-native-screens: ">= 4.0.0"
-  checksum: 321bb83fe4cd444be4682b2063cfdbb32fbedfece6535640a92127bfedd30bd11f88c966f35ef046931be47d35892c47ef2cf143a7c4d92d94416168f2f34c9c
+  checksum: dfc6944d1fd1772e4b66e4261308ef95d8eca64ced8b3e16600c8c48b4b64bd124e04b15dadf93b7634f96c08c4f317745bfe059a17d67c1afdc866f40160c65
   languageName: node
   linkType: hard
 
@@ -3455,6 +3455,26 @@ __metadata:
     "@react-native-masked-view/masked-view":
       optional: true
   checksum: 0c1a9e5c619e72c8caa258c3c40604e67f75b4a0fd85912598ba5a8deff03213c6956237ff1410891b8b05ec01ab2f6f4e9cbbe507218433f4c7e58ea9b374df
+  languageName: node
+  linkType: hard
+
+"@react-navigation/elements@npm:^2.9.14":
+  version: 2.9.14
+  resolution: "@react-navigation/elements@npm:2.9.14"
+  dependencies:
+    color: ^4.2.3
+    use-latest-callback: ^0.2.4
+    use-sync-external-store: ^1.5.0
+  peerDependencies:
+    "@react-native-masked-view/masked-view": ">= 0.2.0"
+    "@react-navigation/native": ^7.2.2
+    react: ">= 18.2.0"
+    react-native: "*"
+    react-native-safe-area-context: ">= 4.0.0"
+  peerDependenciesMeta:
+    "@react-native-masked-view/masked-view":
+      optional: true
+  checksum: 8cb304ced4102820fbcb5465a55033741be0cff6b7d313f83cb80176bfa65e896a76bdb446bd97bd8e78042db7bfc27f9133e9dadaf80971ae553400e1ba1932
   languageName: node
   linkType: hard
 
@@ -4236,7 +4256,7 @@ __metadata:
     "@react-native/eslint-config": 0.81.4
     "@react-native/metro-config": 0.81.4
     "@react-native/typescript-config": 0.81.4
-    "@react-navigation/bottom-tabs": ^7.15.5
+    "@react-navigation/bottom-tabs": ^7.15.9
     "@react-navigation/drawer": ^7.9.4
     "@react-navigation/native": ^7.1.33
     "@react-navigation/native-stack": ^7.14.5
