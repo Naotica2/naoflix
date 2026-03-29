@@ -2957,15 +2957,38 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-native-vector-icons/entypo@npm:^12.4.3":
-  version: 12.4.3
-  resolution: "@react-native-vector-icons/entypo@npm:12.4.3"
+"@react-native-vector-icons/common@npm:^13.0.0":
+  version: 13.0.0
+  resolution: "@react-native-vector-icons/common@npm:13.0.0"
   dependencies:
-    "@react-native-vector-icons/common": ^12.4.2
+    find-up: ^7.0.0
+    picocolors: ^1.1.1
+    plist: ^3.1.0
+  peerDependencies:
+    "@react-native-vector-icons/get-image": ^13.0.0
+    "@react-native/assets-registry": "*"
+    react: "*"
+    react-native: "*"
+  peerDependenciesMeta:
+    "@react-native-vector-icons/get-image":
+      optional: true
+    "@react-native/assets-registry":
+      optional: true
+  bin:
+    rnvi-update-plist: lib/commonjs/scripts/updatePlist.js
+  checksum: f90357c186d5be57dd271b66b258e9eaf9624b9794381e3a43058961ceb983a465b76511d7fd54a4e1f92cd863d5a309fe0507e83b7a49deb134859c9f66da64
+  languageName: node
+  linkType: hard
+
+"@react-native-vector-icons/entypo@npm:^13.0.0":
+  version: 13.0.0
+  resolution: "@react-native-vector-icons/entypo@npm:13.0.0"
+  dependencies:
+    "@react-native-vector-icons/common": ^13.0.0
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: a164104651acfedcac29da03521562800d7c708e8100f4f81ec0e549795e13fe276026bbb86dd190a88eee7084d59647605647a1fc13143adeef003b495605f6
+  checksum: f55f77dac178b22ed2aa3abbb8da59d155c343da49b94fba713b8bf0bd0a0c2530135a4a9f3a311df12dccb42ca27c9bf0c336a837d9e3b99bf8376837b314f5
   languageName: node
   linkType: hard
 
@@ -4226,7 +4249,7 @@ __metadata:
     "@react-native-community/cli": ^20.0.2
     "@react-native-community/cli-platform-android": ^20.0.2
     "@react-native-google-signin/google-signin": ^16.1.2
-    "@react-native-vector-icons/entypo": ^12.4.3
+    "@react-native-vector-icons/entypo": ^13.0.0
     "@react-native-vector-icons/fontawesome": ^12.4.3
     "@react-native-vector-icons/fontawesome5": ^12.3.3
     "@react-native-vector-icons/fontisto": ^12.4.3
