@@ -3418,23 +3418,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-navigation/drawer@npm:^7.9.4":
-  version: 7.9.4
-  resolution: "@react-navigation/drawer@npm:7.9.4"
+"@react-navigation/drawer@npm:^7.9.8":
+  version: 7.9.8
+  resolution: "@react-navigation/drawer@npm:7.9.8"
   dependencies:
-    "@react-navigation/elements": ^2.9.10
+    "@react-navigation/elements": ^2.9.14
     color: ^4.2.3
     react-native-drawer-layout: ^4.2.2
     use-latest-callback: ^0.2.4
   peerDependencies:
-    "@react-navigation/native": ^7.1.33
+    "@react-navigation/native": ^7.2.2
     react: ">= 18.2.0"
     react-native: "*"
     react-native-gesture-handler: ">= 2.0.0"
     react-native-reanimated: ">= 2.0.0"
     react-native-safe-area-context: ">= 4.0.0"
     react-native-screens: ">= 4.0.0"
-  checksum: 40c507369678b5bd4bc7bbc6a2f3d73704329de95595e2709d4ab984776e7bc570382cd0259e23ef86c6fd83a5dcdc0d5dbb204937051bcb96051438dfd422c0
+  checksum: f943b7aa8048d69a90f17048065cce7f63f63febd5a62d29c7464b502030cf2c6907a49b5359d8f1661097a742ebb03667bd2a5bdf8b65ae3e8a8ac0a61cba20
   languageName: node
   linkType: hard
 
@@ -3455,6 +3455,26 @@ __metadata:
     "@react-native-masked-view/masked-view":
       optional: true
   checksum: 0c1a9e5c619e72c8caa258c3c40604e67f75b4a0fd85912598ba5a8deff03213c6956237ff1410891b8b05ec01ab2f6f4e9cbbe507218433f4c7e58ea9b374df
+  languageName: node
+  linkType: hard
+
+"@react-navigation/elements@npm:^2.9.14":
+  version: 2.9.14
+  resolution: "@react-navigation/elements@npm:2.9.14"
+  dependencies:
+    color: ^4.2.3
+    use-latest-callback: ^0.2.4
+    use-sync-external-store: ^1.5.0
+  peerDependencies:
+    "@react-native-masked-view/masked-view": ">= 0.2.0"
+    "@react-navigation/native": ^7.2.2
+    react: ">= 18.2.0"
+    react-native: "*"
+    react-native-safe-area-context: ">= 4.0.0"
+  peerDependenciesMeta:
+    "@react-native-masked-view/masked-view":
+      optional: true
+  checksum: 8cb304ced4102820fbcb5465a55033741be0cff6b7d313f83cb80176bfa65e896a76bdb446bd97bd8e78042db7bfc27f9133e9dadaf80971ae553400e1ba1932
   languageName: node
   linkType: hard
 
@@ -4237,7 +4257,7 @@ __metadata:
     "@react-native/metro-config": 0.81.4
     "@react-native/typescript-config": 0.81.4
     "@react-navigation/bottom-tabs": ^7.15.5
-    "@react-navigation/drawer": ^7.9.4
+    "@react-navigation/drawer": ^7.9.8
     "@react-navigation/native": ^7.1.33
     "@react-navigation/native-stack": ^7.14.5
     "@rnx-kit/align-deps": ^3.2.1
