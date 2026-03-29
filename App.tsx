@@ -10,7 +10,7 @@ import {
 } from '@react-navigation/native-stack';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { Appearance, Linking, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Appearance, Linking, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SystemBars } from 'react-native-edge-to-edge';
 import ErrorBoundary from 'react-native-error-boundary';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -39,6 +39,7 @@ import {
   FilmListHomeContext,
   MovieListHomeContext,
 } from './src/misc/context';
+import { AuthProvider, useAuth } from './src/misc/AuthContext';
 import { navigationRef, replaceAllWith } from './src/misc/NavigationService';
 import { EpisodeBaruHome } from './src/types/anime';
 import { RootStackNavigator } from './src/types/navigation';
@@ -49,8 +50,20 @@ import DialogManager from './src/utils/dialogManager';
 import { Movies } from './src/utils/scrapers/animeMovie';
 import { LatestComicsRelease } from './src/utils/scrapers/comicsv2';
 import { FilmHomePage } from './src/utils/scrapers/film';
+import LoginScreen from './src/screens/LoginScreen';
+import UsernameSetupScreen from './src/screens/UsernameSetupScreen';
+import { OneSignal } from 'react-native-onesignal';
+import { ONESIGNAL_APP_ID } from '@env';
 
 cleanCbzDir();
+
+// Initialize OneSignal
+try {
+  OneSignal.initialize(ONESIGNAL_APP_ID);
+  OneSignal.Notifications.requestPermission(false);
+} catch (e) {
+  console.warn('OneSignal init failed:', e);
+}
 
 const { DarkTheme, LightTheme } = adaptNavigationTheme({
   reactNavigationLight: ReactNavigationDefaultTheme,
@@ -208,6 +221,16 @@ const screens: Screens = [
     options: { headerShown: true },
   },
   {
+    name: 'LoginScreen',
+    component: withSuspenseAndSafeArea(LoginScreen),
+    options: undefined,
+  },
+  {
+    name: 'UsernameSetupScreen',
+    component: withSuspenseAndSafeArea(UsernameSetupScreen),
+    options: { gestureEnabled: false },
+  },
+  {
     name: 'ErrorScreen',
     component: ErrorScreen,
   },
@@ -216,6 +239,8 @@ const screens: Screens = [
 function App() {
   const [isOpen, setIsOpen] = useState(false);
   const [cfUrl, setCfUrl] = useState('');
+
+  const { isLoading: authLoading } = useAuth();
 
   const [paramsState, setParamsState] = useState<EpisodeBaruHome>({
     jadwalAnime: {},
@@ -263,6 +288,15 @@ function App() {
   useEffect(() => {
     DialogManager.setupDialog(setDialogVisible, setDialogContent);
   }, []);
+
+  // Auth gate
+  if (authLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaProvider>
@@ -400,4 +434,12 @@ const styles = StyleSheet.create({
   },
 });
 
-export default App;
+function AppWithAuth() {
+  return (
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  );
+}
+
+export default AppWithAuth;

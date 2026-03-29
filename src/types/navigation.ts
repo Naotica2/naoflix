@@ -92,6 +92,8 @@ type RootStackNavigator = {
   SeeMore: {
     type: 'AnimeList' | 'MovieList' | 'ComicsList' | 'FilmList';
   };
+  LoginScreen: undefined;
+  UsernameSetupScreen: undefined;
   ErrorScreen: { error: Error };
 };
 

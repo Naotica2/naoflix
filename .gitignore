@@ -1,4 +1,4 @@
-# OSX
+﻿# OSX
 #
 .DS_Store
 
@@ -89,4 +89,15 @@ dist
 # etc
 .git*
 !.github
+
 !.gitignore
+google-services.json
+
+#keystore
+*.keystore
+*.jks
+android/app/*.keystore
+android/app/*.jks
+
+#android keystore
+android/gradle.properties

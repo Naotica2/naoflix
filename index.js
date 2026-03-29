@@ -1,6 +1,7 @@
 /**
  * @format
  */
+import 'react-native-url-polyfill/auto';
 import 'react-native-gesture-handler';
 import { registerRootComponent } from 'expo';
 import { enableFreeze, enableScreens } from 'react-native-screens';

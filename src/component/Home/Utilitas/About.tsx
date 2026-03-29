@@ -36,20 +36,20 @@ function About() {
           color={theme.colors.onPrimaryContainer}
         />
         <Text variant="headlineMedium" style={styles.titleText}>
-          AniFlix
+          NaoFlix
         </Text>
         <Text variant="bodyMedium" style={styles.versionText}>
           {appPackage.version} • Build JS_{appPackage.OTAJSVersion}
         </Text>
         <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant }}>
-          Dikembangkan oleh Pirles
+          Dikembangkan oleh Naotica
         </Text>
       </View>
 
       <Card style={styles.card}>
         <Card.Content>
           <Text variant="bodyMedium" style={{ textAlign: 'center', marginBottom: 8 }}>
-            AniFlix adalah aplikasi streaming anime non-komersial yang dibangun untuk tujuan
+            NaoFlix adalah aplikasi streaming anime non-komersial yang dibangun untuk tujuan
             pembelajaran mobile development menggunakan React Native.
           </Text>
         </Card.Content>

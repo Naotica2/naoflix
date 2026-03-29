@@ -247,7 +247,7 @@ function HomeList(props: HomeProps) {
             </View>
 
             <View style={styles.appInfo}>
-              <Text style={styles.appName}>AniFlix</Text>
+              <Text style={styles.appName}>NaoFlix</Text>
               <Text style={styles.appVersion}>
                 {version}-JS_{OTAJSVersion}
               </Text>

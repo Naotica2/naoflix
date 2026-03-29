@@ -38,6 +38,7 @@ import { DANGER_MIGRATE_OLD_HISTORY, DatabaseManager } from '../../utils/Databas
 import deviceUserAgent from '../../utils/deviceUserAgent';
 import { AnimeMovieWebView } from '../../utils/scrapers/animeMovie';
 import { fetchLatestDomain } from '../../utils/scrapers/animeSeries';
+import { useAuth } from '../../misc/AuthContext';
 // import { Comics1WebView } from '../../utils/scrapers/comics1';
 
 export const JoinDiscord = ({
@@ -52,7 +53,7 @@ export const JoinDiscord = ({
   const styles = useStyles();
   return (
     <TouchableOpacity
-      onPress={() => Linking.openURL('https://discord.gg/sbTwxHb9NM')}
+      onPress={() => Linking.openURL('https://discord.gg')}
       style={[styles.socialButton, buttonColor ? { backgroundColor: buttonColor } : {}, style]}>
       <Fontisto name="discord" size={size} color={'#7289d9'} />
       <Text style={styles.socialButtonText}>Join Discord</Text>
@@ -73,7 +74,7 @@ export const Github = ({
   const globalStyles = useGlobalStyles();
   return (
     <TouchableOpacity
-      onPress={() => Linking.openURL('https://github.com/FightFarewellFearless/AniFlix')}
+      onPress={() => Linking.openURL('https://github.com/Naotica2')}
       style={[styles.socialButton, buttonColor ? { backgroundColor: buttonColor } : {}, style]}>
       <Icon name="github" size={size} color={globalStyles.text.color} />
       <Text style={styles.socialButtonText}>GitHub</Text>
@@ -85,6 +86,7 @@ type Props = NativeStackScreenProps<RootStackNavigator, 'connectToServer'>;
 
 function Loading(props: Props) {
   const styles = useStyles();
+  const { user, confirmedNoProfile } = useAuth();
 
   useEffect(() => {
     Orientation.lockToPortrait();
@@ -145,7 +147,8 @@ function Loading(props: Props) {
       if (
         !isInDatabase(dataKey) &&
         !dataKey.startsWith('IGNORE_DEFAULT_DB_') &&
-        !dataKey.startsWith('historyItem:')
+        !dataKey.startsWith('historyItem:') &&
+        !dataKey.startsWith('sb-') // PROTECT SUPABASE AUTH TOKENS FROM DELETION
       ) {
         DatabaseManager.delete(dataKey);
       }
@@ -177,7 +180,7 @@ function Loading(props: Props) {
     signal.addEventListener('abort', onAbort);
 
     const data = await fetch(
-      'https://api.github.com/repos/FightFarewellFearless/AniFlix/releases?per_page=1',
+      'https://api.github.com/repos/Naotica2/NaoFlix/releases?per_page=1',
       {
         signal: abort.signal,
         headers: {
@@ -195,12 +198,25 @@ function Loading(props: Props) {
     if (data === undefined) {
       ToastAndroid.show('Error saat mengecek versi', ToastAndroid.SHORT);
       return true;
-    } else if (data[0]?.tag_name === appVersion) {
+    } else if (data.message && data.message.includes('Not Found')) {
+      // Repository doesn't exist yet, ignore update
       return true;
     } else if (data[0] === undefined) {
-      ToastAndroid.show('Melewatkan pengecekan versi karna terkena rate limit', ToastAndroid.SHORT);
+      // Rate limit or no releases yet
       return true;
     }
+    
+    const remoteVersion = data[0]?.tag_name || '';
+    const cleanRemote = remoteVersion.replace(/[^0-9.]/g, '');
+    const cleanCurrent = appVersion.replace(/[^0-9.]/g, '');
+    
+    // Check if remote version is strictly greater than current version
+    const isNewer = cleanRemote.localeCompare(cleanCurrent, undefined, { numeric: true, sensitivity: 'base' }) > 0;
+
+    if (!isNewer) {
+      return true;
+    }
+    
     return data[0];
   }, []);
 
@@ -229,6 +245,13 @@ function Loading(props: Props) {
   //   comics1PromiseResolve.current?.();
   // }, [isAnimeMovieWebViewOpen, isComics1WebViewOpen]);
 
+  // Use refs for auth values so connectToServers doesn't restart the entire
+  // loading flow when auth state changes (e.g. profile retry succeeds in background)
+  const authRef = useRef({ user, confirmedNoProfile });
+  useEffect(() => {
+    authRef.current = { user, confirmedNoProfile };
+  }, [user, confirmedNoProfile]);
+
   const connectToServers = useCallback(
     async (signal: AbortSignal) => {
       setIsAnimeMovieWebViewOpen(true);
@@ -239,7 +262,13 @@ function Loading(props: Props) {
         if (anime === undefined) {
           return;
         }
-        props.navigation.dispatch(StackActions.replace('Home', { data: anime }));
+        // Read latest auth state at navigation time via ref
+        const { user: currentUser, confirmedNoProfile: noProfile } = authRef.current;
+        if (currentUser && noProfile) {
+          props.navigation.dispatch(StackActions.replace('UsernameSetupScreen'));
+        } else {
+          props.navigation.dispatch(StackActions.replace('Home', { data: anime }));
+        }
       });
     },
     [animeMoviePromise, fetchAnimeData, props.navigation],
@@ -308,18 +337,7 @@ function Loading(props: Props) {
           if (signal.aborted) return;
 
           if (OTAUpdate !== null && OTAUpdate.isAvailable) {
-            const changelog = await fetch(
-              'https://raw.githubusercontent.com/FightFarewellFearless/AniFlix/refs/heads/master/CHANGELOG.md',
-              {
-                signal,
-                headers: {
-                  'User-Agent': deviceUserAgent,
-                  'Cache-Control': 'no-cache',
-                },
-              },
-            )
-              .then(d => d.text())
-              .catch(() => 'Gagal mendapatkan changelog');
+            const changelog = 'Pembaruan tersedia. Aplikasi akan mengunduh pembaruan terbaru...';
 
             if (signal.aborted) return;
 
@@ -398,7 +416,7 @@ function Loading(props: Props) {
         )}
 
         <View style={styles.header}>
-          <Text style={styles.appName}>AniFlix</Text>
+          <Text style={styles.appName}>NaoFlix</Text>
           <Text style={styles.subtitle}>Loading your anime experience...</Text>
         </View>
 

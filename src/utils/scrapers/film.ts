@@ -354,6 +354,7 @@ type FilmDetail_Stream = {
   thumbnailUrl: string;
   next?: string;
   prev?: string;
+  detailLink?: string;
   variants?: HlsVariant[];
 };
 type FilmDetails = FilmDetails_Detail | FilmDetail_Stream;
@@ -411,6 +412,7 @@ async function getFilmDetails(filmUrl: string, signal?: AbortSignal): Promise<Fi
         rating,
         genres,
         synopsis,
+        detailLink: filmUrl,
         variants,
       };
     } else {
@@ -449,6 +451,7 @@ async function getFilmDetails(filmUrl: string, signal?: AbortSignal): Promise<Fi
         synopsis,
         next: next === '#' ? undefined : next,
         prev: prev === '#' ? undefined : prev,
+        detailLink: episodeLink,
         variants,
       };
     }

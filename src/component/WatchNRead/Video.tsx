@@ -63,6 +63,7 @@ import {
 import { throttle } from '../../utils/throttle';
 import Skeleton from '../misc/Skeleton';
 import VideoPlayer, { PlayerRef } from '../VideoPlayer';
+import CommentSection from '../Comments/CommentSection';
 
 type Props = NativeStackScreenProps<RootStackNavigator, 'Video'>;
 
@@ -1073,6 +1074,12 @@ function Video(props: Props) {
           onPress={downloadAnime}>
           <Icon name="download" size={23} /> Download
         </Button>
+        <View style={{ marginVertical: 10 }}>
+          <CommentSection
+            contentId={data.episodeData?.animeDetail}
+            contentType={props.route.params.isMovie ? 'movie' : 'anime'} 
+          />
+        </View>
       </ScrollView>
     </View>
   );
