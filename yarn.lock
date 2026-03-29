@@ -2957,6 +2957,29 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@react-native-vector-icons/common@npm:^13.0.0":
+  version: 13.0.0
+  resolution: "@react-native-vector-icons/common@npm:13.0.0"
+  dependencies:
+    find-up: ^7.0.0
+    picocolors: ^1.1.1
+    plist: ^3.1.0
+  peerDependencies:
+    "@react-native-vector-icons/get-image": ^13.0.0
+    "@react-native/assets-registry": "*"
+    react: "*"
+    react-native: "*"
+  peerDependenciesMeta:
+    "@react-native-vector-icons/get-image":
+      optional: true
+    "@react-native/assets-registry":
+      optional: true
+  bin:
+    rnvi-update-plist: lib/commonjs/scripts/updatePlist.js
+  checksum: f90357c186d5be57dd271b66b258e9eaf9624b9794381e3a43058961ceb983a465b76511d7fd54a4e1f92cd863d5a309fe0507e83b7a49deb134859c9f66da64
+  languageName: node
+  linkType: hard
+
 "@react-native-vector-icons/entypo@npm:^12.4.3":
   version: 12.4.3
   resolution: "@react-native-vector-icons/entypo@npm:12.4.3"
@@ -2981,15 +3004,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-native-vector-icons/fontawesome@npm:^12.4.3":
-  version: 12.4.3
-  resolution: "@react-native-vector-icons/fontawesome@npm:12.4.3"
+"@react-native-vector-icons/fontawesome@npm:^13.0.0":
+  version: 13.0.0
+  resolution: "@react-native-vector-icons/fontawesome@npm:13.0.0"
   dependencies:
-    "@react-native-vector-icons/common": ^12.4.2
+    "@react-native-vector-icons/common": ^13.0.0
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 8a4bad1737641a355b816d4e258e06778ac1a53ac6cfb52540df7456495b973006fb130d49860c294a74405a2793ca68fd677b76e957ad4e77db2e183f43b8f8
+  checksum: be6e8f8d5a5f4eaacc9524837051bec2a66987d882274239e50cfde11ad8a21e89892b581396e2024883a2bee3914c0e0c98594456be3c1bda75bb253fb3a757
   languageName: node
   linkType: hard
 
@@ -4227,7 +4250,7 @@ __metadata:
     "@react-native-community/cli-platform-android": ^20.0.2
     "@react-native-google-signin/google-signin": ^16.1.2
     "@react-native-vector-icons/entypo": ^12.4.3
-    "@react-native-vector-icons/fontawesome": ^12.4.3
+    "@react-native-vector-icons/fontawesome": ^13.0.0
     "@react-native-vector-icons/fontawesome5": ^12.3.3
     "@react-native-vector-icons/fontisto": ^12.4.3
     "@react-native-vector-icons/material-design-icons": ^12.4.3
