@@ -22,6 +22,7 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SystemBars } from 'react-native-edge-to-edge';
 import { DeviceInfoModule } from 'react-native-nitro-device-info';
 import Orientation, { OrientationType } from 'react-native-orientation-locker';
@@ -134,6 +135,7 @@ function Video(props: Props) {
           );
         }
         setAnimeDetail(detail);
+        setData(prev => ({ ...prev, thumbnailUrl: detail.thumbnailUrl }));
       }
     });
   }, [data.episodeData.animeDetail, props.navigation, props.route.params.isMovie]);
@@ -339,22 +341,30 @@ function Video(props: Props) {
       if (typeof resultData !== 'string' && ('canceled' in resultData || 'error' in resultData)) {
         return;
       }
-      const isWebviewNeeded = await fetch(resultData, {
-        headers: {
-          'User-Agent': deviceUserAgent,
-          ...(resultData.includes('mp4upload') ? { Referer: 'https://www.mp4upload.com/' } : {}),
-        },
-        method: 'HEAD',
-        signal,
-      })
-        .catch(() => {})
-        .then(response => {
-          return !(
-            response?.headers.get('content-type')?.includes('video') ||
-            response?.headers.get('content-type')?.includes('octet-stream') ||
-            resultData.includes('filedon')
-          );
-        });
+      const isKnownRawVideoHost = (url: string) =>
+        url.includes('storage') && (url.includes('berkasdrive') || url.includes('dlgan')) ||
+        url.includes('berkasdrive.com/dl/') ||
+        url.includes('dlgan.space/st/') ||
+        url.includes('dlgan.space/dl/') ||
+        url.includes('dlgan.my.id');
+      const isWebviewNeeded = isKnownRawVideoHost(resultData)
+        ? false
+        : await fetch(resultData, {
+            headers: {
+              'User-Agent': deviceUserAgent,
+              ...(resultData.includes('mp4upload') ? { Referer: 'https://www.mp4upload.com/' } : {}),
+            },
+            method: 'HEAD',
+            signal,
+          })
+            .catch(() => {})
+            .then(response => {
+              return !(
+                response?.headers.get('content-type')?.includes('video') ||
+                response?.headers.get('content-type')?.includes('octet-stream') ||
+                resultData.includes('filedon')
+              );
+            });
       if (signal?.aborted) return;
       setData(old => {
         return {
@@ -752,6 +762,12 @@ function Video(props: Props) {
                 window.confirm = function() {}; // Disable confirms
                 window.prompt = function() {}; // Disable prompts
                 window.open = function() {}; // Disable opening new windows
+                
+                try {
+                  var style = document.createElement('style');
+                  style.innerHTML = '.pilih_server { opacity: 0.25 !important; transform: scale(0.6) !important; transform-origin: top right !important; transition: all 0.3s ease !important; } .pilih_server:active, .pilih_server:hover { opacity: 1 !important; transform: scale(0.9) !important; }';
+                  document.head.appendChild(style);
+                } catch(e) {}
               `}
             />
           ) : (
@@ -766,7 +782,8 @@ function Video(props: Props) {
         mengecek apakah sedang dalam keadaan fullscreen atau tidak
         jika ya, maka hanya menampilkan video saja 
        */}
-      <ScrollView
+      <KeyboardAwareScrollView
+        bottomOffset={80}
         style={{ flex: 1, display: fullscreen ? 'none' : 'flex' }}
         contentContainerStyle={{ paddingBottom: insets.bottom }}>
         {/* movie information */}
@@ -818,54 +835,7 @@ function Video(props: Props) {
               </Text>
             </View>
           )}
-        {/* embed player information */}
-        {data.streamingType === 'embed' && (
-          <View ref={embedInformationRef}>
-            <View
-              style={{
-                backgroundColor: theme.colors.tertiaryContainer,
-                marginVertical: 5,
-              }}>
-              <TouchableOpacity
-                style={{ alignSelf: 'flex-end' }}
-                onPress={() => {
-                  embedInformationRef.current?.setNativeProps({ display: 'none' });
-                }}>
-                <Icon name="close" color={theme.colors.onTertiaryContainer} size={26} />
-              </TouchableOpacity>
-              <Icon
-                name="lightbulb-o"
-                color={theme.colors.onTertiaryContainer}
-                size={26}
-                style={{ alignSelf: 'center' }}
-              />
-              <Text style={{ color: theme.colors.onTertiaryContainer }}>
-                Kamu saat ini menggunakan video player pihak ketiga dikarenakan data dengan format
-                yang biasa digunakan tidak tersedia. Fitur ini masih eksperimental.{'\n'}
-                Kamu mungkin akan melihat iklan di dalam video.{'\n'}
-                Fitur download, ganti resolusi, dan fullscreen tidak akan bekerja dengan normal.
-                {'\n'}
-                Jika menemui masalah seperti video berubah menjadi putih, silahkan reload video
-                player!
-              </Text>
-            </View>
-            <View
-              style={{
-                marginTop: 5,
-                backgroundColor: theme.colors.tertiaryContainer,
-              }}>
-              <MaterialCommunityIcons
-                name="screen-rotation"
-                color={theme.colors.onTertiaryContainer}
-                size={26}
-                style={{ alignSelf: 'center' }}
-              />
-              <Text style={{ color: theme.colors.onTertiaryContainer }}>
-                Untuk masuk ke mode fullscreen silahkan miringkan ponsel ke mode landscape
-              </Text>
-            </View>
-          </View>
-        )}
+        {/* We no longer show the embed 'Pihak Ketiga' warning because old anime natively require WebView */}
         {/* embed reload button */}
         {data.streamingType === 'embed' && (
           <TouchableOpacity
@@ -1080,7 +1050,7 @@ function Video(props: Props) {
             contentType={props.route.params.isMovie ? 'movie' : 'anime'} 
           />
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

@@ -275,7 +275,7 @@ const RenderList = memo(function RenderList({
         );
       }}>
       <ImageLoading
-        resizeMode="stretch"
+        resizeMode="cover"
         source={{ uri: item?.thumbnailUrl }}
         style={styles.listImage}
       />

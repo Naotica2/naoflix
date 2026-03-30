@@ -1,9 +1,10 @@
 import Icon from '@react-native-vector-icons/fontawesome';
+import MaterialIcon from '@react-native-vector-icons/material-icons';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { CompositeScreenProps, StackActions, useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { FlashList, ListRenderItemInfo } from '@shopify/flash-list';
-import React, { memo, useCallback, useMemo, useRef, useState, useTransition } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import {
   ActivityIndicator,
   BackHandler,
@@ -92,6 +93,7 @@ function Search(props: Props) {
   const [listAnime, setListAnime] = useState<listAnimeTypeList[] | null>(null);
   const [listAnimeLoading, setListAnimeLoading] = useState(false);
   const [isError, setIsError] = useState(false);
+  const [isRateLimit, setIsRateLimit] = useState(false);
   const [data, setData] = useState<null | SearchAnime>(null);
   const [movieData, setMovieData] = useState<null | Movies[]>(null);
   const [filmData, setFilmData] = useState<null | SearchResult>(null);
@@ -149,6 +151,16 @@ function Search(props: Props) {
     setSearchText(text);
   }, []);
 
+  useEffect(() => {
+    if (searchType !== 'anime' || searchText.trim() === '') return;
+
+    const timeoutId = setTimeout(() => {
+      submit();
+    }, 800);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchText, searchType]);
+
   const submit = useCallback(() => {
     const handleError = (err: Error) => {
       if (err.message.includes('Aborted') || err.message.includes('canceled')) {
@@ -172,18 +184,31 @@ function Search(props: Props) {
     textInputRef.current?.blur();
 
     if (searchType === 'anime') {
-      Promise.all([
+      Promise.allSettled([
         AnimeAPI.search(searchText, abortController.current?.signal),
         searchMovie(searchText, abortController.current?.signal),
       ])
-        .then(([animeResult, movieResult]) => {
+        .then(([animeResponse, movieResponse]) => {
+          setIsRateLimit(false);
           setCurrentSearchQuery(searchText);
           setFilmData(null);
           setComicsData(null);
-          if (!('isError' in movieResult)) {
-            setMovieData(movieResult);
+
+          if (animeResponse.status === 'rejected') {
+            if (animeResponse.reason?.name === 'SankaRateLimitError') {
+              setIsRateLimit(true);
+            } else {
+              handleError(animeResponse.reason);
+            }
+          } else {
+            setData(animeResponse.value);
           }
-          setData(animeResult);
+
+          if (movieResponse.status === 'fulfilled' && !('isError' in movieResponse.value)) {
+            setMovieData(movieResponse.value);
+          } else if (movieResponse.status === 'rejected') {
+            handleError(movieResponse.reason);
+          }
         })
         .finally(() => {
           setSearchedSearchType(searchType);
@@ -193,8 +218,7 @@ function Search(props: Props) {
           searchHistory.unshift(searchText);
           DatabaseManager.set('searchHistory', JSON.stringify(searchHistory));
           setLoading(false);
-        })
-        .catch(handleError);
+        });
     } else if (searchType === 'film') {
       searchFilm(searchText, abortController.current?.signal)
         .then(result => {
@@ -408,7 +432,7 @@ function Search(props: Props) {
         </View>
       )}
 
-      {shouldShowManualLoad && (
+      {shouldShowManualLoad && !isRateLimit && (
         <Reanimated.View entering={FadeInUp} style={styles.center}>
           <View style={styles.emptyStateContainer}>
             <Icon
@@ -456,6 +480,22 @@ function Search(props: Props) {
               </Text>
             </TouchableOpacityReactNative>
           </View>
+        </Reanimated.View>
+      )}
+
+      {isRateLimit && (
+        <Reanimated.View entering={FadeInUp} style={styles.center}>
+          <TouchableOpacityReactNative
+             onPress={submit}
+             style={{ alignItems: 'center', backgroundColor: '#f39c1225', padding: 25, borderRadius: 15, marginHorizontal: 20 }}>
+            <MaterialIcon name="hourglass-empty" size={50} color="#f39c12" />
+            <Text style={[globalStyles.text, styles.emptyStateTitle, { color: '#f39c12', marginTop: 15 }]}>
+              Server Sedang Antre
+            </Text>
+            <Text style={[globalStyles.text, styles.emptyStateSubtitle, { color: '#f39c12' }]}>
+              Banyak pengguna yang sedang mengakses server. Santai sejenak lalu ketuk kotak ini untuk mencoba lagi.
+            </Text>
+          </TouchableOpacityReactNative>
         </Reanimated.View>
       )}
 
@@ -760,7 +800,7 @@ function SearchList({ item: z, parentProps: props }: { item: AnySearchItem; pare
         );
       }}>
       <ImageLoading
-        resizeMode="stretch"
+        resizeMode="cover"
         source={{ uri: item.thumbnailUrl }}
         style={[
           styles.listImage,
