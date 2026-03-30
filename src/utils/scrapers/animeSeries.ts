@@ -698,4 +698,5 @@ export {
   listAnime,
   fetchStreamingResolution,
   jadwalAnime,
+  getStreamLink,
 };

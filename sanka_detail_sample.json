@@ -1,0 +1,2454 @@
+﻿{
+    "status":  "success",
+    "creator":  "Sanka Vollerei",
+    "statusCode":  200,
+    "statusMessage":  "OK",
+    "message":  "",
+    "ok":  true,
+    "data":  {
+                 "title":  "Boruto",
+                 "poster":  "https://otakudesu.blog/wp-content/uploads/2020/05/Boruto-Sub-Indo.jpg",
+                 "japanese":  "BORUTO -NARUTO NEXT GENERATIONS-",
+                 "score":  "6.15",
+                 "producers":  "TV Tokyo, Aniplex, Rakuonsha, Shueisha",
+                 "type":  "TV",
+                 "status":  "Ongoing",
+                 "episodes":  null,
+                 "duration":  "23 Menit",
+                 "aired":  "Apr 5, 2017",
+                 "studios":  "Pierrot",
+                 "batch":  {
+                               "title":  "Boruto: Naruto Next Generations [BATCH] Subtitle Indonesia",
+                               "batchId":  "btr-nng-batch-sub-indo",
+                               "href":  "/anime/batch/btr-nng-batch-sub-indo",
+                               "otakudesuUrl":  "https://otakudesu.blog/batch/btr-nng-batch-sub-indo/"
+                           },
+                 "synopsis":  {
+                                  "paragraphs":  [
+                                                     "Boruto: Naruto Next Generations menceritakan tentang dunia ninja yang damai setelah peperangan yang terjadi di Naruto: Shippuuden.",
+                                                     "Cerita berfokus terhadap Boruto Uzumaki yang merupakan putra dari sang ninja legendaris penyelamat dunia, Naruto Uzumaki yang kini menjabat sebagai Hokage ke-7. Boruto memiliki sifat yang keras kepala dan susah diatur, ia ingin terbebas dari kehidupan yang mengekangnya dan ingin melangkah bebas sesuai keinginannya sendiri.",
+                                                     "Kehidupan para ninja generasi baru di dunia yang sedang berevolusi menjadi modern membuat tujuan utama para shinobi berubah, tak lagi berfokus pada kekuatan dan peperangan, mereka harus ikut dalam perkembangan jaman dan teknologi.",
+                                                     "Bagaimanakah kisah Boruto dan teman-temannya beserta seluruh shinobi di generasi baru kali ini?"
+                                                 ],
+                                  "connections":  [
+
+                                                  ]
+                              },
+                 "genreList":  [
+                                   {
+                                       "title":  "Action",
+                                       "genreId":  "action",
+                                       "href":  "/anime/genre/action",
+                                       "otakudesuUrl":  "https://otakudesu.blog/genres/action/"
+                                   },
+                                   {
+                                       "title":  "Adventure",
+                                       "genreId":  "adventure",
+                                       "href":  "/anime/genre/adventure",
+                                       "otakudesuUrl":  "https://otakudesu.blog/genres/adventure/"
+                                   },
+                                   {
+                                       "title":  "Martial Arts",
+                                       "genreId":  "martial-arts",
+                                       "href":  "/anime/genre/martial-arts",
+                                       "otakudesuUrl":  "https://otakudesu.blog/genres/martial-arts/"
+                                   },
+                                   {
+                                       "title":  "Shounen",
+                                       "genreId":  "shounen",
+                                       "href":  "/anime/genre/shounen",
+                                       "otakudesuUrl":  "https://otakudesu.blog/genres/shounen/"
+                                   },
+                                   {
+                                       "title":  "Super Power",
+                                       "genreId":  "super-power",
+                                       "href":  "/anime/genre/super-power",
+                                       "otakudesuUrl":  "https://otakudesu.blog/genres/super-power/"
+                                   }
+                               ],
+                 "episodeList":  [
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 293 Subtitle Indonesia",
+                                         "eps":  293,
+                                         "date":  "26 Maret,2023",
+                                         "episodeId":  "btr-nng-episode-293-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-293-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-293-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 292 Subtitle Indonesia",
+                                         "eps":  292,
+                                         "date":  "19 Maret,2023",
+                                         "episodeId":  "btr-nng-episode-292-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-292-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-292-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 291 Subtitle Indonesia",
+                                         "eps":  291,
+                                         "date":  "12 Maret,2023",
+                                         "episodeId":  "btr-nng-episode-291-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-291-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-291-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 290 Subtitle Indonesia",
+                                         "eps":  290,
+                                         "date":  "5 Maret,2023",
+                                         "episodeId":  "btr-nng-episode-290-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-290-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-290-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 289 Subtitle Indonesia",
+                                         "eps":  289,
+                                         "date":  "26 Februari,2023",
+                                         "episodeId":  "btr-nng-episode-289-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-289-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-289-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 288 Subtitle Indonesia",
+                                         "eps":  288,
+                                         "date":  "19 Februari,2023",
+                                         "episodeId":  "btr-nng-episode-288-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-288-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-288-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 287 Subtitle Indonesia",
+                                         "eps":  287,
+                                         "date":  "12 Februari,2023",
+                                         "episodeId":  "btr-nng-episode-287-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-287-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-287-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 286 Subtitle Indonesia",
+                                         "eps":  286,
+                                         "date":  "5 Februari,2023",
+                                         "episodeId":  "btr-nng-episode-286-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-286-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-286-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 285 Subtitle Indonesia",
+                                         "eps":  285,
+                                         "date":  "29 Januari,2023",
+                                         "episodeId":  "btr-nng-episode-285-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-285-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-285-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 284 Subtitle Indonesia",
+                                         "eps":  284,
+                                         "date":  "22 Januari,2023",
+                                         "episodeId":  "btr-nng-episode-284-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-284-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-284-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 283 Subtitle Indonesia",
+                                         "eps":  283,
+                                         "date":  "15 Januari,2023",
+                                         "episodeId":  "btr-nng-episode-283-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-283-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-283-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 282 Subtitle Indonesia",
+                                         "eps":  282,
+                                         "date":  "8 Januari,2023",
+                                         "episodeId":  "btr-nng-episode-282-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-282-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-282-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 281 Subtitle Indonesia",
+                                         "eps":  281,
+                                         "date":  "25 Desember,2022",
+                                         "episodeId":  "btr-nng-episode-281-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-281-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-281-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 280 Subtitle Indonesia",
+                                         "eps":  280,
+                                         "date":  "18 Desember,2022",
+                                         "episodeId":  "btr-nng-episode-280-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-280-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-280-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 279 Subtitle Indonesia",
+                                         "eps":  279,
+                                         "date":  "11 Desember,2022",
+                                         "episodeId":  "btr-nng-episode-279-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-279-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-279-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 278 Subtitle Indonesia",
+                                         "eps":  278,
+                                         "date":  "4 Desember,2022",
+                                         "episodeId":  "btr-nng-episode-278-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-278-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-278-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 277 Subtitle Indonesia",
+                                         "eps":  277,
+                                         "date":  "27 November,2022",
+                                         "episodeId":  "btr-nng-episode-277-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-277-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-277-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 276 Subtitle Indonesia",
+                                         "eps":  276,
+                                         "date":  "20 November,2022",
+                                         "episodeId":  "btr-nng-episode-276-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-276-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-276-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 275 Subtitle Indonesia",
+                                         "eps":  275,
+                                         "date":  "13 November,2022",
+                                         "episodeId":  "btr-nng-episode-275-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-275-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-275-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 274 Subtitle Indonesia",
+                                         "eps":  274,
+                                         "date":  "6 November,2022",
+                                         "episodeId":  "btr-nng-episode-274-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-274-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-274-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 273 Subtitle Indonesia",
+                                         "eps":  273,
+                                         "date":  "30 Oktober,2022",
+                                         "episodeId":  "btr-nng-episode-273-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-273-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-273-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 272 Subtitle Indonesia",
+                                         "eps":  272,
+                                         "date":  "23 Oktober,2022",
+                                         "episodeId":  "btr-nng-episode-272-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-272-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-272-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 271 Subtitle Indonesia",
+                                         "eps":  271,
+                                         "date":  "16 Oktober,2022",
+                                         "episodeId":  "btr-nng-episode-271-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-271-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-271-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 270 Subtitle Indonesia",
+                                         "eps":  270,
+                                         "date":  "9 Oktober,2022",
+                                         "episodeId":  "btr-nng-episode-270-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-270-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-270-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 269 Subtitle Indonesia",
+                                         "eps":  269,
+                                         "date":  "2 Oktober,2022",
+                                         "episodeId":  "btr-nng-episode-269-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-269-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-269-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 268 Subtitle Indonesia",
+                                         "eps":  268,
+                                         "date":  "25 September,2022",
+                                         "episodeId":  "btr-nng-episode-268-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-268-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-268-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 267 Subtitle Indonesia",
+                                         "eps":  267,
+                                         "date":  "18 September,2022",
+                                         "episodeId":  "btr-nng-episode-267-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-267-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-267-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 266 Subtitle Indonesia",
+                                         "eps":  266,
+                                         "date":  "11 September,2022",
+                                         "episodeId":  "btr-nng-episode-266-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-266-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-266-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 265 Subtitle Indonesia",
+                                         "eps":  265,
+                                         "date":  "4 September,2022",
+                                         "episodeId":  "btr-nng-episode-265-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-265-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-265-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 264 Subtitle Indonesia",
+                                         "eps":  264,
+                                         "date":  "28 Agustus,2022",
+                                         "episodeId":  "btr-nng-episode-264-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-264-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-264-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 263 Subtitle Indonesia",
+                                         "eps":  263,
+                                         "date":  "21 Agustus,2022",
+                                         "episodeId":  "btr-nng-episode-263-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-263-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-263-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 262 Subtitle Indonesia",
+                                         "eps":  262,
+                                         "date":  "14 Agustus,2022",
+                                         "episodeId":  "btr-nng-episode-262-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-262-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-262-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 261 Subtitle Indonesia",
+                                         "eps":  261,
+                                         "date":  "7 Agustus,2022",
+                                         "episodeId":  "btr-nng-episode-261-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-261-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-261-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 260 Subtitle Indonesia",
+                                         "eps":  260,
+                                         "date":  "31 Juli,2022",
+                                         "episodeId":  "btr-nng-episode-260-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-260-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-260-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 259 Subtitle Indonesia",
+                                         "eps":  259,
+                                         "date":  "24 Juli,2022",
+                                         "episodeId":  "btr-nng-episode-259-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-259-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-259-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 258 Subtitle Indonesia",
+                                         "eps":  258,
+                                         "date":  "17 Juli,2022",
+                                         "episodeId":  "btr-nng-episode-258-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-258-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-258-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 257 Subtitle Indonesia",
+                                         "eps":  257,
+                                         "date":  "10 Juli,2022",
+                                         "episodeId":  "btr-nng-episode-257-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-257-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-257-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 256 Subtitle Indonesia",
+                                         "eps":  256,
+                                         "date":  "3 Juli,2022",
+                                         "episodeId":  "btr-nng-episode-256-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-256-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-256-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 255 Subtitle Indonesia",
+                                         "eps":  255,
+                                         "date":  "26 Juni,2022",
+                                         "episodeId":  "btr-nng-episode-255-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-255-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-255-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 254 Subtitle Indonesia",
+                                         "eps":  254,
+                                         "date":  "19 Juni,2022",
+                                         "episodeId":  "btr-nng-episode-254-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-254-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-254-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 253 Subtitle Indonesia",
+                                         "eps":  253,
+                                         "date":  "12 Juni,2022",
+                                         "episodeId":  "btr-nng-episode-253-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-253-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-253-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 252 Subtitle Indonesia",
+                                         "eps":  252,
+                                         "date":  "5 Juni,2022",
+                                         "episodeId":  "btr-nng-episode-252-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-252-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-252-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 251 Subtitle Indonesia",
+                                         "eps":  251,
+                                         "date":  "29 Mei,2022",
+                                         "episodeId":  "btr-nng-episode-251-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-251-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-251-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 250 Subtitle Indonesia",
+                                         "eps":  250,
+                                         "date":  "22 Mei,2022",
+                                         "episodeId":  "btr-nng-episode-250-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-250-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-250-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 249 Subtitle Indonesia",
+                                         "eps":  249,
+                                         "date":  "15 Mei,2022",
+                                         "episodeId":  "btr-nng-episode-249-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-249-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-249-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 248 Subtitle Indonesia",
+                                         "eps":  248,
+                                         "date":  "8 Mei,2022",
+                                         "episodeId":  "btr-nng-episode-248-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-248-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-248-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 247 Subtitle Indonesia",
+                                         "eps":  247,
+                                         "date":  "1 Mei,2022",
+                                         "episodeId":  "btr-nng-episode-247-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-247-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-247-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 246 Subtitle Indonesia",
+                                         "eps":  246,
+                                         "date":  "24 April,2022",
+                                         "episodeId":  "btr-nng-episode-246-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-246-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-246-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 245 Subtitle Indonesia",
+                                         "eps":  245,
+                                         "date":  "17 April,2022",
+                                         "episodeId":  "btr-nng-episode-245-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-245-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-245-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 244 Subtitle Indonesia",
+                                         "eps":  244,
+                                         "date":  "10 April,2022",
+                                         "episodeId":  "btr-nng-episode-244-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-244-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-244-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 243 Subtitle Indonesia",
+                                         "eps":  243,
+                                         "date":  "3 April,2022",
+                                         "episodeId":  "btr-nng-episode-243-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-243-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-243-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 242 Subtitle Indonesia",
+                                         "eps":  242,
+                                         "date":  "27 Maret,2022",
+                                         "episodeId":  "btr-nng-episode-242-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-242-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-242-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 241 Subtitle Indonesia",
+                                         "eps":  241,
+                                         "date":  "20 Maret,2022",
+                                         "episodeId":  "btr-nng-episode-241-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-241-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-241-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 240 Subtitle Indonesia",
+                                         "eps":  240,
+                                         "date":  "13 Maret,2022",
+                                         "episodeId":  "btr-nng-episode-240-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-240-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-240-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 239 Subtitle Indonesia",
+                                         "eps":  239,
+                                         "date":  "6 Maret,2022",
+                                         "episodeId":  "btr-nng-episode-239-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-239-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-239-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 238 Subtitle Indonesia",
+                                         "eps":  238,
+                                         "date":  "27 Februari,2022",
+                                         "episodeId":  "btr-nng-episode-238-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-238-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-238-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 237 Subtitle Indonesia",
+                                         "eps":  237,
+                                         "date":  "20 Februari,2022",
+                                         "episodeId":  "btr-nng-episode-237-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-237-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-237-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 236 Subtitle Indonesia",
+                                         "eps":  236,
+                                         "date":  "13 Februari,2022",
+                                         "episodeId":  "btr-nng-episode-236-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-236-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-236-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 235 Subtitle Indonesia",
+                                         "eps":  235,
+                                         "date":  "6 Februari,2022",
+                                         "episodeId":  "btr-nng-episode-235-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-235-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-235-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 234 Subtitle Indonesia",
+                                         "eps":  234,
+                                         "date":  "30 Januari,2022",
+                                         "episodeId":  "btr-nng-episode-234-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-234-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-234-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 233 Subtitle Indonesia",
+                                         "eps":  233,
+                                         "date":  "23 Januari,2022",
+                                         "episodeId":  "btr-nng-episode-233-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-233-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-233-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 232 Subtitle Indonesia",
+                                         "eps":  232,
+                                         "date":  "16 Januari,2022",
+                                         "episodeId":  "btr-nng-episode-232-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-232-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-232-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 231 Subtitle Indonesia",
+                                         "eps":  231,
+                                         "date":  "9 Januari,2022",
+                                         "episodeId":  "btr-nng-episode-231-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-231-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-231-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 230 Subtitle Indonesia",
+                                         "eps":  230,
+                                         "date":  "26 Desember,2021",
+                                         "episodeId":  "btr-nng-episode-230-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-230-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-230-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 229 Subtitle Indonesia",
+                                         "eps":  229,
+                                         "date":  "19 Desember,2021",
+                                         "episodeId":  "btr-nng-episode-229-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-229-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-229-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 228 Subtitle Indonesia",
+                                         "eps":  228,
+                                         "date":  "12 Desember,2021",
+                                         "episodeId":  "btr-nng-episode-228-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-228-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-228-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 227 Subtitle Indonesia",
+                                         "eps":  227,
+                                         "date":  "5 Desember,2021",
+                                         "episodeId":  "btr-nng-episode-227-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-227-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-227-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 226 Subtitle Indonesia",
+                                         "eps":  226,
+                                         "date":  "28 November,2021",
+                                         "episodeId":  "btr-nng-episode-226-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-226-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-226-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 225 Subtitle Indonesia",
+                                         "eps":  225,
+                                         "date":  "21 November,2021",
+                                         "episodeId":  "btr-nng-episode-225-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-225-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-225-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 224 Subtitle Indonesia",
+                                         "eps":  224,
+                                         "date":  "14 November,2021",
+                                         "episodeId":  "btr-nng-episode-224-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-224-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-224-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 223 Subtitle Indonesia",
+                                         "eps":  223,
+                                         "date":  "7 November,2021",
+                                         "episodeId":  "btr-nng-episode-223-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-223-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-223-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 222 Subtitle Indonesia",
+                                         "eps":  222,
+                                         "date":  "31 Oktober,2021",
+                                         "episodeId":  "btr-nng-episode-222-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-222-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-222-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 221 Subtitle Indonesia",
+                                         "eps":  221,
+                                         "date":  "24 Oktober,2021",
+                                         "episodeId":  "btr-nng-episode-221-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-221-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-221-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 220 Subtitle Indonesia",
+                                         "eps":  220,
+                                         "date":  "17 Oktober,2021",
+                                         "episodeId":  "btr-nng-episode-220-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-220-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-220-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 219 Subtitle Indonesia",
+                                         "eps":  219,
+                                         "date":  "10 Oktober,2021",
+                                         "episodeId":  "btr-nng-episode-219-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-219-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-219-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 218 Subtitle Indonesia",
+                                         "eps":  218,
+                                         "date":  "3 Oktober,2021",
+                                         "episodeId":  "btr-nng-episode-218-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-218-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-218-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 217 Subtitle Indonesia",
+                                         "eps":  217,
+                                         "date":  "26 September,2021",
+                                         "episodeId":  "btr-nng-episode-217-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-217-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-217-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 216 Subtitle Indonesia",
+                                         "eps":  216,
+                                         "date":  "19 September,2021",
+                                         "episodeId":  "btr-nng-episode-216-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-216-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-216-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 215 Subtitle Indonesia",
+                                         "eps":  215,
+                                         "date":  "12 September,2021",
+                                         "episodeId":  "btr-nng-episode-215-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-215-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-215-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 214 Subtitle Indonesia",
+                                         "eps":  214,
+                                         "date":  "5 September,2021",
+                                         "episodeId":  "btr-nng-episode-214-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-214-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-214-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 213 Subtitle Indonesia",
+                                         "eps":  213,
+                                         "date":  "29 Agustus,2021",
+                                         "episodeId":  "btr-nng-episode-213-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-213-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-213-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 212 Subtitle Indonesia",
+                                         "eps":  212,
+                                         "date":  "22 Agustus,2021",
+                                         "episodeId":  "btr-nng-episode-212-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-212-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-212-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 211 Subtitle Indonesia",
+                                         "eps":  211,
+                                         "date":  "15 Agustus,2021",
+                                         "episodeId":  "btr-nng-episode-211-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-211-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-211-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 210 Subtitle Indonesia",
+                                         "eps":  210,
+                                         "date":  "8 Agustus,2021",
+                                         "episodeId":  "btr-nng-episode-210-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-210-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-210-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 209 Subtitle Indonesia",
+                                         "eps":  209,
+                                         "date":  "1 Agustus,2021",
+                                         "episodeId":  "btr-nng-episode-209-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-209-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-209-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 208 Subtitle Indonesia",
+                                         "eps":  208,
+                                         "date":  "18 Juli,2021",
+                                         "episodeId":  "btr-nng-episode-208-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-208-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-208-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 207 Subtitle Indonesia",
+                                         "eps":  207,
+                                         "date":  "11 Juli,2021",
+                                         "episodeId":  "btr-nng-episode-207-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-207-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-207-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 206 Subtitle Indonesia",
+                                         "eps":  206,
+                                         "date":  "4 Juli,2021",
+                                         "episodeId":  "btr-nng-episode-206-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-206-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-206-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 205 Subtitle Indonesia",
+                                         "eps":  205,
+                                         "date":  "27 Juni,2021",
+                                         "episodeId":  "btr-nng-episode-205-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-205-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-205-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 204 Subtitle Indonesia",
+                                         "eps":  204,
+                                         "date":  "20 Juni,2021",
+                                         "episodeId":  "btr-nng-episode-204-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-204-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-204-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 203 Subtitle Indonesia",
+                                         "eps":  203,
+                                         "date":  "13 Juni,2021",
+                                         "episodeId":  "btr-nng-episode-203-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-203-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-203-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 202 Subtitle Indonesia",
+                                         "eps":  202,
+                                         "date":  "6 Juni,2021",
+                                         "episodeId":  "btr-nng-episode-202-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-202-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-202-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 201 Subtitle Indonesia",
+                                         "eps":  201,
+                                         "date":  "30 Mei,2021",
+                                         "episodeId":  "btr-nng-episode-201-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-201-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-201-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 200 Subtitle Indonesia",
+                                         "eps":  200,
+                                         "date":  "23 Mei,2021",
+                                         "episodeId":  "btr-nng-episode-200-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-200-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-200-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 199 Subtitle Indonesia",
+                                         "eps":  199,
+                                         "date":  "16 Mei,2021",
+                                         "episodeId":  "btr-nng-episode-199-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-199-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-199-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 198 Subtitle Indonesia",
+                                         "eps":  198,
+                                         "date":  "9 Mei,2021",
+                                         "episodeId":  "btr-nng-episode-198-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-198-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-198-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 197 Subtitle Indonesia",
+                                         "eps":  197,
+                                         "date":  "2 Mei,2021",
+                                         "episodeId":  "btr-nng-episode-197-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-197-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-197-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 196 Subtitle Indonesia",
+                                         "eps":  196,
+                                         "date":  "25 April,2021",
+                                         "episodeId":  "btr-nng-episode-196-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-196-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-196-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 195 Subtitle Indonesia",
+                                         "eps":  195,
+                                         "date":  "22 April,2021",
+                                         "episodeId":  "btr-nng-episode-195-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-195-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-195-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 194 Subtitle Indonesia",
+                                         "eps":  194,
+                                         "date":  "11 April,2021",
+                                         "episodeId":  "btr-nng-episode-194-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-194-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-194-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 193 Subtitle Indonesia",
+                                         "eps":  193,
+                                         "date":  "4 April,2021",
+                                         "episodeId":  "btr-nng-episode-193-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-193-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-193-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 192 Subtitle Indonesia",
+                                         "eps":  192,
+                                         "date":  "28 Maret,2021",
+                                         "episodeId":  "btr-nng-episode-192-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-192-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-192-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 191 Subtitle Indonesia",
+                                         "eps":  191,
+                                         "date":  "21 Maret,2021",
+                                         "episodeId":  "btr-nng-episode-191-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-191-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-191-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 190 Subtitle Indonesia",
+                                         "eps":  190,
+                                         "date":  "14 Maret,2021",
+                                         "episodeId":  "btr-nng-episode-190-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-190-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-190-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 189 Subtitle Indonesia",
+                                         "eps":  189,
+                                         "date":  "7 Maret,2021",
+                                         "episodeId":  "btr-nng-episode-189-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-189-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-189-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 188 Subtitle Indonesia",
+                                         "eps":  188,
+                                         "date":  "28 Februari,2021",
+                                         "episodeId":  "btr-nng-episode-188-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-188-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-188-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 187 Subtitle Indonesia",
+                                         "eps":  187,
+                                         "date":  "21 Februari,2021",
+                                         "episodeId":  "btr-nng-episode-187-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-187-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-187-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 186 Subtitle Indonesia",
+                                         "eps":  186,
+                                         "date":  "14 Februari,2021",
+                                         "episodeId":  "btr-nng-episode-186-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-186-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-186-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 185 Subtitle Indonesia",
+                                         "eps":  185,
+                                         "date":  "7 Februari,2021",
+                                         "episodeId":  "btr-nng-episode-185-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-185-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-185-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 184 Subtitle Indonesia",
+                                         "eps":  184,
+                                         "date":  "31 Januari,2021",
+                                         "episodeId":  "btr-nng-episode-184-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-184-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-184-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 183 Subtitle Indonesia",
+                                         "eps":  183,
+                                         "date":  "24 Januari,2021",
+                                         "episodeId":  "btr-nng-episode-183-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-183-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-183-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 182 Subtitle Indonesia",
+                                         "eps":  182,
+                                         "date":  "17 Januari,2021",
+                                         "episodeId":  "btr-nng-episode-182-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-182-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-182-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 181 Subtitle Indonesia",
+                                         "eps":  181,
+                                         "date":  "10 Januari,2021",
+                                         "episodeId":  "btr-nng-episode-181-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-181-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-181-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 180 Subtitle Indonesia",
+                                         "eps":  180,
+                                         "date":  "27 Desember,2020",
+                                         "episodeId":  "btr-nng-episode-180-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-180-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-180-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 179 Subtitle Indonesia",
+                                         "eps":  179,
+                                         "date":  "20 Desember,2020",
+                                         "episodeId":  "btr-nng-episode-179-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-179-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-179-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 178 Subtitle Indonesia",
+                                         "eps":  178,
+                                         "date":  "13 Desember,2020",
+                                         "episodeId":  "btr-nng-episode-178-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-178-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-178-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 177 Subtitle Indonesia",
+                                         "eps":  177,
+                                         "date":  "6 Desember,2020",
+                                         "episodeId":  "btr-nng-episode-177-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-177-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-177-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 176 Subtitle Indonesia",
+                                         "eps":  176,
+                                         "date":  "29 November,2020",
+                                         "episodeId":  "btr-nng-episode-176-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-176-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-176-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 175 Subtitle Indonesia",
+                                         "eps":  175,
+                                         "date":  "22 November,2020",
+                                         "episodeId":  "btr-nng-episode-175-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-175-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-175-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 174 Subtitle Indonesia",
+                                         "eps":  174,
+                                         "date":  "14 November,2020",
+                                         "episodeId":  "btr-nng-episode-174-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-174-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-174-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 173 Subtitle Indonesia",
+                                         "eps":  173,
+                                         "date":  "8 November,2020",
+                                         "episodeId":  "btr-nng-episode-173-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-173-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-173-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 172 Subtitle Indonesia",
+                                         "eps":  172,
+                                         "date":  "1 November,2020",
+                                         "episodeId":  "btr-nng-episode-172-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-172-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-172-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 171 Subtitle Indonesia",
+                                         "eps":  171,
+                                         "date":  "25 Oktober,2020",
+                                         "episodeId":  "btr-nng-episode-171-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-171-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-171-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 170 Subtitle Indonesia",
+                                         "eps":  170,
+                                         "date":  "18 Oktober,2020",
+                                         "episodeId":  "btr-nng-episode-17-sub-indo-2",
+                                         "href":  "/anime/episode/btr-nng-episode-17-sub-indo-2",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-17-sub-indo-2/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 169 Subtitle Indonesia",
+                                         "eps":  169,
+                                         "date":  "11 Oktober,2020",
+                                         "episodeId":  "btr-nng-episode-169-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-169-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-169-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 168 Subtitle Indonesia",
+                                         "eps":  168,
+                                         "date":  "4 Oktober,2020",
+                                         "episodeId":  "btr-nng-episode-168-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-168-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-168-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 167 Subtitle Indonesia",
+                                         "eps":  167,
+                                         "date":  "27 September,2020",
+                                         "episodeId":  "btr-nng-episode-167-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-167-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-167-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 166 Subtitle Indonesia",
+                                         "eps":  166,
+                                         "date":  "20 September,2020",
+                                         "episodeId":  "btr-nng-episode-166-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-166-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-166-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 165 Subtitle Indonesia",
+                                         "eps":  165,
+                                         "date":  "13 September,2020",
+                                         "episodeId":  "btr-nng-episode-165-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-165-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-165-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 164 Subtitle Indonesia",
+                                         "eps":  164,
+                                         "date":  "6 September,2020",
+                                         "episodeId":  "btr-nng-episode-164-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-164-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-164-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 163 Subtitle Indonesia",
+                                         "eps":  163,
+                                         "date":  "30 Agustus,2020",
+                                         "episodeId":  "btr-nng-episode-163-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-163-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-163-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 162 Subtitle Indonesia",
+                                         "eps":  162,
+                                         "date":  "23 Agustus,2020",
+                                         "episodeId":  "btr-nng-episode-162-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-162-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-162-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 161 Subtitle Indonesia",
+                                         "eps":  161,
+                                         "date":  "16 Agustus,2020",
+                                         "episodeId":  "btr-nng-episode-161-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-161-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-161-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 160 Subtitle Indonesia",
+                                         "eps":  160,
+                                         "date":  "9 Agustus,2020",
+                                         "episodeId":  "btr-nng-episode-160-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-160-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-160-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 159 Subtitle Indonesia",
+                                         "eps":  159,
+                                         "date":  "2 Agustus,2020",
+                                         "episodeId":  "btr-nng-episode-159-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-159-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-159-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 158 Subtitle Indonesia",
+                                         "eps":  158,
+                                         "date":  "26 Juli,2020",
+                                         "episodeId":  "btr-nng-episode-158-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-158-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-158-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 157 Subtitle Indonesia",
+                                         "eps":  157,
+                                         "date":  "19 Juli,2020",
+                                         "episodeId":  "btr-nng-episode-157-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-157-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-157-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 156 Subtitle Indonesia",
+                                         "eps":  156,
+                                         "date":  "12 Juli,2020",
+                                         "episodeId":  "btr-nng-episode-156-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-156-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-156-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 155 Subtitle Indonesia",
+                                         "eps":  155,
+                                         "date":  "6 Juli,2020",
+                                         "episodeId":  "btr-nng-episode-155-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-155-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-155-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 154 Subtitle Indonesia",
+                                         "eps":  154,
+                                         "date":  "6 Juli,2020",
+                                         "episodeId":  "btr-nng-episode-154-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-154-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-154-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 153 Subtitle Indonesia",
+                                         "eps":  153,
+                                         "date":  "6 Juli,2020",
+                                         "episodeId":  "btr-nng-episode-153-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-153-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-153-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 152 Subtitle Indonesia",
+                                         "eps":  152,
+                                         "date":  "6 Juli,2020",
+                                         "episodeId":  "btr-nng-episode-152-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-152-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-152-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 151 Subtitle Indonesia",
+                                         "eps":  151,
+                                         "date":  "6 Juli,2020",
+                                         "episodeId":  "btr-nng-episode-151-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-151-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-151-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 150 Subtitle Indonesia",
+                                         "eps":  150,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-150-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-150-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-150-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 149 Subtitle Indonesia",
+                                         "eps":  149,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-149-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-149-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-149-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 148 Subtitle Indonesia",
+                                         "eps":  148,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-148-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-148-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-148-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 147 Subtitle Indonesia",
+                                         "eps":  147,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-147-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-147-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-147-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 146 Subtitle Indonesia",
+                                         "eps":  146,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-146-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-146-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-146-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 145 Subtitle Indonesia",
+                                         "eps":  145,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-145-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-145-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-145-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 144 Subtitle Indonesia",
+                                         "eps":  144,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-144-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-144-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-144-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 143 Subtitle Indonesia",
+                                         "eps":  143,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-143-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-143-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-143-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 142 Subtitle Indonesia",
+                                         "eps":  142,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-142-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-142-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-142-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 141 Subtitle Indonesia",
+                                         "eps":  141,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-141-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-141-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-141-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 140 Subtitle Indonesia",
+                                         "eps":  140,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-140-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-140-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-140-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 139 Subtitle Indonesia",
+                                         "eps":  139,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-139-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-139-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-139-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 138 Subtitle Indonesia",
+                                         "eps":  138,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-138-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-138-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-138-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 137 Subtitle Indonesia",
+                                         "eps":  137,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-137-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-137-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-137-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 136 Subtitle Indonesia",
+                                         "eps":  136,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-136-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-136-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-136-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 135 Subtitle Indonesia",
+                                         "eps":  135,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-135-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-135-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-135-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 134 Subtitle Indonesia",
+                                         "eps":  134,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-134-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-134-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-134-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 133 Subtitle Indonesia",
+                                         "eps":  133,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-133-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-133-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-133-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 132 Subtitle Indonesia",
+                                         "eps":  132,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-132-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-132-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-132-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 131 Subtitle Indonesia",
+                                         "eps":  131,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-131-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-131-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-131-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 130 Subtitle Indonesia",
+                                         "eps":  130,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-130-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-130-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-130-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 129 Subtitle Indonesia",
+                                         "eps":  129,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-129-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-129-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-129-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 128 Subtitle Indonesia",
+                                         "eps":  128,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-128-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-128-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-128-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 127 Subtitle Indonesia",
+                                         "eps":  127,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-127-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-127-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-127-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 126 Subtitle Indonesia",
+                                         "eps":  126,
+                                         "date":  "5 Juni,2020",
+                                         "episodeId":  "btr-nng-episode-126-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-126-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-126-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 125 Subtitle Indonesia",
+                                         "eps":  125,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-125-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-125-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-125-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 124 Subtitle Indonesia",
+                                         "eps":  124,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-124-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-124-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-124-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 123 Subtitle Indonesia",
+                                         "eps":  123,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-123-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-123-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-123-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 122 Subtitle Indonesia",
+                                         "eps":  122,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-122-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-122-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-122-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 121 Subtitle Indonesia",
+                                         "eps":  121,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-121-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-121-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-121-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 120 Subtitle Indonesia",
+                                         "eps":  120,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-120-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-120-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-120-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 119 Subtitle Indonesia",
+                                         "eps":  119,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-119-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-119-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-119-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 118 Subtitle Indonesia",
+                                         "eps":  118,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-118-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-118-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-118-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 117 Subtitle Indonesia",
+                                         "eps":  117,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-117-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-117-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-117-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 116 Subtitle Indonesia",
+                                         "eps":  116,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-116-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-116-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-116-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 115 Subtitle Indonesia",
+                                         "eps":  115,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-115-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-115-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-115-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 114 Subtitle Indonesia",
+                                         "eps":  114,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-114-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-114-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-114-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 113 Subtitle Indonesia",
+                                         "eps":  113,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-113-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-113-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-113-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 112 Subtitle Indonesia",
+                                         "eps":  112,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-112-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-112-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-112-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 111 Subtitle Indonesia",
+                                         "eps":  111,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-111-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-111-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-111-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 110 Subtitle Indonesia",
+                                         "eps":  110,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-110-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-110-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-110-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 109 Subtitle Indonesia",
+                                         "eps":  109,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-109-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-109-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-109-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 108 Subtitle Indonesia",
+                                         "eps":  108,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-108-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-108-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-108-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 107 Subtitle Indonesia",
+                                         "eps":  107,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-107-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-107-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-107-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 106 Subtitle Indonesia",
+                                         "eps":  106,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-106-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-106-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-106-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 105 Subtitle Indonesia",
+                                         "eps":  105,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-105-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-105-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-105-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 104 Subtitle Indonesia",
+                                         "eps":  104,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-104-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-104-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-104-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 103 Subtitle Indonesia",
+                                         "eps":  103,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-103-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-103-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-103-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 102 Subtitle Indonesia",
+                                         "eps":  102,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-102-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-102-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-102-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 101 Subtitle Indonesia",
+                                         "eps":  101,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-101-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-101-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-101-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 100 Subtitle Indonesia",
+                                         "eps":  100,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-100-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-100-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-100-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 99 Subtitle Indonesia",
+                                         "eps":  99,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-99-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-99-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-99-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 98 Subtitle Indonesia",
+                                         "eps":  98,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-98-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-98-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-98-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 97 Subtitle Indonesia",
+                                         "eps":  97,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-97-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-97-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-97-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 96 Subtitle Indonesia",
+                                         "eps":  96,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-96-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-96-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-96-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 95 Subtitle Indonesia",
+                                         "eps":  95,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-95-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-95-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-95-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 94 Subtitle Indonesia",
+                                         "eps":  94,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-94-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-94-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-94-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 93 Subtitle Indonesia",
+                                         "eps":  93,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-93-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-93-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-93-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 92 Subtitle Indonesia",
+                                         "eps":  92,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-92-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-92-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-92-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 91 Subtitle Indonesia",
+                                         "eps":  91,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-91-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-91-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-91-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 90 Subtitle Indonesia",
+                                         "eps":  90,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-90-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-90-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-90-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 89 Subtitle Indonesia",
+                                         "eps":  89,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-89-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-89-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-89-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 88 Subtitle Indonesia",
+                                         "eps":  88,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-88-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-88-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-88-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 87 Subtitle Indonesia",
+                                         "eps":  87,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-87-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-87-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-87-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 86 Subtitle Indonesia",
+                                         "eps":  86,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-86-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-86-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-86-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 85 Subtitle Indonesia",
+                                         "eps":  85,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-85-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-85-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-85-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 84 Subtitle Indonesia",
+                                         "eps":  84,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-84-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-84-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-84-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 83 Subtitle Indonesia",
+                                         "eps":  83,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-83-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-83-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-83-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 82 Subtitle Indonesia",
+                                         "eps":  82,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-82-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-82-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-82-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 81 Subtitle Indonesia",
+                                         "eps":  81,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-81-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-81-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-81-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 80 Subtitle Indonesia",
+                                         "eps":  80,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-80-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-80-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-80-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 79 Subtitle Indonesia",
+                                         "eps":  79,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-79-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-79-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-79-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 78 Subtitle Indonesia",
+                                         "eps":  78,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-78-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-78-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-78-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 77 Subtitle Indonesia",
+                                         "eps":  77,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-77-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-77-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-77-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 76 Subtitle Indonesia",
+                                         "eps":  76,
+                                         "date":  "31 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-76-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-76-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-76-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 75 Subtitle Indonesia",
+                                         "eps":  75,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-75-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-75-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-75-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 74 Subtitle Indonesia",
+                                         "eps":  74,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-74-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-74-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-74-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 73 Subtitle Indonesia",
+                                         "eps":  73,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-73-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-73-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-73-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 72 Subtitle Indonesia",
+                                         "eps":  72,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-72-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-72-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-72-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 71 Subtitle Indonesia",
+                                         "eps":  71,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-71-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-71-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-71-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 70 Subtitle Indonesia",
+                                         "eps":  70,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-70-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-70-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-70-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 69 Subtitle Indonesia",
+                                         "eps":  69,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-69-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-69-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-69-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 68 Subtitle Indonesia",
+                                         "eps":  68,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-68-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-68-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-68-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 67 Subtitle Indonesia",
+                                         "eps":  67,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-67-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-67-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-67-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 66 Subtitle Indonesia",
+                                         "eps":  66,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-66-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-66-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-66-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 65 Subtitle Indonesia",
+                                         "eps":  65,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-65-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-65-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-65-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 64 Subtitle Indonesia",
+                                         "eps":  64,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-64-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-64-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-64-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 63 Subtitle Indonesia",
+                                         "eps":  63,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-63-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-63-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-63-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 62 Subtitle Indonesia",
+                                         "eps":  62,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-62-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-62-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-62-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 61 Subtitle Indonesia",
+                                         "eps":  61,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-61-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-61-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-61-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 60 Subtitle Indonesia",
+                                         "eps":  60,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-60-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-60-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-60-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 59 Subtitle Indonesia",
+                                         "eps":  59,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-59-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-59-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-59-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 58 Subtitle Indonesia",
+                                         "eps":  58,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-58-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-58-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-58-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 57 Subtitle Indonesia",
+                                         "eps":  57,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-57-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-57-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-57-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 56 Subtitle Indonesia",
+                                         "eps":  56,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-56-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-56-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-56-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 55 Subtitle Indonesia",
+                                         "eps":  55,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-55-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-55-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-55-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 54 Subtitle Indonesia",
+                                         "eps":  54,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-54-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-54-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-54-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 53 Subtitle Indonesia",
+                                         "eps":  53,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-53-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-53-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-53-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 52 Subtitle Indonesia",
+                                         "eps":  52,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-52-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-52-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-52-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 51 Subtitle Indonesia",
+                                         "eps":  51,
+                                         "date":  "30 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-51-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-51-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-51-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 50 Subtitle Indonesia",
+                                         "eps":  50,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-50-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-50-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-50-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 49 Subtitle Indonesia",
+                                         "eps":  49,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-49-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-49-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-49-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 48 Subtitle Indonesia",
+                                         "eps":  48,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-48-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-48-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-48-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 47 Subtitle Indonesia",
+                                         "eps":  47,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-47-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-47-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-47-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 46 Subtitle Indonesia",
+                                         "eps":  46,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-46-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-46-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-46-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 45 Subtitle Indonesia",
+                                         "eps":  45,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-45-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-45-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-45-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 44 Subtitle Indonesia",
+                                         "eps":  44,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-44-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-44-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-44-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 43 Subtitle Indonesia",
+                                         "eps":  43,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-43-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-43-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-43-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 42 Subtitle Indonesia",
+                                         "eps":  42,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-42-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-42-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-42-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 41 Subtitle Indonesia",
+                                         "eps":  41,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-41-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-41-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-41-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 40 Subtitle Indonesia",
+                                         "eps":  40,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-40-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-40-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-40-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 39 Subtitle Indonesia",
+                                         "eps":  39,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-39-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-39-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-39-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 38 Subtitle Indonesia",
+                                         "eps":  38,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-38-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-38-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-38-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 37 Subtitle Indonesia",
+                                         "eps":  37,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-37-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-37-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-37-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 36 Subtitle Indonesia",
+                                         "eps":  36,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-36-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-36-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-36-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 35 Subtitle Indonesia",
+                                         "eps":  35,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-35-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-35-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-35-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 34 Subtitle Indonesia",
+                                         "eps":  34,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-34-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-34-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-34-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 33 Subtitle Indonesia",
+                                         "eps":  33,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-33-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-33-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-33-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 32 Subtitle Indonesia",
+                                         "eps":  32,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-32-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-32-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-32-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 31 Subtitle Indonesia",
+                                         "eps":  31,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-31-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-31-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-31-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 30 Subtitle Indonesia",
+                                         "eps":  30,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-30-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-30-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-30-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 29 Subtitle Indonesia",
+                                         "eps":  29,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-29-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-29-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-29-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 28 Subtitle Indonesia",
+                                         "eps":  28,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-28-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-28-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-28-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 27 Subtitle Indonesia",
+                                         "eps":  27,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-27-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-27-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-27-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 26 Subtitle Indonesia",
+                                         "eps":  26,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-26-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-26-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-26-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 25 Subtitle Indonesia",
+                                         "eps":  25,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-25-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-25-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-25-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 24 Subtitle Indonesia",
+                                         "eps":  24,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-24-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-24-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-24-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 23 Subtitle Indonesia",
+                                         "eps":  23,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-23-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-23-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-23-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 22 Subtitle Indonesia",
+                                         "eps":  22,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-22-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-22-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-22-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 21 Subtitle Indonesia",
+                                         "eps":  21,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-21-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-21-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-21-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 20 Subtitle Indonesia",
+                                         "eps":  20,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-20-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-20-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-20-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 19 Subtitle Indonesia",
+                                         "eps":  19,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-19-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-19-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-19-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 18 Subtitle Indonesia",
+                                         "eps":  18,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-18-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-18-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-18-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 17 Subtitle Indonesia",
+                                         "eps":  17,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-17-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-17-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-17-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 16 Subtitle Indonesia",
+                                         "eps":  16,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-16-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-16-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-16-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 15 Subtitle Indonesia",
+                                         "eps":  15,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-15-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-15-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-15-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 14 Subtitle Indonesia",
+                                         "eps":  14,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-14-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-14-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-14-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 13 Subtitle Indonesia",
+                                         "eps":  13,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-13-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-13-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-13-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 12 Subtitle Indonesia",
+                                         "eps":  12,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-12-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-12-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-12-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 11 Subtitle Indonesia",
+                                         "eps":  11,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-11-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-11-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-11-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 10 Subtitle Indonesia",
+                                         "eps":  10,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-10-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-10-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-10-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 9 Subtitle Indonesia",
+                                         "eps":  9,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-9-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-9-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-9-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 8 Subtitle Indonesia",
+                                         "eps":  8,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-8-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-8-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-8-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 7 Subtitle Indonesia",
+                                         "eps":  7,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-7-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-7-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-7-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 6 Subtitle Indonesia",
+                                         "eps":  6,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-6-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-6-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-6-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 5 Subtitle Indonesia",
+                                         "eps":  5,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-5-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-5-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-5-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 4 Subtitle Indonesia",
+                                         "eps":  4,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-4-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-4-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-4-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 3 Subtitle Indonesia",
+                                         "eps":  3,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-3-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-3-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-3-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 2 Subtitle Indonesia",
+                                         "eps":  2,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-2-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-2-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-2-sub-indo/"
+                                     },
+                                     {
+                                         "title":  "Boruto: Naruto Next Generations Episode 1 Subtitle Indonesia",
+                                         "eps":  1,
+                                         "date":  "29 Mei,2020",
+                                         "episodeId":  "btr-nng-episode-1-sub-indo",
+                                         "href":  "/anime/episode/btr-nng-episode-1-sub-indo",
+                                         "otakudesuUrl":  "https://otakudesu.blog/episode/btr-nng-episode-1-sub-indo/"
+                                     }
+                                 ],
+                 "recommendedAnimeList":  [
+                                              {
+                                                  "title":  "Shuumatsu Touring",
+                                                  "poster":  "https://otakudesu.blog/wp-content/uploads/2026/03/Shuumatsu-Touring-Sub-Indo.jpg",
+                                                  "animeId":  "shuumatsu-touring-sub-indo",
+                                                  "href":  "/anime/anime/shuumatsu-touring-sub-indo",
+                                                  "otakudesuUrl":  "https://otakudesu.blog/anime/shuumatsu-touring-sub-indo/"
+                                              },
+                                              {
+                                                  "title":  "Towa no Yuugure",
+                                                  "poster":  "https://otakudesu.blog/wp-content/uploads/2026/02/Towa-no-Yuugure-Sub-Indo.jpg",
+                                                  "animeId":  "towa-yuugure-sub-indo",
+                                                  "href":  "/anime/anime/towa-yuugure-sub-indo",
+                                                  "otakudesuUrl":  "https://otakudesu.blog/anime/towa-yuugure-sub-indo/"
+                                              },
+                                              {
+                                                  "title":  "Wandance",
+                                                  "poster":  "https://otakudesu.blog/wp-content/uploads/2026/01/Wandance-Sub-Indo.jpg",
+                                                  "animeId":  "wandnce-sub-indo",
+                                                  "href":  "/anime/anime/wandnce-sub-indo",
+                                                  "otakudesuUrl":  "https://otakudesu.blog/anime/wandnce-sub-indo/"
+                                              },
+                                              {
+                                                  "title":  "Nageki no Bourei wa Intai shitai Season 2",
+                                                  "poster":  "https://otakudesu.blog/wp-content/uploads/2026/01/Nageki-no-Bourei-wa-Intai-shitai-Season-2-Sub-Indo.jpg",
+                                                  "animeId":  "ageki-bourei-intai-shitai-s2-sub-indo",
+                                                  "href":  "/anime/anime/ageki-bourei-intai-shitai-s2-sub-indo",
+                                                  "otakudesuUrl":  "https://otakudesu.blog/anime/ageki-bourei-intai-shitai-s2-sub-indo/"
+                                              },
+                                              {
+                                                  "title":  "Chichi wa Eiyuu, Haha wa Seirei, Musume no Watashi wa Tenseisha.",
+                                                  "poster":  "https://otakudesu.blog/wp-content/uploads/2026/01/Chichi-wa-Eiyuu-Haha-wa-Seirei-Musume-no-Watashi-wa-Tenseisha.-Sub-Indo.jpg",
+                                                  "animeId":  "chichi-haha-seirei-sub-indo",
+                                                  "href":  "/anime/anime/chichi-haha-seirei-sub-indo",
+                                                  "otakudesuUrl":  "https://otakudesu.blog/anime/chichi-haha-seirei-sub-indo/"
+                                              }
+                                          ]
+             },
+    "pagination":  null
+}

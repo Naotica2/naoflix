@@ -36,6 +36,7 @@ import ReAnimated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SystemNavigationBar from 'react-native-system-navigation-bar';
 import { runOnJS } from 'react-native-worklets';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { TouchableOpacity } from '../misc/TouchableOpacityRNGH';
 
 import useGlobalStyles, { darkText, lightText } from '../../assets/style';
@@ -561,7 +562,8 @@ function Video_Film(props: Props) {
       {/* mengecek apakah sedang dalam keadaan fullscreen atau tidak
         jika ya, maka hanya menampilkan video saja 
        */}
-      <ScrollView
+      <KeyboardAwareScrollView
+        bottomOffset={80}
         style={{ flex: 1, display: fullscreen ? 'none' : 'flex' }}
         contentContainerStyle={{ paddingBottom: insets.bottom }}>
         {data.subtitleLink === undefined && (
@@ -761,7 +763,7 @@ function Video_Film(props: Props) {
             contentType="film" 
           />
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

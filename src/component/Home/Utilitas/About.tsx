@@ -12,7 +12,7 @@ import {
   useTheme,
 } from 'react-native-paper';
 import appPackage from '../../../../package.json';
-import { JoinDiscord } from '../../Loading Screen/Connect';
+import { DonasiSaweria } from '../../Loading Screen/Connect';
 import DarkOverlay from '../../misc/DarkOverlay';
 
 const tokyo = require('../../../assets/tokyo.jpg');
@@ -95,14 +95,14 @@ function About() {
       </Surface>
 
       <Text variant="titleMedium" style={styles.sectionHeader}>
-        Komunitas & Kontak
+        Support Developer
       </Text>
       <Surface style={styles.surface} elevation={1}>
         <View style={{ padding: 16, alignItems: 'center' }}>
           <Text variant="bodyMedium" style={{ marginBottom: 12, textAlign: 'center' }}>
-            Bergabunglah dengan server Discord kami untuk diskusi, laporan bug, atau saran fitur.
+            Bantu kami terus mengembangkan NaoFlix dengan memberikan donasi melalui Saweria.
           </Text>
-          <JoinDiscord />
+          <DonasiSaweria />
         </View>
       </Surface>
 

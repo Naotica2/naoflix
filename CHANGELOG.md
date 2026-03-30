@@ -1,5 +1,13 @@
 # Changelog NaoFlix
 
+## [v1.2.2] - Anime Series Update
+### Added
+- **Peningkatan Server Anime:** Pembaruan sistem pengambilan data khusus kategori Anime Series agar *loading* jauh lebih cepat, stabil, dan koleksi tontonan semakin komplit.
+- **Optimasi Pencarian:** Penambahan sistem pintar di kolom pencarian agar hasil tampil lebih mulus dan mencegah *ngelag* atau macet saat mengetik kata kunci.
+- **Peningkatan Stabilitas:** NaoFlix kini menampilkan indikator antrean dengan tombol "Coba Lagi" jika sedang terjadi lonjakan penonton, sehingga aplikasi tidak akan sekadar putus koneksi.
+- **Dukungan Developer ( donasi button ):** plis donasi ke solo developer ini - naotica ( rashya )
+
+---
 ## [v1.2.1] - Inherit Update (Authentication & Community)
 ### Added
 - **Autentikasi Google (Google Sign-In):** Sistem *login* aman yang terintegrasi penuh dengan Supabase Auth.

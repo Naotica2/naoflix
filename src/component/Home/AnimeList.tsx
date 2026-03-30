@@ -58,7 +58,7 @@ import AnimeAPI from '../../utils/AnimeAPI';
 import { getLatestMovie, Movies } from '../../utils/scrapers/animeMovie';
 import { getLatestComicsReleases, LatestComicsRelease } from '../../utils/scrapers/comicsv2';
 import { FilmHomePage, getFeatured, getLatest } from '../../utils/scrapers/film';
-import { Github, JoinDiscord } from '../Loading Screen/Connect';
+import { Github, DonasiSaweria } from '../Loading Screen/Connect';
 import Announcment from '../misc/Announcement';
 import { ListAnimeComponent } from '../misc/ListAnimeComponent';
 import ReText from '../misc/ReText';
@@ -81,6 +81,7 @@ function HomeList(props: HomeProps) {
   const insets = useSafeAreaInsets();
   const { paramsState: data, setParamsState: setData } = useContext(EpisodeBaruHomeContext);
   const [refresh, setRefresh] = useState(false);
+  const [isRateLimit, setIsRateLimit] = useState(false);
   const [refreshingKey, setRefreshingKey] = useState(0);
   const windowSize = useWindowDimensions();
 
@@ -160,6 +161,7 @@ function HomeList(props: HomeProps) {
 
   const refreshing = useCallback(() => {
     setRefresh(true);
+    setIsRateLimit(false);
     setData?.(val => ({ ...val, newAnime: [] }));
     setRefreshingKey(val => val + 1);
 
@@ -169,8 +171,12 @@ function HomeList(props: HomeProps) {
           setData?.(jsondata);
           setRefresh(false);
         })
-        .catch(() => {
-          ToastAndroid.show('Gagal terhubung ke server.', ToastAndroid.SHORT);
+        .catch(e => {
+          if (e.name === 'SankaRateLimitError') {
+            setIsRateLimit(true);
+          } else {
+            ToastAndroid.show('Gagal terhubung ke server.', ToastAndroid.SHORT);
+          }
           setRefresh(false);
         });
     }, 0);
@@ -254,7 +260,7 @@ function HomeList(props: HomeProps) {
             </View>
 
             <View style={styles.socialButtons}>
-              <JoinDiscord
+              <DonasiSaweria
                 buttonColor={theme.colors.surfaceVariant}
                 size={20}
                 style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 4 }}
@@ -285,6 +291,8 @@ function HomeList(props: HomeProps) {
             globalStyles={globalStyles}
             data={data}
             props={props}
+            isRateLimit={isRateLimit}
+            onRetry={refreshing}
           />
           <FeaturedFilmList props={props} key={'film_featured' + refreshingKey} />
           <LatestFilmList props={props} key={'film_latest' + refreshingKey} />
@@ -481,10 +489,14 @@ function EpisodeBaruUNMEMO({
   data,
   props,
   isRefreshing,
+  isRateLimit,
+  onRetry,
 }: {
   data: EpisodeBaruType | undefined;
   props: HomeProps;
   isRefreshing?: boolean;
+  isRateLimit?: boolean;
+  onRetry?: () => void;
   styles: ReturnType<typeof useStyles>;
   globalStyles: ReturnType<typeof useGlobalStyles>;
 }) {
@@ -526,6 +538,13 @@ function EpisodeBaruUNMEMO({
         />
       ) : isRefreshing ? (
         <ShowSkeletonLoading />
+      ) : isRateLimit ? (
+        <TouchableOpacity style={styles.errorContainer} onPress={onRetry}>
+          <MaterialIcon name="hourglass-empty" size={24} color="#f39c12" />
+          <Text style={styles.errorText}>
+            Server Sanka sedang antre, coba sebentar lagi. Ketuk untuk mencoba ulang.
+          </Text>
+        </TouchableOpacity>
       ) : (
         <View>
           <MaterialIcon name="error-outline" size={24} color="#d80000" />

@@ -9,6 +9,7 @@ import {
 } from '../types/anime';
 import { setWebViewOpen } from './CFBypass';
 import deviceUserAgent from './deviceUserAgent';
+import sankaAnimeApi from './sankaAnimeApi';
 import {
   BASE,
   fetchStreamingResolution,
@@ -23,66 +24,21 @@ class AnimeAPI {
   private static base_url = 'https://aniflix.pirles.ix.tc/v5/';
 
   static async home(signal?: AbortSignal): Promise<EpisodeBaruHome> {
-    // const data = await fetch(this.base_url + 'home', {
-    //   signal,
-    //   headers: {
-    //     'User-Agent': deviceUserAgent,
-    //   },
-    // });
-    // return await (data.json() as Promise<EpisodeBaruHome>);
-
-    const [newAnimeRelease, jadwalAnimeRelease] = await Promise.all([
-      newAnime(undefined, signal),
-      jadwalAnime(signal),
-    ]);
-
-    return {
-      newAnime: newAnimeRelease,
-      jadwalAnime: jadwalAnimeRelease,
-    };
+    return await sankaAnimeApi.home(signal);
   }
 
   static async newAnime(
     page: number | undefined = 1,
     signal?: AbortSignal,
   ): Promise<NewAnimeList[]> {
-    // const data = await fetch(this.base_url + `newAnime?page=${page}`, {
-    //   signal,
-    //   headers: {
-    //     'User-Agent': deviceUserAgent,
-    //   },
-    // });
-    // return await (data.json() as Promise<NewAnimeList[]>);
-
-    return await newAnime(page, signal);
+    if (page === 1 || page === undefined) {
+      return (await sankaAnimeApi.home(signal)).newAnime;
+    }
+    return await sankaAnimeApi.newAnime(page, signal);
   }
 
   static async search(query: string, signal?: AbortSignal): Promise<SearchAnime> {
-    // const data = await fetch(
-    //   this.base_url +
-    //     `search?q=${query}`,
-    //   {
-    //     signal,
-    //     headers: {
-    //       'User-Agent': deviceUserAgent,
-    //     },
-    //   },
-    // );
-    // return await (data.json() as Promise<SearchAnime>);
-    const { status } = await fetch(BASE.url + `/?s=${query}&post_type=anime`, {
-      method: 'HEAD',
-      signal,
-      headers: {
-        'User-Agent': deviceUserAgent,
-      },
-    });
-    if (status === 403) {
-      setWebViewOpen.openWebViewCF(true, BASE.url + `/?s=${query}&post_type=anime`);
-      throw new Error('Silahkan selesaikan captcha');
-    }
-    return {
-      result: await searchAnime(query, signal),
-    };
+    return await sankaAnimeApi.search(query, signal);
   }
 
   static async fromUrl(
@@ -92,24 +48,15 @@ class AnimeAPI {
     detailOnly?: boolean,
     signal?: AbortSignal,
   ): Promise<fromUrlJSON | 'Unsupported'> {
-    // const data = await fetch(
-    //   this.base_url +
-    //     `fromUrl?link=${link}${
-    //       resolution !== undefined ? '&res=' + resolution : ''
-    //     }${skipAutoRes !== undefined ? '&skipAutoRes=' + skipAutoRes : ''}`,
-    //   {
-    //     signal,
-    //     headers: {
-    //       'User-Agent': deviceUserAgent,
-    //     },
-    //   },
-    // );
-    // const dataString = await data.text();
-    // if (dataString === 'Unsupported') {
-    //   return 'Unsupported';
-    // }
-    // const dataJson: fromUrlJSON = JSON.parse(dataString);
-    // return dataJson;
+    if (link.startsWith('sanka://detail/')) {
+      const id = link.split('/').pop()!;
+      return await sankaAnimeApi.detail(id, signal);
+    }
+    if (link.startsWith('sanka://episode/')) {
+      const id = link.split('/').pop()!;
+      return await sankaAnimeApi.streaming(id, signal);
+    }
+
     try {
       const statusCode = await fetch(link, {
         headers: {
@@ -130,7 +77,6 @@ class AnimeAPI {
       }
       return (await fromUrl(link, resolution, skipAutoRes, detailOnly, signal)) as fromUrlJSON;
     } catch (e: any) {
-      // console.error(e.message)
       if (e.message === 'Silahkan selesaikan captcha') {
         ToastAndroid.show('Silahkan selesaikan captcha', ToastAndroid.SHORT);
         throw e;
@@ -169,18 +115,9 @@ class AnimeAPI {
     reqResolutionWithNonceAction: string,
     signal?: AbortSignal,
   ): Promise<string | undefined> {
-    // const data = await fetch(
-    //   this.base_url +
-    //     `reqResolution?requestData=${requestData}&reqNonceAction=${reqNonceAction}&reqResolutionWithNonceAction=${reqResolutionWithNonceAction}`,
-    //   {
-    //     signal,
-    //     headers: {
-    //       'User-Agent': deviceUserAgent,
-    //     }
-    //   }
-    // ).then(a => a.text()) as string;
-    // return data;
-
+    if (requestData.startsWith('sanka-server:')) {
+      return await sankaAnimeApi.getResolution(requestData.replace('sanka-server:', ''), signal);
+    }
     return await fetchStreamingResolution(
       requestData,
       reqNonceAction,

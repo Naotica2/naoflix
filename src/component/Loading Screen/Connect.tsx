@@ -7,6 +7,7 @@ import * as Updates from 'expo-updates';
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Linking,
   ScrollView,
   StyleSheet,
@@ -41,7 +42,9 @@ import { fetchLatestDomain } from '../../utils/scrapers/animeSeries';
 import { useAuth } from '../../misc/AuthContext';
 // import { Comics1WebView } from '../../utils/scrapers/comics1';
 
-export const JoinDiscord = ({
+const saweriaIcon = require('../../assets/saweria_icon.png');
+
+export const DonasiSaweria = ({
   buttonColor,
   size = 24,
   style,
@@ -53,10 +56,10 @@ export const JoinDiscord = ({
   const styles = useStyles();
   return (
     <TouchableOpacity
-      onPress={() => Linking.openURL('https://discord.gg')}
+      onPress={() => Linking.openURL('https://saweria.co/naotica')}
       style={[styles.socialButton, buttonColor ? { backgroundColor: buttonColor } : {}, style]}>
-      <Fontisto name="discord" size={size} color={'#7289d9'} />
-      <Text style={styles.socialButtonText}>Join Discord</Text>
+      <Icon name="coffee" size={size} color={buttonColor ? '#ffffff' : '#000000'} />
+      <Text style={styles.socialButtonText}>Donasi</Text>
     </TouchableOpacity>
   );
 };
@@ -456,7 +459,7 @@ function Loading(props: Props) {
       <View style={styles.footer}>
         <View style={styles.socialButtons}>
           <Github />
-          <JoinDiscord />
+          <DonasiSaweria />
         </View>
         <Text style={styles.versionText}>
           {appVersion}-JS_{OTAJSVersion}

@@ -1,6 +1,6 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { FlashList } from '@shopify/flash-list';
-import React, { memo, useCallback, useContext, useEffect, useState } from 'react';
+import React, { memo, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   ToastAndroid,
@@ -149,10 +149,17 @@ const SeeMoreUI = memo(({ data, type, onLoadMore, navigation }: SeeMoreUIProps) 
 const AnimeContainer = ({ navigation }: { navigation: Props['navigation'] }) => {
   const { paramsState, setParamsState } = useContext(EpisodeBaruHomeContext);
   const data = paramsState?.newAnime || [];
+  const pageRef = useRef(1);
 
   const handleLoadMore = async () => {
-    const page = Math.round((data.length ?? 0) / 25);
-    const newData = await AnimeAPI.newAnime(page + 1);
+    pageRef.current += 1;
+    const newData = await AnimeAPI.newAnime(pageRef.current);
+
+    if (newData.length === 0) {
+      // No more data, revert page counter
+      pageRef.current -= 1;
+      return;
+    }
 
     if (setParamsState) {
       setParamsState(prev => {
