@@ -597,6 +597,11 @@ function CenterControl({
   streamingURL,
   lastTimeError,
   onLoad,
+  onNextEp,
+  onPrevEp,
+  disableNextEp,
+  disablePrevEp,
+  showNextPrevButtons,
 }: {
   isBuffering: boolean;
   isError: boolean;
