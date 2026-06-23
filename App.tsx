@@ -36,20 +36,22 @@ import SuspenseLoading from './src/component/misc/SuspenseLoading';
 import {
   ComicsListContext,
   EpisodeBaruHomeContext,
-  FilmListHomeContext,
   MovieListHomeContext,
+  NovelListContext,
 } from './src/misc/context';
 import { AuthProvider, useAuth } from './src/misc/AuthContext';
+import { LevelProvider } from './src/misc/LevelContext';
 import { navigationRef, replaceAllWith } from './src/misc/NavigationService';
-import { EpisodeBaruHome } from './src/types/anime';
+import { EpisodeBaruHome, NewAnimeList } from './src/types/anime';
 import { RootStackNavigator } from './src/types/navigation';
 import { cleanCbzDir } from './src/utils/cbzCleaner.ts';
 import { CFBypassIsOpenContext, setWebViewOpen } from './src/utils/CFBypass';
 import { DatabaseManager } from './src/utils/DatabaseManager';
 import DialogManager from './src/utils/dialogManager';
-import { Movies } from './src/utils/scrapers/animeMovie';
+import ChatForum from './src/component/misc/ChatForum';
+
 import { LatestComicsRelease } from './src/utils/scrapers/comicsv2';
-import { FilmHomePage } from './src/utils/scrapers/film';
+import { LatestNovel } from './src/utils/scrapers/meionovel';
 import LoginScreen from './src/screens/LoginScreen';
 import UsernameSetupScreen from './src/screens/UsernameSetupScreen';
 import { OneSignal } from 'react-native-onesignal';
@@ -90,17 +92,21 @@ const CbzReader = lazy(() => import('./src/component/WatchNRead/CbzReader.tsx'))
 const AniDetail = lazy(() => import('./src/component/EpisodeDetail/AniDetail'));
 const Home = lazy(() => import('./src/component/Home/Home'));
 const Video = lazy(() => import('./src/component/WatchNRead/Video'));
-const Video_Film = lazy(() => import('./src/component/WatchNRead/Video_Film'));
 const FailedToConnect = lazy(() => import('./src/component/NeedAttention/FailedToConnect'));
 const NeedUpdate = lazy(() => import('./src/component/NeedAttention/NeedUpdate'));
-const MovieDetail = lazy(() => import('./src/component/EpisodeDetail/MovieDetail'));
-const FilmDetail = lazy(() => import('./src/component/EpisodeDetail/FilmDetail'));
+
 const ComicsDetail = lazy(() => import('./src/component/EpisodeDetail/ComicsDetail'));
 const ComicsReading = lazy(() => import('./src/component/WatchNRead/ComicsReading'));
 const CFBypassWebView = lazy(() => import('./src/utils/CFBypassWebview'));
 const Connecting = lazy(() => import('./src/component/Loading Screen/Connect'));
 const FromUrl = lazy(() => import('./src/component/Loading Screen/FromUrl'));
 const SeeMore = lazy(() => import('./src/component/Home/SeeMore'));
+const GenreSelectionScreen = lazy(() => import('./src/component/Home/GenreSelectionScreen'));
+const NovelDetail = lazy(() => import('./src/component/EpisodeDetail/NovelDetail'));
+const NovelReading = lazy(() => import('./src/component/WatchNRead/NovelReading'));
+const FilmDetail = lazy(() => import('./src/component/EpisodeDetail/FilmDetail'));
+const FilmPlayer = lazy(() => import('./src/component/WatchNRead/FilmPlayer'));
+const Utils = lazy(() => import('./src/component/Home/Utils'));
 
 SplashScreen.preventAutoHideAsync();
 
@@ -185,16 +191,7 @@ const screens: Screens = [
   { name: 'CbzReader', component: withSuspenseAndSafeArea(CbzReader, true, true) },
   { name: 'Home', component: withSuspenseAndSafeArea(Home, false), options: undefined },
   { name: 'AnimeDetail', component: withSuspenseAndSafeArea(AniDetail, false), options: undefined },
-  {
-    name: 'MovieDetail',
-    component: withSuspenseAndSafeArea(MovieDetail, false),
-    options: undefined,
-  },
-  {
-    name: 'FilmDetail',
-    component: withSuspenseAndSafeArea(FilmDetail, false),
-    options: undefined,
-  },
+
   {
     name: 'ComicsDetail',
     component: withSuspenseAndSafeArea(ComicsDetail, false),
@@ -207,7 +204,6 @@ const screens: Screens = [
   },
   { name: 'FromUrl', component: withSuspenseAndSafeArea(FromUrl), options: { headerShown: true } },
   { name: 'Video', component: withSuspenseAndSafeArea(Video, false), options: undefined },
-  { name: 'Video_Film', component: withSuspenseAndSafeArea(Video_Film, false), options: undefined },
   { name: 'connectToServer', component: withSuspenseAndSafeArea(Connecting), options: undefined },
   { name: 'NeedUpdate', component: withSuspenseAndSafeArea(NeedUpdate), options: undefined },
   {
@@ -216,9 +212,39 @@ const screens: Screens = [
     options: undefined,
   },
   {
+    name: 'NovelDetail',
+    component: withSuspenseAndSafeArea(NovelDetail, false),
+    options: undefined,
+  },
+  {
+    name: 'NovelReading',
+    component: withSuspenseAndSafeArea(NovelReading, true, true),
+    options: undefined,
+  },
+  {
+    name: 'FilmDetail',
+    component: withSuspenseAndSafeArea(FilmDetail, false),
+    options: undefined,
+  },
+  {
+    name: 'FilmPlayer',
+    component: withSuspenseAndSafeArea(FilmPlayer, false),
+    options: { headerShown: true },
+  },
+  {
     name: 'SeeMore',
     component: withSuspenseAndSafeArea(SeeMore, false),
     options: { headerShown: true },
+  },
+  {
+    name: 'GenreSelectionScreen',
+    component: withSuspenseAndSafeArea(GenreSelectionScreen, false),
+    options: { headerShown: false },
+  },
+  {
+    name: 'Utils',
+    component: withSuspenseAndSafeArea(Utils, false),
+    options: { headerShown: false },
   },
   {
     name: 'LoginScreen',
@@ -246,9 +272,9 @@ function App() {
     jadwalAnime: {},
     newAnime: [],
   });
-  const [movieParamsState, setMovieParamsState] = useState<Movies[]>([]);
-  const [filmParamsState, setFilmParamsState] = useState<FilmHomePage>([]);
-  const [comicsData, setComicsData] = useState<LatestComicsRelease[]>([]);
+  const [movieParamsState, setMovieParamsState] = useState<NewAnimeList[]>([]);
+  const [comicsData, setComicsData] = useState<LatestComicsRelease[] | undefined>(undefined);
+  const [novelData, setNovelData] = useState<LatestNovel[] | undefined>(undefined);
 
   const colorScheme = useColorScheme();
   const globalStyles = useGlobalStyles();
@@ -305,14 +331,6 @@ function App() {
           <GestureHandlerRootView style={{ flex: 1 }}>
             <EpisodeBaruHomeContext
               value={useMemo(() => ({ paramsState, setParamsState }), [paramsState])}>
-              <FilmListHomeContext
-                value={useMemo(
-                  () => ({
-                    paramsState: filmParamsState,
-                    setParamsState: setFilmParamsState,
-                  }),
-                  [filmParamsState],
-                )}>
                 <MovieListHomeContext
                   value={useMemo(
                     () => ({
@@ -329,7 +347,15 @@ function App() {
                       }),
                       [comicsData],
                     )}>
-                    <PaperProvider theme={colorScheme === 'dark' ? MDDark : MDLight}>
+                    <NovelListContext
+                      value={useMemo(
+                        () => ({
+                          paramsState: novelData,
+                          setParamsState: setNovelData,
+                        }),
+                        [novelData],
+                      )}>
+                      <PaperProvider theme={colorScheme === 'dark' ? MDDark : MDLight}>
                       <NavigationContainer
                         linking={linking}
                         ref={navigationRef}
@@ -405,10 +431,11 @@ function App() {
                           </View>
                         )}
                       </NavigationContainer>
+                      <ChatForum />
                     </PaperProvider>
+                    </NovelListContext>
                   </ComicsListContext>
                 </MovieListHomeContext>
-              </FilmListHomeContext>
             </EpisodeBaruHomeContext>
           </GestureHandlerRootView>
         </ErrorBoundary>
@@ -437,7 +464,9 @@ const styles = StyleSheet.create({
 function AppWithAuth() {
   return (
     <AuthProvider>
-      <App />
+      <LevelProvider>
+        <App />
+      </LevelProvider>
     </AuthProvider>
   );
 }

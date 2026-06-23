@@ -57,7 +57,10 @@ export class DatabaseManager {
       enableNowPlayingNotification: (await this.get('enableNowPlayingNotification'))!,
       history: JSON.stringify(history),
       searchHistory: (await this.get('searchHistory'))!,
+      novelSearchHistory: (await this.get('novelSearchHistory'))!,
       watchLater: (await this.get('watchLater'))!,
+      extensionPreferences: (await this.get('extensionPreferences'))!,
+      local_exp: (await this.get('local_exp'))!,
     };
   }
 
@@ -85,14 +88,27 @@ export function useKeyValueIfFocused(key: DataKey) {
 export function useModifiedKeyValueIfFocused<T>(
   key: DataKey,
   modifyValueFunc: (value: string) => T,
+  fallback?: T,
 ) {
   const value = useKeyValueIfFocused(key);
-  const [modifiedValue, setModifiedValue] = useState(() => modifyValueFunc(value!));
+  const [modifiedValue, setModifiedValue] = useState<T>(() => {
+    try {
+      if (value == null) return fallback as T;
+      return modifyValueFunc(value);
+    } catch {
+      return fallback as T;
+    }
+  });
   const modifyFuncRef = useRef(modifyValueFunc);
   modifyFuncRef.current = modifyValueFunc;
   useFocusEffect(
     useCallback(() => {
-      setModifiedValue(modifyFuncRef.current(value!));
+      try {
+        if (value == null) return;
+        setModifiedValue(modifyFuncRef.current(value));
+      } catch {
+        // Ignore parse errors for null/undefined values
+      }
     }, [value]),
   );
   return modifiedValue;

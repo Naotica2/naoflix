@@ -1,4 +1,4 @@
-import * as MeasureText from '@domir/react-native-measure-text';
+
 import { LegendList, LegendListRef } from '@legendapp/list';
 import MaterialIcon, { MaterialIcons } from '@react-native-vector-icons/material-icons';
 import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -42,33 +42,28 @@ import Reanimated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { runOnJS } from 'react-native-worklets';
 import { OTAJSVersion, version } from '../../../package.json';
-import runningText from '../../assets/runningText.json';
 import useGlobalStyles from '../../assets/style';
 import {
   ComicsListContext,
   EpisodeBaruHomeContext,
-  FilmListHomeContext,
   MovieListHomeContext,
 } from '../../misc/context';
 import { EpisodeBaruHome as EpisodeBaruType, JadwalAnime, NewAnimeList } from '../../types/anime';
 import { HomeNavigator, RootStackNavigator } from '../../types/navigation';
 import AnimeAPI from '../../utils/AnimeAPI';
-import { getLatestMovie, Movies } from '../../utils/scrapers/animeMovie';
 import { getLatestComicsReleases, LatestComicsRelease } from '../../utils/scrapers/comicsv2';
-import { FilmHomePage, getFeatured, getLatest } from '../../utils/scrapers/film';
 import { Github, DonasiSaweria } from '../Loading Screen/Connect';
 import Announcment from '../misc/Announcement';
 import { ListAnimeComponent } from '../misc/ListAnimeComponent';
-import ReText from '../misc/ReText';
+
 import Skeleton from '../misc/Skeleton';
 import { TouchableOpacity } from '../misc/TouchableOpacityRNGH';
 
 export const MIN_IMAGE_HEIGHT = 200;
 export const MIN_IMAGE_WIDTH = 100;
 
-type HomeProps = BottomTabScreenProps<HomeNavigator, 'AnimeList'>;
+type HomeProps = BottomTabScreenProps<HomeNavigator, 'HomePage'>;
 
 const Home = memo(HomeList);
 export default Home;
@@ -83,81 +78,8 @@ function HomeList(props: HomeProps) {
   const [refresh, setRefresh] = useState(false);
   const [isRateLimit, setIsRateLimit] = useState(false);
   const [refreshingKey, setRefreshingKey] = useState(0);
-  const windowSize = useWindowDimensions();
-
-  const boxTextAnim = useSharedValue(0);
-  const boxTextLayout = useSharedValue(0);
-  const textLayoutWidth = useSharedValue(0);
   const localTime = useLocalTime();
   const battery = useBatteryLevel();
-
-  const [animationText, setAnimationText] = useState(() => {
-    const quote = randomQuote();
-    textLayoutWidth.set(measureQuoteTextWidth(quote));
-    return quote;
-  });
-
-  useFocusEffect(
-    useCallback(() => {
-      const baseDurationPer100px = 2000; // 2000ms per 100px
-      const minimumAnimationDuration = 8000;
-      const displayNewQuote = (finished?: boolean) => {
-        let layoutWidth = textLayoutWidth.get();
-        if (finished) {
-          textLayoutWidth.set(0);
-          const quote = randomQuote();
-          const newWidth = measureQuoteTextWidth(quote);
-          textLayoutWidth.set(newWidth);
-          setAnimationText(quote);
-          layoutWidth = newWidth;
-        }
-        boxTextAnim.set(0);
-        if (!finished) return;
-        const duration = Math.max(
-          minimumAnimationDuration,
-          (layoutWidth / 100) * baseDurationPer100px,
-        );
-
-        boxTextAnim.set(
-          withDelay(
-            2000,
-            withTiming(
-              1,
-              { duration, easing: Easing.linear, reduceMotion: ReduceMotion.Never },
-              callback,
-            ),
-            ReduceMotion.Never,
-          ),
-        );
-      };
-      function callback(finished?: boolean) {
-        if (finished) runOnJS(displayNewQuote)(finished);
-      }
-      const initialDuration = Math.max(
-        minimumAnimationDuration,
-        (measureQuoteTextWidth(animationText) / 100) * baseDurationPer100px,
-      );
-      boxTextAnim.set(
-        withDelay(
-          1000,
-          withTiming(
-            1,
-            { duration: initialDuration, easing: Easing.linear, reduceMotion: ReduceMotion.Never },
-            callback,
-          ),
-        ),
-      );
-    }, [animationText, boxTextAnim, textLayoutWidth]),
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      return () => {
-        cancelAnimation(boxTextAnim);
-        boxTextAnim.set(0);
-      };
-    }, [boxTextAnim]),
-  );
 
   const refreshing = useCallback(() => {
     setRefresh(true);
@@ -181,21 +103,6 @@ function HomeList(props: HomeProps) {
         });
     }, 0);
   }, [setData]);
-
-  const AnimationTextStyle = useAnimatedStyle(() => {
-    return {
-      width: textLayoutWidth.get() === 0 ? 'auto' : textLayoutWidth.get(),
-      transform: [
-        {
-          translateX: interpolate(
-            boxTextAnim.get(),
-            [0, 1],
-            [windowSize.width, -boxTextLayout.get()],
-          ),
-        },
-      ],
-    };
-  });
 
   const renderJadwalAnime = useCallback(
     ({ item }: { item: keyof JadwalAnime }) => {
@@ -248,7 +155,7 @@ function HomeList(props: HomeProps) {
           <Announcment />
           <View style={styles.headerCard}>
             <View style={styles.headerInfo}>
-              <ReText style={styles.timeText} text={localTime} />
+              <Text style={styles.timeText}>{new Date().toLocaleTimeString()}</Text>
               <Text style={styles.batteryText}>{Math.round((battery ?? 0) * 100)}%</Text>
             </View>
 
@@ -271,15 +178,6 @@ function HomeList(props: HomeProps) {
                 style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 4 }}
               />
             </View>
-
-            <View
-              style={{ overflow: 'hidden', position: 'absolute', bottom: 2, left: 0, right: 0 }}>
-              <Reanimated.Text
-                onLayout={nativeEvent => boxTextLayout.set(nativeEvent.nativeEvent.layout.width)}
-                style={[styles.runningText, AnimationTextStyle]}>
-                {animationText}
-              </Reanimated.Text>
-            </View>
           </View>
           <TouchableOpacity style={styles.refreshButton} onPress={refreshing} disabled={refresh}>
             <MaterialIcon name="refresh" size={20} color="#FFFFFF" style={styles.refreshIcon} />
@@ -294,8 +192,6 @@ function HomeList(props: HomeProps) {
             isRateLimit={isRateLimit}
             onRetry={refreshing}
           />
-          <FeaturedFilmList props={props} key={'film_featured' + refreshingKey} />
-          <LatestFilmList props={props} key={'film_latest' + refreshingKey} />
           <MovieList props={props} key={'anime_movie' + refreshingKey} />
           <ComicList key={'comick' + refreshingKey} />
           <TouchableOpacity
@@ -318,160 +214,6 @@ function HomeList(props: HomeProps) {
       renderItem={renderJadwalAnime}
       showsVerticalScrollIndicator={false}
     />
-  );
-}
-
-const FeaturedFilmList = memo(FeaturedFilmListUNMEMO);
-function FeaturedFilmListUNMEMO({ props }: { props: HomeProps }) {
-  const styles = useStyles();
-  const [data, setData] = useState<FilmHomePage>([]);
-  // const { paramsState: data, setParamsState: setData } = useContext(MovieListHomeContext);
-  const [isError, setIsError] = useState(false);
-  const navigation = useNavigation<NavigationProp<RootStackNavigator>>();
-
-  const renderMovie = useCallback(
-    ({ item }: ListRenderItemInfo<FilmHomePage[number]>) => (
-      <ListAnimeComponent
-        gap
-        newAnimeData={item}
-        type="film"
-        key={'btn' + item.title}
-        navigationProp={props.navigation}
-      />
-    ),
-    [props.navigation],
-  );
-
-  useEffect(() => {
-    setData?.([]); // so the skeleton loading show
-    queueMicrotask(() => {
-      getFeatured()
-        .then(movieData => {
-          if ('isError' in movieData) {
-            setIsError(true);
-          } else {
-            setData?.(movieData);
-          }
-        })
-        .catch(() => setIsError(true));
-    });
-  }, [setData]);
-
-  return (
-    <View style={styles.sectionContainer}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Film Unggulan</Text>
-      </View>
-
-      {isError && (
-        <TouchableOpacity
-          onPress={() => {
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'connectToServer' }],
-            });
-          }}
-          style={styles.errorContainer}>
-          <MaterialIcon name="error-outline" size={24} color="#d80000" />
-          <Text style={styles.errorText}>Error mendapatkan data. Ketuk untuk mencoba ulang.</Text>
-        </TouchableOpacity>
-      )}
-
-      {data?.length !== 0 ? (
-        <FlashList
-          renderScrollComponent={RenderScrollComponent}
-          contentContainerStyle={{ gap: 3 }}
-          horizontal
-          data={data?.slice(0, 25) ?? []}
-          renderItem={renderMovie}
-          keyExtractor={z => 'featured' + z.title}
-          extraData={styles}
-          showsHorizontalScrollIndicator={false}
-        />
-      ) : (
-        !isError && <ShowSkeletonLoading />
-      )}
-    </View>
-  );
-}
-
-const LatestFilmList = memo(LatestFilmListUNMEMO);
-function LatestFilmListUNMEMO({ props }: { props: HomeProps }) {
-  const styles = useStyles();
-  const { paramsState: data, setParamsState: setData } = useContext(FilmListHomeContext);
-  const [isError, setIsError] = useState(false);
-  const navigation = useNavigation<NavigationProp<RootStackNavigator>>();
-
-  const renderMovie = useCallback(
-    ({ item }: ListRenderItemInfo<FilmHomePage[number]>) => (
-      <ListAnimeComponent
-        gap
-        newAnimeData={item}
-        type="film"
-        key={'btn' + item.title}
-        navigationProp={props.navigation}
-      />
-    ),
-    [props.navigation],
-  );
-
-  useEffect(() => {
-    setData?.([]); // so the skeleton loading show
-    queueMicrotask(() => {
-      getLatest()
-        .then(movieData => {
-          if ('isError' in movieData) {
-            setIsError(true);
-          } else {
-            setData?.(movieData);
-          }
-        })
-        .catch(() => setIsError(true));
-    });
-  }, [setData]);
-  return (
-    <View style={styles.sectionContainer}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Film Terbaru</Text>
-        <TouchableOpacity
-          style={styles.seeMoreButton}
-          onPress={() => {
-            props.navigation.dispatch(StackActions.push('SeeMore', { type: 'FilmList' }));
-          }}>
-          <Text style={styles.seeMoreText}>Lihat Semua</Text>
-          <MaterialIcon name="chevron-right" style={styles.seeMoreText} />
-        </TouchableOpacity>
-      </View>
-
-      {isError && (
-        <TouchableOpacity
-          onPress={() => {
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'connectToServer' }],
-            });
-          }}
-          style={styles.errorContainer}>
-          <MaterialIcon name="error-outline" size={24} color="#d80000" />
-          <Text style={styles.errorText}>Error mendapatkan data. Ketuk untuk mencoba ulang.</Text>
-        </TouchableOpacity>
-      )}
-
-      {data?.length !== 0 ? (
-        <FlashList
-          renderScrollComponent={RenderScrollComponent}
-          contentContainerStyle={{ gap: 3 }}
-          horizontal
-          data={data?.slice(0, 30) ?? []}
-          renderItem={renderMovie}
-          keyExtractor={z => 'latest' + z.title}
-          extraData={styles}
-          showsHorizontalScrollIndicator={false}
-        />
-      ) : (
-        !isError && <ShowSkeletonLoading />
-      )}
-    </View>
   );
 }
 
@@ -527,6 +269,7 @@ function EpisodeBaruUNMEMO({
       </View>
       {(data?.newAnime.length || 0) > 0 ? (
         <FlashList
+        estimatedItemSize={200}
           renderScrollComponent={RenderScrollComponent}
           contentContainerStyle={{ gap: 3 }}
           horizontal
@@ -565,11 +308,10 @@ function MovieListUNMEMO({ props }: { props: HomeProps }) {
   const navigation = useNavigation<NavigationProp<RootStackNavigator>>();
 
   const renderMovie = useCallback(
-    ({ item }: ListRenderItemInfo<Movies>) => (
+    ({ item }: ListRenderItemInfo<NewAnimeList>) => (
       <ListAnimeComponent
         gap
         newAnimeData={item}
-        type="movie"
         key={'btn' + item.title}
         navigationProp={props.navigation}
       />
@@ -580,12 +322,22 @@ function MovieListUNMEMO({ props }: { props: HomeProps }) {
   useEffect(() => {
     setData?.([]); // so the skeleton loading show
     queueMicrotask(() => {
-      getLatestMovie()
-        .then(movieData => {
-          if ('isError' in movieData) {
-            setIsError(true);
+      AnimeAPI.search('movie')
+        .then(res => {
+          if (res && res.result) {
+            const mappedMovies: NewAnimeList[] = res.result
+              .filter(item => !/episode/i.test(item.title))
+              .map(item => ({
+              title: item.title,
+              episode: 'Movie',
+              thumbnailUrl: item.thumbnailUrl,
+              streamingLink: item.animeUrl,
+              releaseDate: '',
+              releaseDay: '',
+            }));
+            setData?.(mappedMovies);
           } else {
-            setData?.(movieData);
+            setIsError(true);
           }
         })
         .catch(() => setIsError(true));
@@ -625,6 +377,7 @@ function MovieListUNMEMO({ props }: { props: HomeProps }) {
 
       {data?.length !== 0 ? (
         <FlashList
+        estimatedItemSize={200}
           renderScrollComponent={RenderScrollComponent}
           contentContainerStyle={{ gap: 3 }}
           horizontal
@@ -702,6 +455,7 @@ function ComicListUNMEMO() {
 
       {data && data?.length !== 0 ? (
         <FlashList
+        estimatedItemSize={200}
           renderScrollComponent={RenderScrollComponent}
           contentContainerStyle={{ gap: 3 }}
           horizontal
@@ -793,18 +547,7 @@ function useLocalTime() {
   return time;
 }
 
-function randomQuote() {
-  const randomizeQuote = runningText[Math.floor(Math.random() * runningText.length)] ?? {};
-  const quote = `"${randomizeQuote.quote}" - ${randomizeQuote.by}`;
-  return quote;
-}
-function measureQuoteTextWidth(quote: string) {
-  const width = MeasureText.measureWidth(quote, {
-    fontWeight: 'bold',
-    fontSize: 17,
-  });
-  return width;
-}
+
 
 export function RenderScrollComponent(renderProps: ScrollViewProps) {
   return <ScrollView {...renderProps} />;
@@ -869,11 +612,7 @@ function useStyles() {
           gap: 16,
           marginBottom: 8,
         },
-        runningText: {
-          color: theme.colors.primary,
-          fontWeight: 'bold',
-          fontSize: 14,
-        },
+
         refreshButton: {
           flexDirection: 'row',
           justifyContent: 'center',

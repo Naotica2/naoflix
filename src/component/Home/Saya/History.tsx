@@ -17,6 +17,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import Animated, {
@@ -49,6 +50,7 @@ function History(props: Props) {
   const data = useModifiedKeyValueIfFocused(
     'historyKeyCollectionsOrder',
     state => JSON.parse(state) as HistoryItemKey[],
+    [] as HistoryItemKey[],
   );
 
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -57,7 +59,7 @@ function History(props: Props) {
   const filteredData = useMemo(
     () =>
       data.filter(item =>
-        item
+        item && typeof item === 'string' && item
           .split(':')
           .slice(1, -2)
           .join(':')
@@ -182,6 +184,7 @@ function History(props: Props) {
           onScroll={scrollHandler}
           removeClippedSubviews={true}
           extraData={styles}
+          estimatedItemSize={150}
           renderItem={renderFlatList}
           ListHeaderComponent={() =>
             data.length > 0 && (
@@ -264,13 +267,16 @@ const RenderList = memo(function RenderList({
             title: item?.title,
             link: item?.link,
             historyData: item,
+            thumbnailUrl: item?.thumbnailUrl,
             type: URL.parse(item?.link ?? '').hostname!?.includes('idlix')
-              ? 'film'
-              : item?.isMovie
-                ? 'movie'
-                : item?.isComics
-                  ? 'comics'
-                  : 'anime',
+              ? 'movie'
+              : URL.parse(item?.link ?? '').hostname!?.includes('meionovel')
+                ? 'novel'
+                : item?.isMovie
+                  ? 'movie'
+                  : item?.isComics
+                    ? 'comics'
+                    : 'anime',
           }),
         );
       }}>
@@ -341,10 +347,44 @@ const RenderList = memo(function RenderList({
                   </Text>
                 </View>
               )}{' '}
-              {item?.isMovie && (
+              {(item?.isMovie || item?.link?.startsWith('film://') || (item?.episode && item.episode.match(/^S\d+E\d+/))) && (
                 <View
                   style={{
-                    backgroundColor: '#ff7300',
+                    backgroundColor: (item?.link?.includes('se=') || (item?.episode && item.episode.match(/^S\d+E\d+/))) ? '#f59e0b' : '#ff7300',
+                    borderRadius: 4,
+                    paddingHorizontal: 6,
+                    paddingVertical: 2,
+                  }}>
+                  <Text
+                    style={[
+                      styles.listEpisode,
+                      { color: '#ffffff', fontWeight: 'bold', fontSize: 12 },
+                    ]}>
+                    {(item?.link?.includes('se=') || (item?.episode && item.episode.match(/^S\d+E\d+/))) ? 'TV Series' : 'Movie'}
+                  </Text>
+                </View>
+              )}{' '}
+              {URL.parse(item?.link ?? '').hostname!?.includes('meionovel') && (
+                <View
+                  style={{
+                    backgroundColor: '#6a1b9a',
+                    borderRadius: 4,
+                    paddingHorizontal: 6,
+                    paddingVertical: 2,
+                  }}>
+                  <Text
+                    style={[
+                      styles.listEpisode,
+                      { color: '#ffffff', fontWeight: 'bold', fontSize: 12 },
+                    ]}>
+                    Novel
+                  </Text>
+                </View>
+              )}{' '}
+              {(URL.parse(item?.link ?? '').hostname!?.includes('idlix') || URL.parse(item?.link ?? '').hostname!?.includes('lk21')) && (
+                <View
+                  style={{
+                    backgroundColor: '#1565c0',
                     borderRadius: 4,
                     paddingHorizontal: 6,
                     paddingVertical: 2,
@@ -403,6 +443,8 @@ function formatTimeFromSeconds(seconds: number) {
 function useStyles() {
   const theme = useTheme();
   const globalStyles = useGlobalStyles();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   return useMemo(
     () =>
       StyleSheet.create({
@@ -431,12 +473,13 @@ function useStyles() {
         },
         listContainerButton: {
           flexDirection: 'row',
-          marginVertical: 5,
-          backgroundColor: theme.colors.surface,
-          borderWidth: 0.2,
-          borderColor: theme.colors.onSurfaceVariant,
-          borderRadius: 16,
-          elevation: 5,
+          marginVertical: 4,
+          marginHorizontal: 12,
+          backgroundColor: isDark ? '#1a1a1a' : '#fff',
+          borderWidth: 1,
+          borderColor: isDark ? '#2a2a2a' : '#e0e0e0',
+          borderRadius: 12,
+          elevation: 0,
         },
         listImage: {
           width: 80,
@@ -489,9 +532,9 @@ function useStyles() {
         },
         deleteContainer: {},
         deleteButton: {
-          backgroundColor: theme.colors.errorContainer,
-          borderRadius: 5,
-          padding: 2,
+          backgroundColor: '#ff4d4d',
+          borderRadius: 6,
+          padding: 4,
         },
         deleteIcon: {
           color: theme.colors.onErrorContainer,
@@ -502,12 +545,11 @@ function useStyles() {
           alignItems: 'center',
         },
         searchInputView: {
-          height: 40,
-          borderColor: 'gray',
-          borderWidth: 1,
-          borderRadius: 8,
-          margin: 10,
-          paddingHorizontal: 10,
+          height: 44,
+          backgroundColor: isDark ? '#1a1a1a' : '#f0f0f0',
+          borderRadius: 22,
+          margin: 12,
+          paddingHorizontal: 16,
           flexDirection: 'row',
           alignItems: 'center',
         },

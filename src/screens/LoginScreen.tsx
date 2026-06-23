@@ -86,7 +86,7 @@ function LoginScreen() {
           <View style={styles.logoGlow} />
         </View>
         <Text style={styles.appName}>NaoFlix</Text>
-        <Text style={styles.tagline}>Stream anime & film favoritmu</Text>
+        <Text style={styles.tagline}>Stream anime favoritmu</Text>
 
         <View style={styles.bottomSection}>
           <TouchableOpacity

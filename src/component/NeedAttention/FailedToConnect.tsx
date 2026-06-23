@@ -14,7 +14,7 @@ function FailedToConnect(props: Props) {
   const styles = useStyles();
 
   const openLink = async () => {
-    const url = 'https://github.com/FightFarewellFearless/AniFlix/issues/new';
+    const url = 'https://github.com/Naotica2/naoflix/issues/new';
     Linking.canOpenURL(url)
       .then(supported => {
         if (supported) {
@@ -70,7 +70,7 @@ function FailedToConnect(props: Props) {
         <View style={styles.bottomActions}>
           <TouchableOpacity
             onPress={() => {
-              Linking.openURL('https://github.com/FightFarewellFearless/AniFlix');
+              Linking.openURL('https://github.com/Naotica2/naoflix');
             }}
             style={styles.bottomCreditButton}>
             <Icon name="github" size={30} color={globalStyles.text.color} />

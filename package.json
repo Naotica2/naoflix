@@ -1,7 +1,7 @@
 {
-  "name": "aniflix",
-  "version": "v1.2.2",
-  "OTAJSVersion": "3",
+  "name": "naoflix",
+  "version": "v2.0.2",
+  "OTAJSVersion": "5",
   "private": true,
   "scripts": {
     "android": "react-native run-android --active-arch-only",
@@ -9,10 +9,10 @@
     "lint": "eslint .",
     "start": "expo start -d",
     "release": "cd android && ./gradlew assembleRelease",
-    "installapk": "adb install android/app/build/outputs/apk/release/aniflix.apk",
+    "installapk": "adb install android/app/build/outputs/apk/release/naoflix.apk",
     "clean": "cd android && ./gradlew clean",
     "test": "jest",
-    "rename": "mv android/app/build/outputs/apk/release/anime-release.apk android/app/build/outputs/apk/release/aniflix.apk"
+    "rename": "mv android/app/build/outputs/apk/release/anime-release.apk android/app/build/outputs/apk/release/naoflix.apk"
   },
   "dependencies": {
     "@domir/react-native-measure-text": "0.1.8",
@@ -119,6 +119,7 @@
     }
   },
   "resolutions": {
-    "@pirles/react-native-element-dropdown@^2.15.0": "patch:@pirles/react-native-element-dropdown@npm%3A2.15.0#./.yarn/patches/@pirles-react-native-element-dropdown-npm-2.15.0-51dcb6fc77.patch"
+    "@pirles/react-native-element-dropdown@^2.15.0": "patch:@pirles/react-native-element-dropdown@npm%3A2.15.0#./.yarn/patches/@pirles-react-native-element-dropdown-npm-2.15.0-51dcb6fc77.patch",
+    "react-native-blob-util@^0.24.7": "patch:react-native-blob-util@npm%3A0.24.7#./.yarn/patches/react-native-blob-util-npm-0.24.7-bd99406f55.patch"
   }
 }

@@ -103,14 +103,6 @@ def enableProguardInReleaseBuilds = true
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
 android {
-    // splits {
-    //     abi {
-    //         reset()
-    //         enable true
-    //         universalApk true
-    //         include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
-    //     }
-    // }
     packagingOptions {
         jniLibs {
             useLegacyPackaging true
@@ -126,8 +118,8 @@ android {
         applicationId "com.pirles.anime"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 222
-        versionName "v1.2.2"
+        versionCode 320
+        versionName "v2.0.2"
     }
     signingConfigs {
         debug {
@@ -143,15 +135,11 @@ android {
                 keyAlias MYAPP_UPLOAD_KEY_ALIAS
                 keyPassword MYAPP_UPLOAD_KEY_PASSWORD
             } else {
-                // Warning: No keystore credentials provided.
-                // You can add MYAPP_UPLOAD_STORE_FILE etc. to ~/.gradle/gradle.properties
-                // For now, falling back to debug keystore or you can uncomment below to hardcode (NOT RECOMMENDED for public repos)
             }
         }
     }
     buildTypes {
         debug {
-            applicationIdSuffix ".debug"
             signingConfig signingConfigs.debug
             archivesBaseName = "anime"
         }

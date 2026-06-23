@@ -6,16 +6,17 @@ import {
 import { CommonActions, useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { lazy, memo, useCallback, useContext, useEffect } from 'react';
+import { StyleSheet, useColorScheme, View } from 'react-native';
 import { AndroidSoftInputModes, KeyboardController } from 'react-native-keyboard-controller';
 import { BottomNavigation, useTheme } from 'react-native-paper';
 import { withSuspenseAndSafeArea } from '../../../App';
 import { EpisodeBaruHomeContext } from '../../misc/context';
 import { HomeNavigator, RootStackNavigator } from '../../types/navigation';
 
-const EpisodeBaruHome = lazy(() => import('./AnimeList'));
-const Search = lazy(() => import('./Search'));
-const Utils = lazy(() => import('./Utils'));
-const Saya = lazy(() => import('./Saya'));
+const HomePage = lazy(() => import('./HomePage'));
+const BrowsePage = lazy(() => import('./BrowsePage'));
+const MyListsPage = lazy(() => import('./MyListsPage'));
+const AccountPage = lazy(() => import('./AccountPage'));
 
 type Props = NativeStackScreenProps<RootStackNavigator, 'Home'>;
 const Tab = createBottomTabNavigator<HomeNavigator>();
@@ -26,42 +27,43 @@ const tabScreens: {
   options: BottomTabNavigationOptions;
 }[] = [
   {
-    name: 'AnimeList',
-    component: withSuspenseAndSafeArea(EpisodeBaruHome, false),
+    name: 'HomePage',
+    component: withSuspenseAndSafeArea(HomePage, false, true, true),
     options: {
       tabBarIcon: ({ color, size }) => <MaterialIcons name="home" size={size} color={color} />,
-      tabBarLabel: 'Beranda',
+      tabBarLabel: 'Home',
     },
   },
   {
-    name: 'Search',
-    component: withSuspenseAndSafeArea(Search, true, false, true),
+    name: 'BrowsePage',
+    component: withSuspenseAndSafeArea(BrowsePage, false, true, true),
     options: {
-      tabBarIcon: ({ color, size }) => <MaterialIcons name="search" size={size} color={color} />,
-      tabBarLabel: 'Pencarian',
+      tabBarIcon: ({ color, size }) => <MaterialIcons name="explore" size={size} color={color} />,
+      tabBarLabel: 'Browse',
     },
   },
   {
-    name: 'Saya',
-    component: withSuspenseAndSafeArea(Saya, false),
+    name: 'MyListsPage',
+    component: withSuspenseAndSafeArea(MyListsPage, false, true, true),
+    options: {
+      tabBarIcon: ({ color, size }) => <MaterialIcons name="bookmark" size={size} color={color} />,
+      tabBarLabel: 'My Lists',
+    },
+  },
+  {
+    name: 'AccountPage',
+    component: withSuspenseAndSafeArea(AccountPage, false, true),
     options: {
       tabBarIcon: ({ color, size }) => <MaterialIcons name="person" size={size} color={color} />,
-      tabBarLabel: 'Saya',
-    },
-  },
-  {
-    name: 'Utilitas',
-    component: withSuspenseAndSafeArea(Utils, false),
-    options: {
-      tabBarIcon: ({ color, size }) => <MaterialIcons name="build" size={size} color={color} />,
+      tabBarLabel: 'Account',
     },
   },
 ];
 
 function BottomTabs(props: Props) {
   const { setParamsState: setAnimeData } = useContext(EpisodeBaruHomeContext);
-  // const colorScheme = useColorScheme();
   const theme = useTheme();
+  const isDark = useColorScheme() === 'dark';
   useEffect(() => {
     setAnimeData?.(props.route.params.data);
   }, [props.route.params.data, setAnimeData]);
@@ -75,22 +77,29 @@ function BottomTabs(props: Props) {
   );
   return (
     <Tab.Navigator
-      // tabBarStyle={{
-      //   backgroundColor: colorScheme === 'dark' ? '#181818' : '#f0f0f0',
-      // }}
-      // activeIndicatorColor={colorScheme === 'dark' ? '#525252' : '#d8d8d8'}
-      // getFreezeOnBlur={() => true}
-      // TODO: Remove this when the blank screen issue is fixed
       detachInactiveScreens={false}
       screenOptions={{
         animation: 'shift',
         headerShown: false,
-        tabBarActiveTintColor: theme.colors.primary,
+        tabBarActiveTintColor: '#3b82f6',
+        tabBarInactiveTintColor: isDark ? '#666' : '#999',
+        tabBarStyle: {
+          backgroundColor: isDark ? '#0f0f0f' : '#fff',
+          borderTopWidth: 0,
+          elevation: 0,
+          height: 56,
+          paddingBottom: 4,
+        },
       }}
       tabBar={({ navigation, state, descriptors, insets }) => (
         <BottomNavigation.Bar
           navigationState={state}
           safeAreaInsets={insets}
+          compact
+          activeColor="#3b82f6"
+          inactiveColor={isDark ? '#666' : '#999'}
+          activeIndicatorStyle={{ backgroundColor: isDark ? '#1a2a4a' : '#eff6ff' }}
+          style={{ backgroundColor: isDark ? '#0f0f0f' : '#fff', elevation: 0, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: isDark ? '#222' : '#eee' }}
           onTabPress={({ route, preventDefault }) => {
             const event = navigation.emit({
               type: 'tabPress',
@@ -111,7 +120,7 @@ function BottomTabs(props: Props) {
             descriptors[route.key].options.tabBarIcon?.({
               focused,
               color,
-              size: 24,
+              size: 22,
             }) || null
           }
           getLabelText={({ route }) => {

@@ -17,6 +17,7 @@ import { supabase } from '../../config/supabaseClient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackNavigator } from '../../types/navigation';
+import { getRank, getRankColor } from '../../utils/LevelSystem';
 
 interface CommentRow {
   id: string;
@@ -24,12 +25,12 @@ interface CommentRow {
   text: string;
   created_at: string;
   parent_id: string | null;
-  profiles: { username: string; avatar_url: string | null } | null;
+  profiles: { username: string; avatar_url: string | null; level: number | null } | null;
 }
 
 interface CommentSectionProps {
   contentId: string;
-  contentType: 'anime' | 'movie' | 'film';
+  contentType: 'anime' | 'movie';
 }
 
 const COOLDOWN_SECONDS = 30;
@@ -52,7 +53,7 @@ function CommentSection({ contentId, contentType }: CommentSectionProps) {
     try {
       const { data } = await supabase
         .from('comments')
-        .select('id, user_id, text, created_at, parent_id, profiles(username, avatar_url)')
+        .select('id, user_id, text, created_at, parent_id, profiles(username, avatar_url, level)')
         .eq('content_id', contentId)
         .eq('content_type', contentType)
         .order('created_at', { ascending: false })
@@ -172,6 +173,7 @@ function CommentSection({ contentId, contentType }: CommentSectionProps) {
         commentHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
         commentAvatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#333' },
         commentUsername: { fontSize: 13, fontWeight: '700', color: isDark ? '#e0e0e0' : '#333' },
+        commentLevel: { fontSize: 10, fontWeight: 'bold', marginLeft: 4 },
         commentTime: { fontSize: 11, color: '#666' },
         commentText: { fontSize: 14, color: isDark ? '#ccc' : '#333', lineHeight: 20, marginLeft: 36 },
         commentActions: { flexDirection: 'row', gap: 16, marginLeft: 36, marginTop: 4 },
@@ -248,7 +250,12 @@ function CommentSection({ contentId, contentType }: CommentSectionProps) {
               ) : (
                 <View style={styles.commentAvatar} />
               )}
-              <Text style={styles.commentUsername}>@{comment.profiles?.username ?? '?'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={styles.commentUsername}>@{comment.profiles?.username ?? '?'}</Text>
+                <Text style={[styles.commentLevel, { color: getRankColor(getRank(comment.profiles?.level || 1)) }]}>
+                  Lv. {comment.profiles?.level || 1}
+                </Text>
+              </View>
               <Text style={styles.commentTime}>
                 {moment(comment.created_at).fromNow()}
               </Text>
@@ -278,7 +285,12 @@ function CommentSection({ contentId, contentType }: CommentSectionProps) {
                   ) : (
                     <View style={styles.commentAvatar} />
                   )}
-                  <Text style={styles.commentUsername}>@{reply.profiles?.username ?? '?'}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text style={styles.commentUsername}>@{reply.profiles?.username ?? '?'}</Text>
+                    <Text style={[styles.commentLevel, { color: getRankColor(getRank(reply.profiles?.level || 1)) }]}>
+                      Lv. {reply.profiles?.level || 1}
+                    </Text>
+                  </View>
                   <Text style={styles.commentTime}>{moment(reply.created_at).fromNow()}</Text>
                 </View>
                 <Text style={styles.commentText}>{reply.text}</Text>

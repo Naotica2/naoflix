@@ -1,0 +1,1 @@
+## sebentar lagi update naoflix v2.0.2 btw jangan lupa donasi https://saweria.co/naotica

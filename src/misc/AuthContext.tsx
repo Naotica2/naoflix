@@ -6,6 +6,8 @@ export interface UserProfile {
   username: string;
   avatar_url: string | null;
   display_name: string | null;
+  total_exp: number;
+  level: number;
 }
 
 type ProfileStatus = 'idle' | 'loading' | 'loaded' | 'error';
@@ -49,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // 5 second fallback for profile fetch to prevent infinite hanging
       const fetchPromise = supabase
         .from('profiles')
-        .select('username, avatar_url, display_name')
+        .select('username, avatar_url, display_name, total_exp, level')
         .eq('id', userId)
         .single();
         
