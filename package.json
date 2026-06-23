@@ -21,7 +21,7 @@
     "@react-native-async-storage/async-storage": "2.1.0",
     "@react-native-google-signin/google-signin": "^16.1.2",
     "@react-native-vector-icons/entypo": "^12.4.3",
-    "@react-native-vector-icons/fontawesome": "^12.4.3",
+    "@react-native-vector-icons/fontawesome": "^13.1.2",
     "@react-native-vector-icons/fontawesome5": "^12.3.3",
     "@react-native-vector-icons/fontisto": "^12.4.3",
     "@react-native-vector-icons/material-design-icons": "^12.4.3",
