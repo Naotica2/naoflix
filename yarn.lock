@@ -2708,9 +2708,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pirles/react-native-element-dropdown@patch:@pirles/react-native-element-dropdown@npm%3A2.15.0#./.yarn/patches/@pirles-react-native-element-dropdown-npm-2.15.0-51dcb6fc77.patch::locator=aniflix%40workspace%3A.":
+"@pirles/react-native-element-dropdown@patch:@pirles/react-native-element-dropdown@npm%3A2.15.0#./.yarn/patches/@pirles-react-native-element-dropdown-npm-2.15.0-51dcb6fc77.patch::locator=naoflix%40workspace%3A.":
   version: 2.15.0
-  resolution: "@pirles/react-native-element-dropdown@patch:@pirles/react-native-element-dropdown@npm%3A2.15.0#./.yarn/patches/@pirles-react-native-element-dropdown-npm-2.15.0-51dcb6fc77.patch::version=2.15.0&hash=108578&locator=aniflix%40workspace%3A."
+  resolution: "@pirles/react-native-element-dropdown@patch:@pirles/react-native-element-dropdown@npm%3A2.15.0#./.yarn/patches/@pirles-react-native-element-dropdown-npm-2.15.0-51dcb6fc77.patch::version=2.15.0&hash=108578&locator=naoflix%40workspace%3A."
   dependencies:
     lodash: ^4.17.21
   peerDependencies:
@@ -3418,23 +3418,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-navigation/drawer@npm:^7.9.4":
-  version: 7.9.4
-  resolution: "@react-navigation/drawer@npm:7.9.4"
+"@react-navigation/drawer@npm:^7.12.2":
+  version: 7.12.2
+  resolution: "@react-navigation/drawer@npm:7.12.2"
   dependencies:
-    "@react-navigation/elements": ^2.9.10
+    "@react-navigation/elements": ^2.9.25
     color: ^4.2.3
-    react-native-drawer-layout: ^4.2.2
+    react-native-drawer-layout: ^4.2.5
     use-latest-callback: ^0.2.4
   peerDependencies:
-    "@react-navigation/native": ^7.1.33
+    "@react-navigation/native": ^7.3.3
     react: ">= 18.2.0"
     react-native: "*"
     react-native-gesture-handler: ">= 2.0.0"
     react-native-reanimated: ">= 2.0.0"
     react-native-safe-area-context: ">= 4.0.0"
     react-native-screens: ">= 4.0.0"
-  checksum: 40c507369678b5bd4bc7bbc6a2f3d73704329de95595e2709d4ab984776e7bc570382cd0259e23ef86c6fd83a5dcdc0d5dbb204937051bcb96051438dfd422c0
+  checksum: f4caf7d4009d5a6b24da4789faffd1b0e89fd8767b171ed29cd143632fcaf9c69d2d810b98b77aca806c74d65dd485fa19ddb60438f5a99130e641964ba5ff12
   languageName: node
   linkType: hard
 
@@ -3455,6 +3455,26 @@ __metadata:
     "@react-native-masked-view/masked-view":
       optional: true
   checksum: 0c1a9e5c619e72c8caa258c3c40604e67f75b4a0fd85912598ba5a8deff03213c6956237ff1410891b8b05ec01ab2f6f4e9cbbe507218433f4c7e58ea9b374df
+  languageName: node
+  linkType: hard
+
+"@react-navigation/elements@npm:^2.9.25":
+  version: 2.9.25
+  resolution: "@react-navigation/elements@npm:2.9.25"
+  dependencies:
+    color: ^4.2.3
+    use-latest-callback: ^0.2.4
+    use-sync-external-store: ^1.5.0
+  peerDependencies:
+    "@react-native-masked-view/masked-view": ">= 0.2.0"
+    "@react-navigation/native": ^7.3.3
+    react: ">= 18.2.0"
+    react-native: "*"
+    react-native-safe-area-context: ">= 4.0.0"
+  peerDependenciesMeta:
+    "@react-native-masked-view/masked-view":
+      optional: true
+  checksum: 431e2dc787f02bd341d3b6a38812c9508b7cf4049fa09c197517a0b30bede830c03c359e7a6ba468fe959bf160deec1c3819a2d0f531ff1ac98692de47f3cb28
   languageName: node
   linkType: hard
 
@@ -4211,97 +4231,6 @@ __metadata:
   checksum: 874972efe5c4202ab0a68379481fbd3d1b5d0a7bd6d3cc21d40d3536ebff3352a2a1fabb632d4fd2cc7fe4cbdcd5ed6782084c9bbf7f32a1536d18f9da5007d4
   languageName: node
   linkType: hard
-
-"aniflix@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "aniflix@workspace:."
-  dependencies:
-    "@babel/core": ^7.26.10
-    "@babel/preset-env": ^7.26.9
-    "@babel/runtime": ^7.27.0
-    "@domir/react-native-measure-text": 0.1.8
-    "@legendapp/list": 2.0.19
-    "@pirles/react-native-element-dropdown": ^2.15.0
-    "@react-native-async-storage/async-storage": 2.1.0
-    "@react-native-community/cli": ^20.0.2
-    "@react-native-community/cli-platform-android": ^20.0.2
-    "@react-native-google-signin/google-signin": ^16.1.2
-    "@react-native-vector-icons/entypo": ^12.4.3
-    "@react-native-vector-icons/fontawesome": ^12.4.3
-    "@react-native-vector-icons/fontawesome5": ^12.3.3
-    "@react-native-vector-icons/fontisto": ^12.4.3
-    "@react-native-vector-icons/material-design-icons": ^12.4.3
-    "@react-native-vector-icons/material-icons": ^12.4.3
-    "@react-native/babel-preset": 0.81.4
-    "@react-native/eslint-config": 0.81.4
-    "@react-native/metro-config": 0.81.4
-    "@react-native/typescript-config": 0.81.4
-    "@react-navigation/bottom-tabs": ^7.15.5
-    "@react-navigation/drawer": ^7.9.4
-    "@react-navigation/native": ^7.1.33
-    "@react-navigation/native-stack": ^7.14.5
-    "@rnx-kit/align-deps": ^3.2.1
-    "@shopify/flash-list": 2.3.0
-    "@supabase/supabase-js": ^2.100.1
-    "@types/crypto-js": ^4.2.2
-    "@types/he": ^1.2.3
-    "@types/jest": ^29.5.14
-    "@types/metro-config": ^0.76.3
-    "@types/react": ^19.1.12
-    "@types/react-native-vector-icons": ^6.4.18
-    "@types/react-test-renderer": ^19.1.0
-    axios: ^1.11.0
-    babel-jest: ^29.6.3
-    babel-plugin-inline-import: ^3.0.0
-    babel-plugin-react-compiler: ^1.0.0
-    buffer: ^6.0.3
-    cheerio: 1.0.0-rc.12
-    crypto-js: ^4.2.0
-    depcheck: ^1.4.7
-    eslint: ^8.19.0
-    eslint-plugin-prettier: ^5.5.4
-    eslint-plugin-react-compiler: ^19.1.0-rc.2
-    expo: ^54.0.33
-    expo-document-picker: ~14.0.8
-    expo-linear-gradient: ~15.0.8
-    expo-splash-screen: ~31.0.13
-    expo-sqlite: ~16.0.10
-    expo-updates: ~29.0.16
-    expo-video: ~3.0.16
-    googletrans: ^1.0.27
-    he: ^1.2.0
-    jest: ^29.6.3
-    moment: ^2.30.1
-    prettier: ^3.5.2
-    react: 19.1.0
-    react-native: 0.81.4
-    react-native-blob-util: ^0.24.7
-    react-native-dotenv: ^3.4.11
-    react-native-edge-to-edge: ^1.8.1
-    react-native-error-boundary: ^3.1.0
-    react-native-gesture-handler: 2.30.0
-    react-native-keyboard-controller: ^1.21.0
-    react-native-marked: ^8.0.1
-    react-native-nitro-device-info: ^1.7.0
-    react-native-nitro-modules: ^0.35.2
-    react-native-onesignal: ^5.4.1
-    react-native-orientation-locker: ^1.7.0
-    react-native-paper: ^5.15.0
-    react-native-reanimated: 4.2.2
-    react-native-saf-x: 2.2.3
-    react-native-safe-area-context: 5.7.0
-    react-native-screens: 4.24.0
-    react-native-svg: ^15.15.3
-    react-native-system-navigation-bar: ^2.8.0
-    react-native-url-polyfill: ^3.0.0
-    react-native-webview: 13.16.1
-    react-native-worklets: 0.7.4
-    react-native-zip-archive: ^7.0.2
-    react-test-renderer: 19.1.0
-    typescript: 5.9.2
-    url: ^0.11.3
-  languageName: unknown
-  linkType: soft
 
 "anser@npm:^1.4.9":
   version: 1.4.10
@@ -10332,6 +10261,97 @@ __metadata:
   languageName: node
   linkType: hard
 
+"naoflix@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "naoflix@workspace:."
+  dependencies:
+    "@babel/core": ^7.26.10
+    "@babel/preset-env": ^7.26.9
+    "@babel/runtime": ^7.27.0
+    "@domir/react-native-measure-text": 0.1.8
+    "@legendapp/list": 2.0.19
+    "@pirles/react-native-element-dropdown": ^2.15.0
+    "@react-native-async-storage/async-storage": 2.1.0
+    "@react-native-community/cli": ^20.0.2
+    "@react-native-community/cli-platform-android": ^20.0.2
+    "@react-native-google-signin/google-signin": ^16.1.2
+    "@react-native-vector-icons/entypo": ^12.4.3
+    "@react-native-vector-icons/fontawesome": ^12.4.3
+    "@react-native-vector-icons/fontawesome5": ^12.3.3
+    "@react-native-vector-icons/fontisto": ^12.4.3
+    "@react-native-vector-icons/material-design-icons": ^12.4.3
+    "@react-native-vector-icons/material-icons": ^12.4.3
+    "@react-native/babel-preset": 0.81.4
+    "@react-native/eslint-config": 0.81.4
+    "@react-native/metro-config": 0.81.4
+    "@react-native/typescript-config": 0.81.4
+    "@react-navigation/bottom-tabs": ^7.15.5
+    "@react-navigation/drawer": ^7.12.2
+    "@react-navigation/native": ^7.1.33
+    "@react-navigation/native-stack": ^7.14.5
+    "@rnx-kit/align-deps": ^3.2.1
+    "@shopify/flash-list": 2.3.0
+    "@supabase/supabase-js": ^2.100.1
+    "@types/crypto-js": ^4.2.2
+    "@types/he": ^1.2.3
+    "@types/jest": ^29.5.14
+    "@types/metro-config": ^0.76.3
+    "@types/react": ^19.1.12
+    "@types/react-native-vector-icons": ^6.4.18
+    "@types/react-test-renderer": ^19.1.0
+    axios: ^1.11.0
+    babel-jest: ^29.6.3
+    babel-plugin-inline-import: ^3.0.0
+    babel-plugin-react-compiler: ^1.0.0
+    buffer: ^6.0.3
+    cheerio: 1.0.0-rc.12
+    crypto-js: ^4.2.0
+    depcheck: ^1.4.7
+    eslint: ^8.19.0
+    eslint-plugin-prettier: ^5.5.4
+    eslint-plugin-react-compiler: ^19.1.0-rc.2
+    expo: ^54.0.33
+    expo-document-picker: ~14.0.8
+    expo-linear-gradient: ~15.0.8
+    expo-splash-screen: ~31.0.13
+    expo-sqlite: ~16.0.10
+    expo-updates: ~29.0.16
+    expo-video: ~3.0.16
+    googletrans: ^1.0.27
+    he: ^1.2.0
+    jest: ^29.6.3
+    moment: ^2.30.1
+    prettier: ^3.5.2
+    react: 19.1.0
+    react-native: 0.81.4
+    react-native-blob-util: ^0.24.7
+    react-native-dotenv: ^3.4.11
+    react-native-edge-to-edge: ^1.8.1
+    react-native-error-boundary: ^3.1.0
+    react-native-gesture-handler: 2.30.0
+    react-native-keyboard-controller: ^1.21.0
+    react-native-marked: ^8.0.1
+    react-native-nitro-device-info: ^1.7.0
+    react-native-nitro-modules: ^0.35.2
+    react-native-onesignal: ^5.4.1
+    react-native-orientation-locker: ^1.7.0
+    react-native-paper: ^5.15.0
+    react-native-reanimated: 4.2.2
+    react-native-saf-x: 2.2.3
+    react-native-safe-area-context: 5.7.0
+    react-native-screens: 4.24.0
+    react-native-svg: ^15.15.3
+    react-native-system-navigation-bar: ^2.8.0
+    react-native-url-polyfill: ^3.0.0
+    react-native-webview: 13.16.1
+    react-native-worklets: 0.7.4
+    react-native-zip-archive: ^7.0.2
+    react-test-renderer: 19.1.0
+    typescript: 5.9.2
+    url: ^0.11.3
+  languageName: unknown
+  linkType: soft
+
 "natural-compare@npm:^1.4.0":
   version: 1.4.0
   resolution: "natural-compare@npm:1.4.0"
@@ -11319,9 +11339,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-blob-util@patch:react-native-blob-util@npm%3A0.24.7#./.yarn/patches/react-native-blob-util-npm-0.24.7-bd99406f55.patch::locator=aniflix%40workspace%3A.":
+"react-native-blob-util@patch:react-native-blob-util@npm%3A0.24.7#./.yarn/patches/react-native-blob-util-npm-0.24.7-bd99406f55.patch::locator=naoflix%40workspace%3A.":
   version: 0.24.7
-  resolution: "react-native-blob-util@patch:react-native-blob-util@npm%3A0.24.7#./.yarn/patches/react-native-blob-util-npm-0.24.7-bd99406f55.patch::version=0.24.7&hash=b33e96&locator=aniflix%40workspace%3A."
+  resolution: "react-native-blob-util@patch:react-native-blob-util@npm%3A0.24.7#./.yarn/patches/react-native-blob-util-npm-0.24.7-bd99406f55.patch::version=0.24.7&hash=b33e96&locator=naoflix%40workspace%3A."
   dependencies:
     base-64: 0.1.0
     glob: 13.0.1
@@ -11343,9 +11363,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-drawer-layout@npm:^4.2.2":
-  version: 4.2.2
-  resolution: "react-native-drawer-layout@npm:4.2.2"
+"react-native-drawer-layout@npm:^4.2.5":
+  version: 4.2.5
+  resolution: "react-native-drawer-layout@npm:4.2.5"
   dependencies:
     color: ^4.2.3
     use-latest-callback: ^0.2.4
@@ -11354,7 +11374,7 @@ __metadata:
     react-native: "*"
     react-native-gesture-handler: ">= 2.0.0"
     react-native-reanimated: ">= 2.0.0"
-  checksum: aa15d18270ecaf88dcffdc6c144bc703b4dff26b79f28fbe3d770480ff237ff89e6d58b15daaa72f2db667d8c27ec5e6cb69228fd4c18156d97b2f2d6d140a89
+  checksum: 9b29b0736d62f5aa6f8d367f026e5c4b32365277c15d7d03f0cb75001ea621123753ca40eb38b603c0630b939d355c61b700e83594e720569e1c808dcff76af4
   languageName: node
   linkType: hard
 
