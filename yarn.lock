@@ -1841,6 +1841,27 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@expo/config-plugins@npm:~56.0.8":
+  version: 56.0.9
+  resolution: "@expo/config-plugins@npm:56.0.9"
+  dependencies:
+    "@expo/config-types": ^56.0.6
+    "@expo/json-file": ~10.2.0
+    "@expo/plist": ^0.7.0
+    "@expo/require-utils": ^56.1.3
+    "@expo/sdk-runtime-versions": ^1.0.0
+    chalk: ^4.1.2
+    debug: ^4.3.5
+    getenv: ^2.0.0
+    glob: ^13.0.0
+    semver: ^7.5.4
+    slugify: ^1.6.6
+    xcode: ^3.0.1
+    xml2js: 0.6.0
+  checksum: b0993caa56edb1ab3e107c3366322d485d6906388b2a5f0e1c58a64e6ed45451fe21838454bceeafaabf901b17db4cdfe81a75c87ba61277866891e873524310
+  languageName: node
+  linkType: hard
+
 "@expo/config-types@npm:^54.0.10":
   version: 54.0.10
   resolution: "@expo/config-types@npm:54.0.10"
@@ -1852,6 +1873,13 @@ __metadata:
   version: 54.0.9
   resolution: "@expo/config-types@npm:54.0.9"
   checksum: e0c36ebb935798e9ef2608e689171175a505a6fb0f84379f59dd4f66547c7eecb7bf7d8c8ffec2444f37704882b04ad4ac96270716887269d603d2daa6c79821
+  languageName: node
+  linkType: hard
+
+"@expo/config-types@npm:^56.0.6":
+  version: 56.0.6
+  resolution: "@expo/config-types@npm:56.0.6"
+  checksum: 066505853769d83e0673afabac3a037843a4d0d419fdb98348bc25e6b0c0022a773281a549fb424948e27573a1d60548152ef9b27dd9b83bf7021df0baa1da3a
   languageName: node
   linkType: hard
 
@@ -1958,6 +1986,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@expo/image-utils@npm:^0.10.1":
+  version: 0.10.1
+  resolution: "@expo/image-utils@npm:0.10.1"
+  dependencies:
+    "@expo/require-utils": ^56.1.3
+    "@expo/spawn-async": ^1.8.0
+    chalk: ^4.0.0
+    getenv: ^2.0.0
+    jimp-compact: 0.16.1
+    parse-png: ^2.1.0
+    semver: ^7.6.0
+  checksum: 170789760ed817ba1ef79980487669f7aee8a76d215796e0db23c59febeb4c10dd5d24c099f5603e42b37c16f0afbb31ac70508c742b517bb9e981fa6f5ccfe7
+  languageName: node
+  linkType: hard
+
 "@expo/image-utils@npm:^0.8.8":
   version: 0.8.8
   resolution: "@expo/image-utils@npm:0.8.8"
@@ -2003,6 +2046,16 @@ __metadata:
     "@babel/code-frame": ~7.10.4
     json5: ^2.2.3
   checksum: bb557a247d47e43d62a3b35399bd99054f00eb1bae432009b98a3c5a07df818085534af3affa8eb4ec08a387029bad94811a9521e48bc1d6ac781b404af373fb
+  languageName: node
+  linkType: hard
+
+"@expo/json-file@npm:~10.2.0":
+  version: 10.2.0
+  resolution: "@expo/json-file@npm:10.2.0"
+  dependencies:
+    "@babel/code-frame": ^7.20.0
+    json5: ^2.2.3
+  checksum: 89a0c8861024dce24f6b3b576e51d993ad89bb8c26bd70f885b190e52afc22f3b57209fab46cf50850edae7d99033f5ed826ed12b869c3606fdd072583546699
   languageName: node
   linkType: hard
 
@@ -2108,6 +2161,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@expo/plist@npm:^0.7.0":
+  version: 0.7.0
+  resolution: "@expo/plist@npm:0.7.0"
+  dependencies:
+    "@xmldom/xmldom": ^0.8.8
+    base64-js: ^1.5.1
+    xmlbuilder: ^15.1.1
+  checksum: 5dd675fa4eae6dd10425c5a363997d557e328696d302f0cdbb4f946e56b8421902c27903bcfd4c6e549c15e72d8ac5531768df6b5c94d83094414d80961cb1a4
+  languageName: node
+  linkType: hard
+
 "@expo/prebuild-config@npm:^54.0.8":
   version: 54.0.8
   resolution: "@expo/prebuild-config@npm:54.0.8"
@@ -2125,6 +2189,22 @@ __metadata:
   peerDependencies:
     expo: "*"
   checksum: 35b93da7091f669ab5981e5ed44a5df8db20be748ab881214be737f2a795a39f490c5a5142b76b2be0a82ba3b04e84adf5a2fc621be8c45ea273eda675fa9eef
+  languageName: node
+  linkType: hard
+
+"@expo/require-utils@npm:^56.1.3":
+  version: 56.1.3
+  resolution: "@expo/require-utils@npm:56.1.3"
+  dependencies:
+    "@babel/code-frame": ^7.20.0
+    "@babel/core": ^7.25.2
+    "@babel/plugin-transform-modules-commonjs": ^7.24.8
+  peerDependencies:
+    typescript: ^5.0.0 || ^5.0.0-0 || ^6.0.0
+  peerDependenciesMeta:
+    typescript:
+      optional: true
+  checksum: 46055beecff5781a396d3b97ac3bb18a637e0c1ad47f6f2589f0942b3d2b9ee2fc7b638ff20dbc1e9198be49ee3c91b355d6dccf7a22574fe4388690f52aa4d7
   languageName: node
   linkType: hard
 
@@ -2148,6 +2228,15 @@ __metadata:
   dependencies:
     cross-spawn: ^7.0.3
   checksum: d99e5ff6d303ec9b0105f97c4fa6c65bca526c7d4d0987997c35cc745fa8224adf009942d01808192ebb9fa30619a53316641958631e85cf17b773d9eeda2597
+  languageName: node
+  linkType: hard
+
+"@expo/spawn-async@npm:^1.8.0":
+  version: 1.8.0
+  resolution: "@expo/spawn-async@npm:1.8.0"
+  dependencies:
+    cross-spawn: ^7.0.6
+  checksum: fc5202df888ee38915a215dfa177b0581358d378274077814f81ba5b3fe5ee2cd93271c091aba7429337a997af20efb7a38cec63cce6bb0b04395786853c1e30
   languageName: node
   linkType: hard
 
@@ -2708,9 +2797,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pirles/react-native-element-dropdown@patch:@pirles/react-native-element-dropdown@npm%3A2.15.0#./.yarn/patches/@pirles-react-native-element-dropdown-npm-2.15.0-51dcb6fc77.patch::locator=aniflix%40workspace%3A.":
+"@pirles/react-native-element-dropdown@patch:@pirles/react-native-element-dropdown@npm%3A2.15.0#./.yarn/patches/@pirles-react-native-element-dropdown-npm-2.15.0-51dcb6fc77.patch::locator=naoflix%40workspace%3A.":
   version: 2.15.0
-  resolution: "@pirles/react-native-element-dropdown@patch:@pirles/react-native-element-dropdown@npm%3A2.15.0#./.yarn/patches/@pirles-react-native-element-dropdown-npm-2.15.0-51dcb6fc77.patch::version=2.15.0&hash=108578&locator=aniflix%40workspace%3A."
+  resolution: "@pirles/react-native-element-dropdown@patch:@pirles/react-native-element-dropdown@npm%3A2.15.0#./.yarn/patches/@pirles-react-native-element-dropdown-npm-2.15.0-51dcb6fc77.patch::version=2.15.0&hash=108578&locator=naoflix%40workspace%3A."
   dependencies:
     lodash: ^4.17.21
   peerDependencies:
@@ -4211,97 +4300,6 @@ __metadata:
   checksum: 874972efe5c4202ab0a68379481fbd3d1b5d0a7bd6d3cc21d40d3536ebff3352a2a1fabb632d4fd2cc7fe4cbdcd5ed6782084c9bbf7f32a1536d18f9da5007d4
   languageName: node
   linkType: hard
-
-"aniflix@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "aniflix@workspace:."
-  dependencies:
-    "@babel/core": ^7.26.10
-    "@babel/preset-env": ^7.26.9
-    "@babel/runtime": ^7.27.0
-    "@domir/react-native-measure-text": 0.1.8
-    "@legendapp/list": 2.0.19
-    "@pirles/react-native-element-dropdown": ^2.15.0
-    "@react-native-async-storage/async-storage": 2.1.0
-    "@react-native-community/cli": ^20.0.2
-    "@react-native-community/cli-platform-android": ^20.0.2
-    "@react-native-google-signin/google-signin": ^16.1.2
-    "@react-native-vector-icons/entypo": ^12.4.3
-    "@react-native-vector-icons/fontawesome": ^12.4.3
-    "@react-native-vector-icons/fontawesome5": ^12.3.3
-    "@react-native-vector-icons/fontisto": ^12.4.3
-    "@react-native-vector-icons/material-design-icons": ^12.4.3
-    "@react-native-vector-icons/material-icons": ^12.4.3
-    "@react-native/babel-preset": 0.81.4
-    "@react-native/eslint-config": 0.81.4
-    "@react-native/metro-config": 0.81.4
-    "@react-native/typescript-config": 0.81.4
-    "@react-navigation/bottom-tabs": ^7.15.5
-    "@react-navigation/drawer": ^7.9.4
-    "@react-navigation/native": ^7.1.33
-    "@react-navigation/native-stack": ^7.14.5
-    "@rnx-kit/align-deps": ^3.2.1
-    "@shopify/flash-list": 2.3.0
-    "@supabase/supabase-js": ^2.100.1
-    "@types/crypto-js": ^4.2.2
-    "@types/he": ^1.2.3
-    "@types/jest": ^29.5.14
-    "@types/metro-config": ^0.76.3
-    "@types/react": ^19.1.12
-    "@types/react-native-vector-icons": ^6.4.18
-    "@types/react-test-renderer": ^19.1.0
-    axios: ^1.11.0
-    babel-jest: ^29.6.3
-    babel-plugin-inline-import: ^3.0.0
-    babel-plugin-react-compiler: ^1.0.0
-    buffer: ^6.0.3
-    cheerio: 1.0.0-rc.12
-    crypto-js: ^4.2.0
-    depcheck: ^1.4.7
-    eslint: ^8.19.0
-    eslint-plugin-prettier: ^5.5.4
-    eslint-plugin-react-compiler: ^19.1.0-rc.2
-    expo: ^54.0.33
-    expo-document-picker: ~14.0.8
-    expo-linear-gradient: ~15.0.8
-    expo-splash-screen: ~31.0.13
-    expo-sqlite: ~16.0.10
-    expo-updates: ~29.0.16
-    expo-video: ~3.0.16
-    googletrans: ^1.0.27
-    he: ^1.2.0
-    jest: ^29.6.3
-    moment: ^2.30.1
-    prettier: ^3.5.2
-    react: 19.1.0
-    react-native: 0.81.4
-    react-native-blob-util: ^0.24.7
-    react-native-dotenv: ^3.4.11
-    react-native-edge-to-edge: ^1.8.1
-    react-native-error-boundary: ^3.1.0
-    react-native-gesture-handler: 2.30.0
-    react-native-keyboard-controller: ^1.21.0
-    react-native-marked: ^8.0.1
-    react-native-nitro-device-info: ^1.7.0
-    react-native-nitro-modules: ^0.35.2
-    react-native-onesignal: ^5.4.1
-    react-native-orientation-locker: ^1.7.0
-    react-native-paper: ^5.15.0
-    react-native-reanimated: 4.2.2
-    react-native-saf-x: 2.2.3
-    react-native-safe-area-context: 5.7.0
-    react-native-screens: 4.24.0
-    react-native-svg: ^15.15.3
-    react-native-system-navigation-bar: ^2.8.0
-    react-native-url-polyfill: ^3.0.0
-    react-native-webview: 13.16.1
-    react-native-worklets: 0.7.4
-    react-native-zip-archive: ^7.0.2
-    react-test-renderer: 19.1.0
-    typescript: 5.9.2
-    url: ^0.11.3
-  languageName: unknown
-  linkType: soft
 
 "anser@npm:^1.4.9":
   version: 1.4.10
@@ -6798,14 +6796,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo-splash-screen@npm:~31.0.13":
-  version: 31.0.13
-  resolution: "expo-splash-screen@npm:31.0.13"
+"expo-splash-screen@npm:~56.0.10":
+  version: 56.0.10
+  resolution: "expo-splash-screen@npm:56.0.10"
   dependencies:
-    "@expo/prebuild-config": ^54.0.8
+    "@expo/config-plugins": ~56.0.8
+    "@expo/image-utils": ^0.10.1
+    xml2js: 0.6.0
   peerDependencies:
     expo: "*"
-  checksum: 8d3a352766224be728af798354030b4f71c405ad751a48beaa434857036a21430f832267ff332b11476028a574e17bc4e0b7acf0a7344e69210edc7e2b51e304
+  checksum: 25b8888677592c476c3940905a8bc68d46286a42754c9c4110569f7b57f90ca9427df8971cca13859fbb5f08fd4b20d3c4feda532089b25ebba180e1a53a4f6a
   languageName: node
   linkType: hard
 
@@ -10332,6 +10332,97 @@ __metadata:
   languageName: node
   linkType: hard
 
+"naoflix@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "naoflix@workspace:."
+  dependencies:
+    "@babel/core": ^7.26.10
+    "@babel/preset-env": ^7.26.9
+    "@babel/runtime": ^7.27.0
+    "@domir/react-native-measure-text": 0.1.8
+    "@legendapp/list": 2.0.19
+    "@pirles/react-native-element-dropdown": ^2.15.0
+    "@react-native-async-storage/async-storage": 2.1.0
+    "@react-native-community/cli": ^20.0.2
+    "@react-native-community/cli-platform-android": ^20.0.2
+    "@react-native-google-signin/google-signin": ^16.1.2
+    "@react-native-vector-icons/entypo": ^12.4.3
+    "@react-native-vector-icons/fontawesome": ^12.4.3
+    "@react-native-vector-icons/fontawesome5": ^12.3.3
+    "@react-native-vector-icons/fontisto": ^12.4.3
+    "@react-native-vector-icons/material-design-icons": ^12.4.3
+    "@react-native-vector-icons/material-icons": ^12.4.3
+    "@react-native/babel-preset": 0.81.4
+    "@react-native/eslint-config": 0.81.4
+    "@react-native/metro-config": 0.81.4
+    "@react-native/typescript-config": 0.81.4
+    "@react-navigation/bottom-tabs": ^7.15.5
+    "@react-navigation/drawer": ^7.9.4
+    "@react-navigation/native": ^7.1.33
+    "@react-navigation/native-stack": ^7.14.5
+    "@rnx-kit/align-deps": ^3.2.1
+    "@shopify/flash-list": 2.3.0
+    "@supabase/supabase-js": ^2.100.1
+    "@types/crypto-js": ^4.2.2
+    "@types/he": ^1.2.3
+    "@types/jest": ^29.5.14
+    "@types/metro-config": ^0.76.3
+    "@types/react": ^19.1.12
+    "@types/react-native-vector-icons": ^6.4.18
+    "@types/react-test-renderer": ^19.1.0
+    axios: ^1.11.0
+    babel-jest: ^29.6.3
+    babel-plugin-inline-import: ^3.0.0
+    babel-plugin-react-compiler: ^1.0.0
+    buffer: ^6.0.3
+    cheerio: 1.0.0-rc.12
+    crypto-js: ^4.2.0
+    depcheck: ^1.4.7
+    eslint: ^8.19.0
+    eslint-plugin-prettier: ^5.5.4
+    eslint-plugin-react-compiler: ^19.1.0-rc.2
+    expo: ^54.0.33
+    expo-document-picker: ~14.0.8
+    expo-linear-gradient: ~15.0.8
+    expo-splash-screen: ~56.0.10
+    expo-sqlite: ~16.0.10
+    expo-updates: ~29.0.16
+    expo-video: ~3.0.16
+    googletrans: ^1.0.27
+    he: ^1.2.0
+    jest: ^29.6.3
+    moment: ^2.30.1
+    prettier: ^3.5.2
+    react: 19.1.0
+    react-native: 0.81.4
+    react-native-blob-util: ^0.24.7
+    react-native-dotenv: ^3.4.11
+    react-native-edge-to-edge: ^1.8.1
+    react-native-error-boundary: ^3.1.0
+    react-native-gesture-handler: 2.30.0
+    react-native-keyboard-controller: ^1.21.0
+    react-native-marked: ^8.0.1
+    react-native-nitro-device-info: ^1.7.0
+    react-native-nitro-modules: ^0.35.2
+    react-native-onesignal: ^5.4.1
+    react-native-orientation-locker: ^1.7.0
+    react-native-paper: ^5.15.0
+    react-native-reanimated: 4.2.2
+    react-native-saf-x: 2.2.3
+    react-native-safe-area-context: 5.7.0
+    react-native-screens: 4.24.0
+    react-native-svg: ^15.15.3
+    react-native-system-navigation-bar: ^2.8.0
+    react-native-url-polyfill: ^3.0.0
+    react-native-webview: 13.16.1
+    react-native-worklets: 0.7.4
+    react-native-zip-archive: ^7.0.2
+    react-test-renderer: 19.1.0
+    typescript: 5.9.2
+    url: ^0.11.3
+  languageName: unknown
+  linkType: soft
+
 "natural-compare@npm:^1.4.0":
   version: 1.4.0
   resolution: "natural-compare@npm:1.4.0"
@@ -11319,9 +11410,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-blob-util@patch:react-native-blob-util@npm%3A0.24.7#./.yarn/patches/react-native-blob-util-npm-0.24.7-bd99406f55.patch::locator=aniflix%40workspace%3A.":
+"react-native-blob-util@patch:react-native-blob-util@npm%3A0.24.7#./.yarn/patches/react-native-blob-util-npm-0.24.7-bd99406f55.patch::locator=naoflix%40workspace%3A.":
   version: 0.24.7
-  resolution: "react-native-blob-util@patch:react-native-blob-util@npm%3A0.24.7#./.yarn/patches/react-native-blob-util-npm-0.24.7-bd99406f55.patch::version=0.24.7&hash=b33e96&locator=aniflix%40workspace%3A."
+  resolution: "react-native-blob-util@patch:react-native-blob-util@npm%3A0.24.7#./.yarn/patches/react-native-blob-util-npm-0.24.7-bd99406f55.patch::version=0.24.7&hash=b33e96&locator=naoflix%40workspace%3A."
   dependencies:
     base-64: 0.1.0
     glob: 13.0.1

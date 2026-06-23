@@ -39,7 +39,7 @@
     "expo": "^54.0.33",
     "expo-document-picker": "~14.0.8",
     "expo-linear-gradient": "~15.0.8",
-    "expo-splash-screen": "~31.0.13",
+    "expo-splash-screen": "~56.0.10",
     "expo-sqlite": "~16.0.10",
     "expo-updates": "~29.0.16",
     "expo-video": "~3.0.16",
