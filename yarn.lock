@@ -11306,7 +11306,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-blob-util@npm:^0.24.7":
+"react-native-blob-util@npm:0.24.7":
   version: 0.24.7
   resolution: "react-native-blob-util@npm:0.24.7"
   dependencies:
@@ -11316,6 +11316,19 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: d681da0b474e735421175d8f7869069543070cb9fca7ecc873e65c425d997c88e10ff1ad4c962aab2e753749c94c22f56769ba11ce037d2221cc4b569bde35ce
+  languageName: node
+  linkType: hard
+
+"react-native-blob-util@patch:react-native-blob-util@npm%3A0.24.7#./.yarn/patches/react-native-blob-util-npm-0.24.7-bd99406f55.patch::locator=aniflix%40workspace%3A.":
+  version: 0.24.7
+  resolution: "react-native-blob-util@patch:react-native-blob-util@npm%3A0.24.7#./.yarn/patches/react-native-blob-util-npm-0.24.7-bd99406f55.patch::version=0.24.7&hash=b33e96&locator=aniflix%40workspace%3A."
+  dependencies:
+    base-64: 0.1.0
+    glob: 13.0.1
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: fe6a7915b8c5eb49ad57462799168e4d511bf496bc0220fd476c8b08141600382215b4b122ac1d5b6e8c63572676b74b8bc6e1fa866b6a7fc3e8d38c57761321
   languageName: node
   linkType: hard
 

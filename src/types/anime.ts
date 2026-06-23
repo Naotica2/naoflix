@@ -62,6 +62,7 @@ type AniStreaming = FromUrl & {
   streamingLink: string;
   streamingType: 'raw' | 'embed';
   downloadLink: string;
+  isHls?: boolean;
   resolution: string | undefined;
   resolutionRaw: {
     resolution: string;
@@ -77,9 +78,17 @@ type AniStreaming = FromUrl & {
   reqResolutionWithNonceAction: string;
 };
 
+export interface CarouselItem {
+  title: string;
+  thumbnailUrl: string;
+  streamingLink: string;
+  rating?: string;
+}
+
 interface EpisodeBaruHome {
   newAnime: NewAnimeList[];
   jadwalAnime: JadwalAnime;
+  carousel?: CarouselItem[];
 }
 
 interface listAnimeTypeList {

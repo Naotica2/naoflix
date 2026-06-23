@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import RNFetchBlob from 'react-native-blob-util';
 import Orientation from 'react-native-orientation-locker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from 'react-native-paper';
 import {
   default as Reanimated,
@@ -28,7 +29,6 @@ import {
   withTiming,
 } from 'react-native-reanimated';
 import { version as appVersion, OTAJSVersion } from '../../../package.json';
-import runningText from '../../assets/runningText.json';
 import useGlobalStyles from '../../assets/style';
 import defaultDatabase from '../../misc/defaultDatabaseValue.json';
 import { EpisodeBaruHome } from '../../types/anime';
@@ -37,10 +37,12 @@ import { RootStackNavigator } from '../../types/navigation';
 import AnimeAPI from '../../utils/AnimeAPI';
 import { DANGER_MIGRATE_OLD_HISTORY, DatabaseManager } from '../../utils/DatabaseManager';
 import deviceUserAgent from '../../utils/deviceUserAgent';
-import { AnimeMovieWebView } from '../../utils/scrapers/animeMovie';
+// Removed AnimeMovieWebView import
 import { fetchLatestDomain } from '../../utils/scrapers/animeSeries';
+import { fetchLatestAnimeIndoDomain } from '../../utils/scrapers/animeindo';
 import { useAuth } from '../../misc/AuthContext';
-// import { Comics1WebView } from '../../utils/scrapers/comics1';
+import { useLevel } from '../../misc/LevelContext';
+import { EXP_REWARDS } from '../../utils/LevelSystem';
 
 const saweriaIcon = require('../../assets/saweria_icon.png');
 
@@ -90,6 +92,7 @@ type Props = NativeStackScreenProps<RootStackNavigator, 'connectToServer'>;
 function Loading(props: Props) {
   const styles = useStyles();
   const { user, confirmedNoProfile } = useAuth();
+  const { addExp } = useLevel();
 
   useEffect(() => {
     Orientation.lockToPortrait();
@@ -99,11 +102,9 @@ function Loading(props: Props) {
     'Menyiapkan database': false,
     'Mengecek versi aplikasi': false,
     'Mendapatkan domain terbaru': false,
-    'Mempersiapkan data anime movie': false,
     'Menghubungkan ke server': false,
   });
 
-  const [isAnimeMovieWebViewOpen, setIsAnimeMovieWebViewOpen] = useState(false);
   // const [isComics1WebViewOpen, setIsComics1WebViewOpen] = useState(false);
   const [progressValue, setProgressValue] = useState(0);
   const progressValueAnimation = useSharedValue(0);
@@ -168,7 +169,10 @@ function Loading(props: Props) {
   }, []);
 
   const fetchDomain = useCallback(async (signal: AbortSignal) => {
-    await fetchLatestDomain(signal).catch(() => {
+    await Promise.all([
+      fetchLatestDomain(signal).catch(() => {}),
+      fetchLatestAnimeIndoDomain(signal).catch(() => {}),
+    ]).catch(() => {
       ToastAndroid.show(
         'Gagal mendapatkan domain terbaru, menggunakan domain default',
         ToastAndroid.SHORT,
@@ -178,7 +182,7 @@ function Loading(props: Props) {
 
   const checkNativeAppVersion = useCallback(async (signal: AbortSignal) => {
     const abort = new AbortController();
-    const timoeut = setTimeout(() => abort.abort(), 5000);
+    const timoeut = setTimeout(() => abort.abort(), 15000);
     const onAbort = () => abort.abort();
     signal.addEventListener('abort', onAbort);
 
@@ -223,22 +227,9 @@ function Loading(props: Props) {
     return data[0];
   }, []);
 
-  const moviePromiseResolve = useRef<(val?: unknown) => void>(null);
-  const [animeMoviePromise] = useState(
-    () => new Promise(res => (moviePromiseResolve.current = res)),
-  );
-  // const comics1PromiseResolve = useRef<(val?: unknown) => void>(null);
   // const [comics1Promise] = useState(
   //   () => new Promise(res => (comics1PromiseResolve.current = res)),
   // );
-  const onAnimeMovieReady = useCallback(() => {
-    setLoadStatus(old => ({
-      ...old,
-      'Mempersiapkan data anime movie': true,
-    }));
-    setIsAnimeMovieWebViewOpen(false);
-    moviePromiseResolve.current?.();
-  }, []);
   // const onComics1Ready = useCallback(() => {
   //   setLoadStatus(old => ({
   //     ...old,
@@ -257,24 +248,36 @@ function Loading(props: Props) {
 
   const connectToServers = useCallback(
     async (signal: AbortSignal) => {
-      setIsAnimeMovieWebViewOpen(true);
       // setIsComics1WebViewOpen(true);
       const animeData = await fetchAnimeData(signal);
-      Promise.all([animeData, animeMoviePromise]).then(([anime]) => {
-        if (signal.aborted) return;
-        if (anime === undefined) {
-          return;
-        }
+      if (signal.aborted) return;
+      if (animeData === undefined) {
+        return;
+      }
+      
+      const anime = animeData;
         // Read latest auth state at navigation time via ref
         const { user: currentUser, confirmedNoProfile: noProfile } = authRef.current;
+
+        // Daily login EXP reward
+        if (currentUser) {
+          AsyncStorage.getItem('last_login_reward_date').then(lastDate => {
+            const today = new Date().toDateString();
+            if (lastDate !== today) {
+              addExp(EXP_REWARDS.LOGIN);
+              AsyncStorage.setItem('last_login_reward_date', today);
+              ToastAndroid.show(`+${EXP_REWARDS.LOGIN} EXP (Daily Login)`, ToastAndroid.SHORT);
+            }
+          });
+        }
+
         if (currentUser && noProfile) {
           props.navigation.dispatch(StackActions.replace('UsernameSetupScreen'));
         } else {
           props.navigation.dispatch(StackActions.replace('Home', { data: anime }));
         }
-      });
     },
-    [animeMoviePromise, fetchAnimeData, props.navigation],
+    [fetchAnimeData, props.navigation],
   );
 
   useFocusEffect(
@@ -287,7 +290,6 @@ function Loading(props: Props) {
           'Menyiapkan database': false,
           'Mengecek versi aplikasi': false,
           'Mendapatkan domain terbaru': false,
-          'Mempersiapkan data anime movie': false,
           'Menghubungkan ke server': false,
         });
         await prepareData();
@@ -322,36 +324,6 @@ function Loading(props: Props) {
               'Mendapatkan domain terbaru': true,
             }));
             connectToServers(signal);
-          }
-          const OTATimeout = setTimeout(() => {
-            if (signal.aborted) return;
-            ToastAndroid.show('Pengecekan versi dilewati', ToastAndroid.SHORT);
-            OTADone();
-          }, 6_000);
-          const OTAUpdate = await Updates.checkForUpdateAsync()
-            .catch(() => {
-              if (!signal.aborted) {
-                ToastAndroid.show('Gagal mengecek OTA update', ToastAndroid.SHORT);
-              }
-              return null;
-            })
-            .finally(() => clearTimeout(OTATimeout));
-
-          if (signal.aborted) return;
-
-          if (OTAUpdate !== null && OTAUpdate.isAvailable) {
-            const changelog = 'Pembaruan tersedia. Aplikasi akan mengunduh pembaruan terbaru...';
-
-            if (signal.aborted) return;
-
-            props.navigation.dispatch(
-              StackActions.replace('NeedUpdate', {
-                changelog,
-                size: 0,
-                nativeUpdate: false,
-              }),
-            );
-            return;
           }
           await OTADone();
         } else {
@@ -395,44 +367,13 @@ function Loading(props: Props) {
     width: `${progressValueAnimation.get()}%`,
   }));
 
-  const quotes = useMemo(
-    () => runningText[Math.floor(runningText.length * Math.random())] ?? {},
-    [],
-  );
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.content}>
-        {isAnimeMovieWebViewOpen && (
-          <Suspense>
-            <AnimeMovieWebView
-              isWebViewShown={isAnimeMovieWebViewOpen}
-              setIsWebViewShown={setIsAnimeMovieWebViewOpen}
-              onAnimeMovieReady={onAnimeMovieReady}
-            />
-            {/* <Comics1WebView
-              isWebViewShown={isComics1WebViewOpen}
-              setIsWebViewShown={setIsComics1WebViewOpen}
-              onComics1Ready={onComics1Ready}
-            /> */}
-          </Suspense>
-        )}
-
         <View style={styles.header}>
           <Text style={styles.appName}>NaoFlix</Text>
-          <Text style={styles.subtitle}>Loading your anime experience...</Text>
-        </View>
-
-        <View style={styles.quoteCard}>
-          <MaterialIcon name="format-quote-open" size={24} color={styles.quoteIcon.color} />
-          <Text style={styles.quoteText}>"{quotes.quote}"</Text>
-          <Text style={styles.quoteAuthor}>— {quotes.by}</Text>
-          <MaterialIcon
-            name="format-quote-close"
-            size={24}
-            color={styles.quoteIcon.color}
-            style={styles.quoteCloseIcon}
-          />
+          <Text style={styles.subtitle}>Memuat pengalaman anime-mu...</Text>
         </View>
 
         <View style={styles.progressContainer}>
@@ -446,9 +387,9 @@ function Loading(props: Props) {
           {Object.entries(loadStatus).map(([key, value]) => (
             <View style={styles.statusItem} key={key}>
               {value ? (
-                <MaterialIcon name="check-circle" size={20} color="#4CAF50" />
+                <MaterialIcon name="check-circle" size={18} color="#3b82f6" />
               ) : (
-                <ActivityIndicator size="small" color={styles.loadingIndicator.color} />
+                <ActivityIndicator size="small" color="#3b82f6" />
               )}
               <Text style={styles.statusText}>{key}</Text>
             </View>
@@ -478,8 +419,9 @@ function useStyles() {
       StyleSheet.create({
         container: {
           flexGrow: 1,
-          padding: 24,
+          padding: 32,
           justifyContent: 'space-between',
+          backgroundColor: isDark ? '#0a0a0a' : '#fafafa',
         },
         content: {
           flex: 1,
@@ -488,88 +430,63 @@ function useStyles() {
         },
         header: {
           alignItems: 'center',
-          marginBottom: 32,
+          marginBottom: 48,
         },
         appName: {
-          fontSize: 32,
-          fontWeight: 'bold',
-          color: theme.colors.primary,
+          fontSize: 36,
+          fontWeight: '800',
+          color: '#3b82f6',
           marginBottom: 8,
+          letterSpacing: -1,
         },
         subtitle: {
-          fontSize: 16,
-          color: isDark ? '#aaa' : '#666',
-        },
-        quoteCard: {
-          backgroundColor: isDark ? '#1E1E1E' : '#fff',
-          borderRadius: 12,
-          padding: 20,
-          marginBottom: 24,
-          elevation: 2,
-        },
-        quoteIcon: {
-          color: theme.colors.primary,
-          opacity: 0.6,
-        },
-        quoteCloseIcon: {
-          alignSelf: 'flex-end',
-          marginTop: -10,
-        },
-        quoteText: {
-          fontSize: 16,
-          fontStyle: 'italic',
-          color: isDark ? '#e0e0e0' : '#333',
-          textAlign: 'center',
-          marginVertical: 8,
-          lineHeight: 24,
-        },
-        quoteAuthor: {
           fontSize: 14,
-          fontWeight: 'bold',
-          color: theme.colors.primary,
-          textAlign: 'right',
-          marginTop: 8,
+          color: isDark ? '#666' : '#999',
+          fontWeight: '500',
         },
         progressContainer: {
           flexShrink: 0,
           flexWrap: 'nowrap',
           width: '100%',
-          marginBottom: 24,
+          marginBottom: 32,
           alignItems: 'center',
         },
         progressBar: {
-          height: 8,
+          height: 4,
           width: '100%',
-          backgroundColor: isDark ? '#333' : '#e0e0e0',
-          borderRadius: 4,
+          backgroundColor: isDark ? '#222' : '#e8e8e8',
+          borderRadius: 2,
           overflow: 'hidden',
           marginBottom: 8,
         },
         progressFill: {
           height: '100%',
-          backgroundColor: theme.colors.primary,
-          borderRadius: 4,
+          backgroundColor: '#3b82f6',
+          borderRadius: 2,
         },
         progressText: {
-          fontSize: 14,
-          color: isDark ? '#aaa' : '#666',
+          fontSize: 13,
+          color: isDark ? '#666' : '#999',
+          fontWeight: '600',
         },
         statusContainer: {
           width: '100%',
-          backgroundColor: isDark ? '#1E1E1E' : '#fff',
-          borderRadius: 12,
+          backgroundColor: isDark ? '#151515' : '#fff',
+          borderRadius: 16,
           padding: 16,
-          elevation: 2,
+          borderWidth: 1,
+          borderColor: isDark ? '#222' : '#eee',
         },
         statusItem: {
           flexDirection: 'row',
           alignItems: 'center',
-          paddingVertical: 8,
+          paddingVertical: 10,
         },
         statusText: {
           fontSize: 14,
-          color: isDark ? '#e0e0e0' : '#333',
+          color: isDark ? '#ccc' : '#444',
           marginLeft: 12,
+          fontWeight: '500',
         },
         footer: {
           alignItems: 'center',
@@ -584,28 +501,31 @@ function useStyles() {
         socialButton: {
           flexDirection: 'row',
           alignItems: 'center',
-          backgroundColor: isDark ? '#252525' : '#e0e0e0',
+          backgroundColor: isDark ? '#1a1a1a' : '#f0f0f0',
           paddingVertical: 8,
           paddingHorizontal: 16,
           borderRadius: 20,
           marginHorizontal: 8,
+          borderWidth: 1,
+          borderColor: isDark ? '#333' : '#ddd',
         },
         socialButtonText: {
-          fontSize: 14,
-          fontWeight: '500',
-          color: isDark ? '#e0e0e0' : '#333',
+          fontSize: 13,
+          fontWeight: '600',
+          color: isDark ? '#ccc' : '#444',
           marginLeft: 8,
         },
         versionText: {
-          fontSize: 12,
-          color: isDark ? '#666' : '#999',
+          fontSize: 11,
+          color: isDark ? '#444' : '#bbb',
           marginBottom: 8,
+          fontWeight: '500',
         },
         loadingIndicator: {
-          color: theme.colors.primary,
+          color: '#3b82f6',
         },
       }),
-    [isDark, theme.colors.primary],
+    [isDark],
   );
 }
 

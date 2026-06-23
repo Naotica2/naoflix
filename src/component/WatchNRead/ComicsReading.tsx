@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/core';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Linking, View } from 'react-native';
+import { AppState, Linking, View, ToastAndroid } from 'react-native';
 import { SystemBars } from 'react-native-edge-to-edge';
 import {
   Appbar,
@@ -21,12 +21,17 @@ import DialogManager from '../../utils/dialogManager';
 import setHistory from '../../utils/historyControl';
 import { getComicsReading } from '../../utils/scrapers/comicsv2';
 import { getKomikuReading } from '../../utils/scrapers/komiku';
+// Source-aware routing: use getComicsReading for komikindo/softkomik/mynimeku, getKomikuReading for komiku
+import { useLevel } from '../../misc/LevelContext';
+import { EXP_REWARDS } from '../../utils/LevelSystem';
 
 type Props = NativeStackScreenProps<RootStackNavigator, 'ComicsReading'>;
 
 export default function ComicsReading(props: Props) {
   const theme = useTheme();
   const webViewRef = useRef<WebView>(null);
+  const { addExp } = useLevel();
+  const awardedChaptersRef = useRef<Set<string>>(new Set());
 
   const abortController = useRef<AbortController>(null);
   const imageFetchOnRNAbortController = useRef<AbortController>(null);
@@ -147,12 +152,6 @@ export default function ComicsReading(props: Props) {
             }
           />
           <Appbar.Action icon={'download'} onPress={startComicsDownload} />
-          <Appbar.Action
-            icon={isFullscreen ? 'fullscreen-exit' : 'fullscreen'}
-            onPress={() => {
-              setIsFullscreen(f => !f);
-            }}
-          />
         </Appbar.Header>
       ),
     });
@@ -166,49 +165,6 @@ export default function ComicsReading(props: Props) {
     startComicsDownload,
   ]);
 
-  // --- Fetch Logic ---
-
-  const fetchImageAndSendToWebView = async (id: number, url: string) => {
-    try {
-      const response = await fetch(url, {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          Pragma: 'no-cache',
-          Expires: '0',
-          ...(props.route.params.link.includes('softkomik')
-            ? { Referer: new URL(props.route.params.link).href }
-            : {}),
-        },
-        cache: 'no-cache',
-        signal: imageFetchOnRNAbortController.current?.signal,
-      });
-
-      const blob = await response.blob();
-      const reader = new FileReader();
-
-      reader.onloadend = () => {
-        const base64data = reader.result;
-        if (typeof base64data === 'string') {
-          const safeBase64 = base64data.replace(/(\r\n|\n|\r)/gm, '');
-
-          webViewRef.current?.injectJavaScript(`
-            window.requestAnimationFrame(() => {
-              window.receiveImageBase64(${id}, "${safeBase64}");
-            });
-            true;
-          `);
-        }
-      };
-
-      reader.onerror = () => {
-        webViewRef.current?.injectJavaScript(`window.onImageErrorById(${id}); true;`);
-      };
-
-      reader.readAsDataURL(blob);
-    } catch (error) {
-      webViewRef.current?.injectJavaScript(`window.onImageErrorById(${id}); true;`);
-    }
-  };
 
   const handleMessage = (event: WebViewMessageEvent) => {
     try {
@@ -225,13 +181,14 @@ export default function ComicsReading(props: Props) {
               { lastDuration: visibleImageId },
               false,
               true,
+              props.route.params.title,
             );
           }
         }
-      } else if (data.type === 'REQUEST_IMAGE') {
-        fetchImageAndSendToWebView(data.id, data.url);
       } else if (data.type === 'END_REACHED') {
         setIsAutoScrolling(false);
+      } else if (data.type === 'TOGGLE_FULLSCREEN') {
+        setIsFullscreen(f => !f);
       }
     } catch (e) {
       if (event.nativeEvent.data === 'endReached') {
@@ -271,7 +228,7 @@ export default function ComicsReading(props: Props) {
 
       setSnackBarText('Mengambil data...');
       setIsSnackBarOpen(true);
-      (url.includes('komikindo') || url.includes('softkomik')
+      (url.includes('komikindo') || url.includes('softkomik') || url.includes('mynimeku') || url.includes('bacakomik') || url.includes('page=chapter') || url.includes('fruatre.my.id') || url.startsWith('shinigami://') || url.startsWith('komikcast://')
         ? getComicsReading
         : getKomikuReading)(url, abortController.current?.signal)
         .then(res => {
@@ -282,7 +239,7 @@ export default function ComicsReading(props: Props) {
             link: url,
             historyData: undefined,
           });
-          setHistory(res, url, false, undefined, false, true);
+          setHistory(res, url, false, undefined, false, true, props.route.params.title);
         })
         .catch(err => {
           if (err.name === 'AbortError') return;
@@ -295,6 +252,15 @@ export default function ComicsReading(props: Props) {
 
   const { data } = props.route.params;
   const comicImages = props.route.params.data.comicImages;
+
+  useEffect(() => {
+    const link = props.route.params.link;
+    if (link && !awardedChaptersRef.current.has(link)) {
+      awardedChaptersRef.current.add(link);
+      addExp(EXP_REWARDS.READ_CHAPTER);
+      ToastAndroid.show(`+${EXP_REWARDS.READ_CHAPTER} EXP`, ToastAndroid.SHORT);
+    }
+  }, [props.route.params.link, addExp]);
 
   // --- HTML Generation ---
 
@@ -315,7 +281,7 @@ export default function ComicsReading(props: Props) {
       }
       
       .img-wrapper {
-        min-height: 140vw;
+        min-height: 50vh;
         width: 100%;
         position: relative;
         background-color: ${shimmerBase};
@@ -323,8 +289,6 @@ export default function ComicsReading(props: Props) {
         display: flex;
         justify-content: center;
         align-items: center;
-        content-visibility: auto; /* Skip rendering elemen off-screen */
-        contain-intrinsic-size: 100vw 140vw; /* Estimasi ukuran untuk content-visibility */
       }
 
       .img-wrapper::before {
@@ -338,7 +302,6 @@ export default function ComicsReading(props: Props) {
         background-size: 200% 100%;
         animation: shimmer 1.5s infinite;
         z-index: 1;
-        will-change: background-position; /* Optimasi animasi */
       }
 
       @keyframes shimmer {
@@ -365,7 +328,6 @@ export default function ComicsReading(props: Props) {
       .img-wrapper.has-loaded {
         min-height: auto;
         background: none;
-        contain-intrinsic-size: auto; /* Reset setelah load */
       }
       .img-wrapper.has-loaded::before {
         display: none;
@@ -419,77 +381,13 @@ export default function ComicsReading(props: Props) {
     })
     .join('\n');
 
-  const html = `<head><meta name="viewport" content="width=device-width, initial-scale=1.0" />${styles}</head><body>${body}</body>`;
+  const html = `<head><meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="referrer" content="no-referrer" />${styles}</head><body>${body}</body>`;
 
   const injectedJavaScript = `
     // --- Communication ---
     function sendToRN(data) {
         window.ReactNativeWebView.postMessage(JSON.stringify(data));
     }
-    window.receiveImageBase64 = (id, base64Data) => {
-        const img = document.getElementById(id);
-        const wrapper = document.getElementById('wrap-' + id);
-        if (!img || !wrapper) return;
-
-        const bufferImg = new Image();
-        bufferImg.src = base64Data;
-        bufferImg.decode()
-            .then(() => {
-                const wrapperRect = wrapper.getBoundingClientRect();
-                const isAboveViewport = wrapperRect.top < 0;
-
-                const oldHeight = wrapper.offsetHeight;
-                const oldScrollY = window.scrollY;
-
-                img.src = base64Data;
-                img.classList.add('loaded');
-                img.removeAttribute('data-fetching');
-            
-                wrapper.classList.add('has-loaded');
-                wrapper.classList.remove('is-error'); 
-            
-                const newHeight = wrapper.offsetHeight;
-                const delta = newHeight - oldHeight;
-
-                if (isAboveViewport && delta !== 0) {
-                    window.scrollTo(0, oldScrollY + delta);
-                }
-                window.fetchObserver.unobserve(img);
-              })
-              .catch((err) => {
-                img.src = base64Data;
-                img.removeAttribute('data-fetching');
-        });
-    };
-
-    window.onImageErrorById = (id) => {
-       const wrapper = document.getElementById('wrap-' + id);
-       const img = document.getElementById(id);
-       
-       if (img) img.removeAttribute('data-fetching');
-       if (wrapper) {
-         wrapper.classList.add('is-error');
-         const icon = wrapper.querySelector('.error-icon');
-         if(icon) icon.style.display = 'block';
-       }
-    };
-
-    // Retry Listener
-    document.addEventListener('click', (e) => {
-      const wrapper = e.target.closest('.img-wrapper.is-error');
-      if (wrapper) {
-        const img = wrapper.querySelector('img');
-        if (img) {
-          wrapper.classList.remove('is-error');
-          const icon = wrapper.querySelector('.error-icon');
-          if(icon) icon.style.display = 'none';
-          img.style.display = 'block';
-
-          sendToRN({ type: 'REQUEST_IMAGE', id: img.id, url: img.dataset.src });
-          img.setAttribute('data-fetching', 'true');
-        }
-      }
-    });
 
     // --- Auto Scroll ---
     const PIXELS_PER_SECOND = 60;
@@ -560,14 +458,13 @@ export default function ComicsReading(props: Props) {
     };
 
     const historyObserver = new IntersectionObserver((entries) => {
-      // Kita hanya ambil elemen yang intersecting
       const visibleEntry = entries.find(e => e.isIntersecting);
       if (visibleEntry) {
          sendScrollUpdate(visibleEntry.target.id);
       }
     }, historyOptions);
 
-    // 2. Fetch Observer
+    // 2. Fetch Observer (Direct Load)
     const fetchOptions = {
       root: null,
       rootMargin: '250% 0px 250% 0px',
@@ -577,29 +474,39 @@ export default function ComicsReading(props: Props) {
     window.fetchObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         const img = entry.target;
-
-        if (entry.isIntersecting) {
-            if (!img.loadTimer) {
-              img.loadTimer = setTimeout(() => {
-                if (!img.classList.contains('loaded') && !img.hasAttribute('data-fetching')) {
-                  img.setAttribute('data-fetching', 'true');
-                  sendToRN({
-                    type: 'REQUEST_IMAGE',
-                    id: img.id,
-                    url: img.dataset.src
-                  });
-                }
-                img.loadTimer = null;
-              }, 150); 
-            }
-        } else {
-            if (img.loadTimer) {
-                clearTimeout(img.loadTimer);
-                img.loadTimer = null;
-            }
+        if (entry.isIntersecting && !img.src) {
+           const wrapper = document.getElementById('wrap-' + img.id);
+           img.onload = () => {
+             img.classList.add('loaded');
+             wrapper.classList.add('has-loaded');
+             wrapper.classList.remove('is-error'); 
+           };
+           img.onerror = () => {
+             wrapper.classList.add('is-error');
+             const icon = wrapper.querySelector('.error-icon');
+             if(icon) icon.style.display = 'block';
+           };
+           img.src = img.dataset.src;
+           window.fetchObserver.unobserve(img);
         }
       });
     }, fetchOptions);
+
+    // Retry Listener & Fullscreen Toggle
+    document.addEventListener('click', (e) => {
+      const wrapper = e.target.closest('.img-wrapper.is-error');
+      if (wrapper) {
+        const img = wrapper.querySelector('img');
+        if (img) {
+          wrapper.classList.remove('is-error');
+          const icon = wrapper.querySelector('.error-icon');
+          if(icon) icon.style.display = 'none';
+          img.src = img.dataset.src + "?retry=" + new Date().getTime();
+        }
+      } else {
+        sendToRN({ type: 'TOGGLE_FULLSCREEN' });
+      }
+    });
 
     // Init Observers
     const allImages = document.querySelectorAll('img');
@@ -611,22 +518,6 @@ export default function ComicsReading(props: Props) {
 
   return (
     <View style={{ flex: 1 }}>
-      <View
-        style={{
-          display: isFullscreen ? 'flex' : 'none',
-          position: 'absolute',
-          top: 5,
-          right: 5,
-          zIndex: 999,
-        }}>
-        <IconButton
-          onPress={() => setIsFullscreen(false)}
-          iconColor={theme.colors.primary}
-          icon="fullscreen-exit"
-          size={30}
-          mode="outlined"
-        />
-      </View>
       <Portal>
         <Snackbar
           duration={Infinity}
@@ -647,12 +538,12 @@ export default function ComicsReading(props: Props) {
         ref={webViewRef}
         style={{ flex: 1, backgroundColor: bgColor }}
         overScrollMode="never"
-        cacheEnabled={false}
-        source={{ html }}
+        source={{ html, baseUrl: props.route.params.link.startsWith('komikcast://') ? 'https://komikcast.cc/' : props.route.params.link }}
         injectedJavaScript={injectedJavaScript}
         onMessage={handleMessage}
         showsVerticalScrollIndicator={false}
         androidLayerType="hardware"
+        userAgent="Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
       />
 
       <View>

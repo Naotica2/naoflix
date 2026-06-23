@@ -68,6 +68,11 @@ type VideoPlayerProps = {
   headers?: Record<string, string>;
   batteryAndClock?: React.JSX.Element;
   isHls?: boolean;
+  onNextEp?: () => void;
+  onPrevEp?: () => void;
+  disableNextEp?: boolean;
+  disablePrevEp?: boolean;
+  showNextPrevButtons?: boolean;
 };
 
 const ICON_SIZE = 45;
@@ -91,6 +96,11 @@ function VideoPlayer({
   headers,
   batteryAndClock,
   isHls = false,
+  onNextEp,
+  onPrevEp,
+  disableNextEp,
+  disablePrevEp,
+  showNextPrevButtons,
 }: VideoPlayerProps) {
   useKeepAwake();
 
@@ -434,6 +444,11 @@ function VideoPlayer({
             headers={headers}
             lastTimeError={currentDurationSecond}
             onLoad={onLoad}
+            onNextEp={onNextEp}
+            onPrevEp={onPrevEp}
+            disableNextEp={disableNextEp}
+            disablePrevEp={disablePrevEp}
+            showNextPrevButtons={showNextPrevButtons}
           />
           <BottomControl
             currentDurationSecond={currentDurationSecond}
@@ -591,6 +606,11 @@ function CenterControl({
   onRewind: () => void;
   player: ExpoVideoPlayer;
   lastTimeError: SharedValue<number>;
+  onNextEp?: () => void;
+  onPrevEp?: () => void;
+  disableNextEp?: boolean;
+  disablePrevEp?: boolean;
+  showNextPrevButtons?: boolean;
 } & Pick<VideoPlayerProps, 'streamingURL' | 'headers' | 'onLoad'>) {
   return (
     <View
@@ -603,9 +623,15 @@ function CenterControl({
         alignSelf: 'center',
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 30,
+        gap: 20,
       }}>
       {/* Im wrapping the TouchableOpacity in "View" with onStartShouldSetResponder because RNGH's Touchables still execute the parent "Pressable" pressIn/Out */}
+      {showNextPrevButtons && (
+        <TouchableOpacity onPress={onPrevEp} disabled={disablePrevEp} style={{ borderRadius: 50, opacity: disablePrevEp ? 0.3 : 1 }}>
+          <Icons name="skip-previous" size={ICON_SIZE - 5} color={'white'} />
+        </TouchableOpacity>
+      )}
+
       <TouchableOpacity onPress={onRewind} style={{ borderRadius: 50 }}>
         <Icons name="replay-5" size={ICON_SIZE} color={'white'} />
       </TouchableOpacity>
@@ -641,6 +667,12 @@ function CenterControl({
       <TouchableOpacity onPress={onForward} style={{ borderRadius: 50 }}>
         <Icons name="forward-10" size={ICON_SIZE} color={'white'} />
       </TouchableOpacity>
+      
+      {showNextPrevButtons && (
+        <TouchableOpacity onPress={onNextEp} disabled={disableNextEp} style={{ borderRadius: 50, opacity: disableNextEp ? 0.3 : 1 }}>
+          <Icons name="skip-next" size={ICON_SIZE - 5} color={'white'} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

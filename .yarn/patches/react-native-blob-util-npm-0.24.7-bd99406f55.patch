@@ -1,0 +1,13 @@
+diff --git a/android/src/main/java/com/ReactNativeBlobUtil/ReactNativeBlobUtilReq.java b/android/src/main/java/com/ReactNativeBlobUtil/ReactNativeBlobUtilReq.java
+index 1410ca2dff62fccc0a603518d108df93f0fd3517..40bcf52b79291de905057c3f25e7f0c82587b178 100644
+--- a/android/src/main/java/com/ReactNativeBlobUtil/ReactNativeBlobUtilReq.java
++++ b/android/src/main/java/com/ReactNativeBlobUtil/ReactNativeBlobUtilReq.java
+@@ -249,6 +249,8 @@ public class ReactNativeBlobUtilReq extends BroadcastReceiver implements Runnabl
+             if (options.addAndroidDownloads.getBoolean("useDownloadManager")) {
+                 Uri uri = Uri.parse(url);
+                 DownloadManager.Request req = new DownloadManager.Request(uri);
++                req.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI | DownloadManager.Request.NETWORK_MOBILE);
++                req.setAllowedOverMetered(true);
+                 if (options.addAndroidDownloads.hasKey("notification") && options.addAndroidDownloads.getBoolean("notification")) {
+                     req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                 } else {

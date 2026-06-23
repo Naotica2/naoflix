@@ -11,32 +11,58 @@
     "url": "https://u.expo.dev/ccdabe85-93a9-4297-936c-074a7cf27a4a"
   },
   "android": {
-    "runtimeVersion": "1.2.0",
+    "runtimeVersion": "2.0.2",
     "intentFilters": [
-        {
-          "action": "VIEW",
-          "category": ["DEFAULT"],
-          "data": [
-            { "scheme": "file" },
-            { "scheme": "content" },
-            { "mimeType": "application/x-cbz" },
-            { "mimeType": "application/vnd.comicbook+zip" }
-          ]
-        },
-        {
-          "action": "VIEW",
-          "category": ["DEFAULT"],
-          "data": [
-            { "host": "*" },
-            { "scheme": "file" },
-            { "scheme": "content" },
-            { "pathPattern": ".*\\\\.cbz" },
-            { "pathPattern": ".*\\\\.cbz" },
-            { "pathPattern": ".*\\\\..*\\\\.cbz" },
-            { "pathPattern": ".*\\\\..*\\\\.cbz" }
-          ]
-        }
-      ]
+      {
+        "action": "VIEW",
+        "category": [
+          "DEFAULT"
+        ],
+        "data": [
+          {
+            "scheme": "file"
+          },
+          {
+            "scheme": "content"
+          },
+          {
+            "mimeType": "application/x-cbz"
+          },
+          {
+            "mimeType": "application/vnd.comicbook+zip"
+          }
+        ]
+      },
+      {
+        "action": "VIEW",
+        "category": [
+          "DEFAULT"
+        ],
+        "data": [
+          {
+            "host": "*"
+          },
+          {
+            "scheme": "file"
+          },
+          {
+            "scheme": "content"
+          },
+          {
+            "pathPattern": ".*\\\\.cbz"
+          },
+          {
+            "pathPattern": ".*\\\\.cbz"
+          },
+          {
+            "pathPattern": ".*\\\\..*\\\\.cbz"
+          },
+          {
+            "pathPattern": ".*\\\\..*\\\\.cbz"
+          }
+        ]
+      }
+    ]
   },
   "experiments": {
     "reactCompiler": true

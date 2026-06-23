@@ -12,6 +12,8 @@ import { useAuth } from '../../misc/AuthContext';
 import { useKeyValueIfFocused } from '../../utils/DatabaseManager';
 import History from './Saya/History';
 import WatchLater from './Saya/WatchLater';
+import { useLevel } from '../../misc/LevelContext';
+import { formatExp, getRankColor, getRankBgColor } from '../../utils/LevelSystem';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackNavigator } from '../../types/navigation';
@@ -23,6 +25,7 @@ function ProfileDrawerContent(props: DrawerContentComponentProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const navigation = useNavigation<NativeStackNavigationProp<RootStackNavigator>>();
+  const { levelData } = useLevel();
 
   const historyRaw = useKeyValueIfFocused('historyKeyCollectionsOrder');
   const watchLaterRaw = useKeyValueIfFocused('watchLater');
@@ -42,7 +45,15 @@ function ProfileDrawerContent(props: DrawerContentComponentProps) {
     avatarPlaceholder: { backgroundColor: '#1a1a1a', justifyContent: 'center', alignItems: 'center' },
     avatarText: { fontSize: 32, fontWeight: '700', color: '#fff' },
     username: { fontSize: 18, fontWeight: '700', color: isDark ? '#fff' : '#111', marginBottom: 2 },
-    displayName: { fontSize: 13, color: '#888', marginBottom: 16 },
+    displayName: { fontSize: 13, color: '#888', marginBottom: 12 },
+    levelSection: { width: '100%', marginBottom: 16, alignItems: 'center' },
+    levelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+    rankBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1 },
+    rankText: { fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase' },
+    levelText: { fontSize: 14, fontWeight: '700', color: isDark ? '#e0e0e0' : '#333' },
+    expBarContainer: { width: '80%', height: 6, backgroundColor: isDark ? '#333' : '#e0e0e0', borderRadius: 3, overflow: 'hidden' },
+    expBarFill: { height: '100%', borderRadius: 3 },
+    expText: { fontSize: 10, color: '#888', marginTop: 4 },
     statsRow: { flexDirection: 'row', gap: 32 },
     statItem: { alignItems: 'center' },
     statNumber: { fontSize: 20, fontWeight: '800', color: isDark ? '#fff' : '#111' },
@@ -80,6 +91,22 @@ function ProfileDrawerContent(props: DrawerContentComponentProps) {
           )}
           <Text style={styles.username}>@{profile?.username ?? '—'}</Text>
           <Text style={styles.displayName}>{profile?.display_name ?? ''}</Text>
+
+          {user && (
+            <View style={styles.levelSection}>
+              <View style={styles.levelRow}>
+                <Text style={styles.levelText}>Lv. {levelData.level}</Text>
+                <View style={[styles.rankBadge, { borderColor: getRankColor(levelData.rank), backgroundColor: getRankBgColor(levelData.rank) }]}>
+                  <Text style={[styles.rankText, { color: getRankColor(levelData.rank) }]}>{levelData.rank}</Text>
+                </View>
+              </View>
+              <View style={styles.expBarContainer}>
+                <View style={[styles.expBarFill, { width: `${levelData.progress * 100}%`, backgroundColor: getRankColor(levelData.rank) }]} />
+              </View>
+              <Text style={styles.expText}>{formatExp(levelData.currentExp)} / {formatExp(levelData.expNeeded)} EXP</Text>
+            </View>
+          )}
+
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{historyCount}</Text>

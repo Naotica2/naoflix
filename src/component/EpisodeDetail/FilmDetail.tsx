@@ -1,903 +1,393 @@
 import Icon from '@react-native-vector-icons/fontawesome';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import tr from 'googletrans';
-import { memo, useCallback, useDeferredValue, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ColorSchemeName,
+  ScrollView,
   StyleSheet,
   Text,
   ToastAndroid,
   TouchableOpacity,
-  View,
   useColorScheme,
   useWindowDimensions,
+  View,
 } from 'react-native';
-import { ActivityIndicator, Button, Surface, TextInput, useTheme } from 'react-native-paper';
-import Reanimated, {
-  interpolate,
-  useAnimatedRef,
-  useAnimatedStyle,
-  useScrollOffset,
-} from 'react-native-reanimated';
-import URL from 'url';
+import { ActivityIndicator, Button } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useGlobalStyles from '../../assets/style';
 import { RootStackNavigator } from '../../types/navigation';
-import watchLaterJSON from '../../types/watchLaterJSON';
+import {
+  getIndonesianDetailPath,
+  getLanguageOptions,
+  getPlayStreams,
+  hasIndonesian,
+  MovieboxSearchItem,
+  MovieboxSeason,
+} from '../../utils/scrapers/moviebox';
 import controlWatchLater from '../../utils/watchLaterControl';
-
-import { FlashList, FlashListRef } from '@shopify/flash-list';
-import { RecyclerViewProps } from '@shopify/flash-list/dist/recyclerview/RecyclerViewProps';
-import { LinearGradient } from 'expo-linear-gradient';
-import moment from 'moment';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { HistoryItemKey } from '../../types/databaseTarget';
-import { HistoryJSON } from '../../types/historyJSON';
-import { DatabaseManager, useModifiedKeyValueIfFocused } from '../../utils/DatabaseManager';
-import DialogManager from '../../utils/dialogManager';
-import setHistory from '../../utils/historyControl';
-import { FilmDetail_Stream, FilmDetails_Detail, FilmEpisode } from '../../utils/scrapers/film';
+import { DatabaseManager } from '../../utils/DatabaseManager';
 import ImageLoading from '../misc/ImageLoading';
-type ModifiedFilmSeason = (
-  | { type: 'season'; text: string }
-  | ({ type: 'episode' } & FilmEpisode)
-)[];
-
-type RecyclerViewType = (
-  props: RecyclerViewProps<ModifiedFilmSeason[number]> & {
-    ref?: React.Ref<FlashListRef<ModifiedFilmSeason[number]>>;
-  },
-) => React.JSX.Element;
-const ReanimatedImage = Reanimated.createAnimatedComponent(ImageLoading);
-const ReanimatedFlashList = Reanimated.createAnimatedComponent<RecyclerViewType>(FlashList);
 
 type Props = NativeStackScreenProps<RootStackNavigator, 'FilmDetail'>;
 
-const IMG_HEADER_HEIGHT = 250;
-
-function useCompatibleData(rawData: FilmDetails_Detail | FilmDetail_Stream) {
-  return useMemo(() => {
-    return 'info' in rawData
-      ? rawData
-      : {
-          info: {
-            ...rawData,
-            additionalInfo: {
-              Rating: rawData.rating,
-              'Tahun Rilis': rawData.releaseDate,
-            },
-          },
-          ...rawData,
-        };
-  }, [rawData]);
-}
-
-function isEpisode(data: FilmDetails_Detail | FilmDetail_Stream): data is FilmDetails_Detail {
-  return 'seasonData' in data;
-}
-
 function FilmDetail(props: Props) {
+  const { data } = props.route.params;
   const styles = useStyles();
-  const globalStyles = useGlobalStyles();
-  const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
-  const theme = useTheme();
+  const isDark = colorScheme === 'dark';
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
 
-  const data = useCompatibleData(props.route.params.data);
+  const isTV = data.subjectType === 2;
 
-  const [rawSearchQuery, setSearchQuery] = useState('');
-  const searchQuery = useDeferredValue(rawSearchQuery);
+  // Watch Later state
+  const [inWatchLater, setInWatchLater] = useState(false);
 
-  const watchLaterListsJson = useModifiedKeyValueIfFocused(
-    'watchLater',
-    state => JSON.parse(state) as watchLaterJSON[],
-  );
-  const isInList = watchLaterListsJson.some(
-    item => item.title === data.info.title.split(': Season')[0] && item.isMovie,
-  );
-
-  const historyListsJson = useModifiedKeyValueIfFocused(
-    'historyKeyCollectionsOrder',
-    state => JSON.parse(state) as HistoryItemKey[],
-  );
-  const historyTitle = data.info.title.split(': Season')[0].trim();
-  const lastWatched = useMemo(() => {
-    const isLastWatched = historyListsJson.find(
-      z => z === `historyItem:${historyTitle}:false:true`,
-    );
-    if (isLastWatched) {
-      return JSON.parse(DatabaseManager.getSync(isLastWatched)!) as HistoryJSON;
-    } else return undefined;
-  }, [historyListsJson, historyTitle]);
-
-  const lastWatchedEpisodeData = useMemo(() => {
-    if (!lastWatched) return undefined;
-    if (!isEpisode(data)) {
-      return {
-        episodeNumber: lastWatched.episode,
-        episodeTitle: '',
-        episodeUrl: lastWatched.link,
-      };
-    }
-    if (!lastWatched.episode) return undefined;
-    const episodeLastWatchedModified = lastWatched.episode
-      .replace('Season ', '')
-      .trim()
-      .replace('Episode', '-')
-      .trim();
-
-    for (const season of data.seasonData) {
-      const found = season.episodes.find(ep =>
-        ep.episodeNumber.includes(episodeLastWatchedModified),
-      );
-      if (found) return found;
-    }
-    return undefined;
-  }, [lastWatched, data]);
-
-  const scrollRef = useAnimatedRef<FlashListRef<ModifiedFilmSeason[number]>>();
-  const scrollOffset = useScrollOffset(scrollRef as any);
-
-  const headerImageStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        {
-          translateY: interpolate(
-            scrollOffset.value,
-            [0, IMG_HEADER_HEIGHT * 2],
-            [0, IMG_HEADER_HEIGHT],
-            'clamp',
-          ),
-        },
-      ],
-      opacity: interpolate(scrollOffset.value, [0, IMG_HEADER_HEIGHT], [1, 0], 'clamp'),
+  // Check if already in watch later
+  useEffect(() => {
+    const checkWatchLater = async () => {
+      try {
+        const wlStr = await DatabaseManager.get('watchLater');
+        if (wlStr) {
+          const wl: any[] = JSON.parse(wlStr);
+          const found = wl.some(item => item.link?.includes(data.subjectId));
+          setInWatchLater(found);
+        }
+      } catch {}
     };
+    checkWatchLater();
+  }, [data.subjectId]);
+
+  // Language selection
+  const langOptions = useMemo(() => getLanguageOptions(data), [data]);
+  const [selectedLang, setSelectedLang] = useState(() => {
+    // Auto-select Indonesian if available
+    const id = langOptions.find(l => l.isIndonesian);
+    return id || langOptions[0];
   });
 
-  const [translatedSynopsis, setTranslatedSynopsis] = useState<null | string>(null);
-  const [isSynopsisTranslationPending, setIsSynopsisTranslationPending] = useState(false);
-  const translateSynopsisToIndonesia = useCallback(async () => {
-    setIsSynopsisTranslationPending(true);
-    try {
-      const translationResult = (await tr(data.info.synopsis, 'id')).text;
-      setTranslatedSynopsis(translationResult);
-    } catch {
-      setTranslatedSynopsis(null);
-      ToastAndroid.show('Translate gagal', ToastAndroid.SHORT);
-    } finally {
-      setIsSynopsisTranslationPending(false);
+  // Season/episode for TV
+  const [season, setSeason] = useState(1);
+  const [episode, setEpisode] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const posterWidth = width * 0.35;
+  const posterHeight = posterWidth * 1.5;
+
+  // Parse genres
+  const genres = data.genre ? data.genre.split(',').map(g => g.trim()).filter(Boolean) : [];
+
+  // Toggle Watch Later
+  const handleToggleWatchLater = useCallback(() => {
+    if (inWatchLater) {
+      // Remove from watch later - find index
+      const wlStr = DatabaseManager.getSync('watchLater');
+      if (wlStr) {
+        const wl: any[] = JSON.parse(wlStr);
+        const idx = wl.findIndex(item => item.link?.includes(data.subjectId));
+        if (idx >= 0) {
+          controlWatchLater('delete', idx);
+          setInWatchLater(false);
+          ToastAndroid.show('Dihapus dari Tonton Nanti', ToastAndroid.SHORT);
+        }
+      }
+    } else {
+      // Add to watch later
+      controlWatchLater('add', {
+        link: `film://${data.subjectId}/${data.detailPath || ''}`,
+        title: data.title,
+        rating: data.imdbRatingValue || '',
+        releaseYear: data.releaseDate?.slice(0, 4) || '',
+        thumbnailUrl: data.cover?.url || '',
+        date: Date.now(),
+        genre: genres,
+        isMovie: !isTV,
+      });
+      setInWatchLater(true);
+      ToastAndroid.show('Ditambahkan ke Tonton Nanti', ToastAndroid.SHORT);
     }
-  }, [data.info.synopsis]);
+  }, [data, genres, inWatchLater]);
 
-  const ListHeaderComponent = useMemo(() => {
-    const hasMultipleEpisodes = isEpisode(data) && data.seasonData.length > 1;
-
-    return (
-      <View style={styles.mainContainer}>
-        {'backgroundImage' in data.info ? (
-          <ReanimatedImage
-            style={[{ width: '100%', height: IMG_HEADER_HEIGHT }, headerImageStyle]}
-            source={{ uri: data.info.backgroundImage }}
-            resizeMode="cover"
-          />
-        ) : (
-          <Reanimated.View
-            style={[
-              { width: '100%', height: IMG_HEADER_HEIGHT },
-              headerImageStyle,
-              { backgroundColor: theme.colors.elevation.level2 },
-            ]}>
-            <Icon
-              color={theme.colors.onBackground}
-              name="film"
-              size={64}
-              style={{ alignSelf: 'center', marginTop: 60 }}
-            />
-          </Reanimated.View>
-        )}
-
-        <LinearGradient
-          colors={['transparent', 'black']}
-          style={{
-            width: '100%',
-            height: 80,
-            position: 'absolute',
-            transform: [
-              {
-                translateY: 165,
-              },
-            ],
-          }}
-        />
-
-        <View
-          style={[styles.mainContent, { backgroundColor: styles.mainContainer.backgroundColor }]}>
-          <View style={{ flexDirection: 'column', alignItems: 'center' }}>
-            <ImageLoading
-              source={{
-                uri: 'coverImage' in data.info ? data.info.coverImage : data.info.thumbnailUrl,
-              }}
-              style={styles.thumbnail}
-              resizeMode="contain"
-            />
-            <Surface
-              style={{
-                backgroundColor: colorScheme === 'dark' ? '#00608d' : '#5ddfff',
-                transform: styles.thumbnail.transform,
-                flexDirection: 'row',
-                gap: 5,
-                marginTop: 5,
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: 10,
-              }}>
-              <Text style={[globalStyles.text, styles.type]}>
-                {data.type === 'stream' ? 'Film' : 'Film/TV/Season'}
-              </Text>
-            </Surface>
-          </View>
-
-          <View style={styles.infoContainer}>
-            <Text style={[globalStyles.text, styles.title]}>{data.info.title.trim()}</Text>
-            <View style={styles.genreContainer}>
-              {data.info.genres.map(genre => (
-                <Surface
-                  key={genre}
-                  elevation={3}
-                  style={{ borderRadius: styles.genre.borderRadius }}>
-                  <Text style={styles.genre}>{genre}</Text>
-                </Surface>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.secondaryInfoContainer}>
-            <View style={styles.additionalInfo}>
-              {Object.entries(data.info.additionalInfo).map(([key, value]) => {
-                return (
-                  <Surface elevation={2} key={key} style={styles.additionalInfoTextSurface}>
-                    <Text style={[globalStyles.text, styles.additionalInfoText]}>
-                      <Icon color={styles.additionalInfoText.color} name="info-circle" /> {key}:{' '}
-                      {value}
-                    </Text>
-                  </Surface>
-                );
-              })}
-              <Surface elevation={2} style={styles.additionalInfoTextSurface}>
-                <Text style={[globalStyles.text, styles.additionalInfoText]}>
-                  <Icon color={styles.additionalInfoText.color} name="calendar" />{' '}
-                  {data.info.releaseDate}
-                </Text>
-              </Surface>
-              {!isEpisode(data) && data.subtitleLink === undefined && (
-                <Surface
-                  elevation={2}
-                  style={[
-                    styles.additionalInfoTextSurface,
-                    { backgroundColor: theme.colors.errorContainer },
-                  ]}>
-                  <Text style={[globalStyles.text, styles.additionalInfoText]}>
-                    <Icon color={styles.additionalInfoText.color} name="info-circle" /> Subtitle
-                    tidak tersedia untuk film ini!
-                  </Text>
-                </Surface>
-              )}
-              {hasMultipleEpisodes && (
-                <Surface elevation={2} style={styles.additionalInfoTextSurface}>
-                  <Text style={[globalStyles.text, styles.additionalInfoText]}>
-                    <Icon color={styles.additionalInfoText.color} name="list" />{' '}
-                    {data.seasonData.flatMap(a => a.episodes).length} Episode
-                  </Text>
-                </Surface>
-              )}
-            </View>
-
-            <View style={[styles.synopsisContainer]}>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                }}>
-                <Text style={[globalStyles.text, styles.synopsisTitle]}>Sinopsis</Text>
-                {!(isSynopsisTranslationPending || translatedSynopsis !== null) && (
-                  <Button
-                    icon="google-translate"
-                    mode="outlined"
-                    onPress={translateSynopsisToIndonesia}>
-                    Terjemahkan ke Bahasa Indonesia
-                  </Button>
-                )}
-                {isSynopsisTranslationPending && <ActivityIndicator />}
-              </View>
-              <View style={styles.synopsisView}>
-                <Text style={[globalStyles.text, styles.synopsisText]}>
-                  {data.info.synopsis === ''
-                    ? 'Tidak ada sinopsis yang tersedia.'
-                    : (translatedSynopsis ?? data.info.synopsis)}
-                </Text>
-              </View>
-            </View>
-
-            {lastWatchedEpisodeData && lastWatched && (
-              <Button
-                icon="play-circle"
-                mode="contained"
-                buttonColor={theme.colors.primary}
-                textColor={theme.colors.onPrimary}
-                onPress={() => {
-                  if (!isEpisode(data)) {
-                    setFilmStreamHistory(props.route.params.link, data, {
-                      lastDuration: lastWatched.lastDuration ?? 0,
-                      resolution: lastWatched.resolution ?? '',
-                    });
-                    props.navigation.navigate('Video_Film', {
-                      data,
-                      link: lastWatched.link,
-                      historyData: {
-                        lastDuration: lastWatched.lastDuration ?? 0,
-                        resolution: lastWatched.resolution ?? '',
-                      },
-                    });
-                    return;
-                  }
-                  props.navigation.navigate('FromUrl', {
-                    title: data.info.title,
-                    link: lastWatchedEpisodeData.episodeUrl,
-                    historyData: {
-                      lastDuration: lastWatched.lastDuration ?? 0,
-                      resolution: lastWatched.resolution ?? '',
-                    },
-                    type: 'film',
-                  });
-                }}
-                style={{ borderColor: theme.colors.primary }}>
-                Lanjutkan:{' '}
-                {isEpisode(data)
-                  ? lastWatchedEpisodeData.episodeNumber
-                  : moment.utc((lastWatched.lastDuration ?? 0) * 1000).format('HH:mm:ss')}
-              </Button>
-            )}
-
-            <Button
-              icon="playlist-plus"
-              buttonColor={styles.additionalInfoTextSurface.backgroundColor}
-              textColor={styles.additionalInfoText.color}
-              mode="outlined"
-              onPress={() => {
-                const watchLaterJson: watchLaterJSON = {
-                  title: data.info.title.trim(),
-                  link: props.route.params.link,
-                  rating: 'Film',
-                  releaseYear: data.info.releaseDate,
-                  thumbnailUrl:
-                    'coverImage' in data.info ? data.info.coverImage : data.info.thumbnailUrl,
-                  genre: data.info.genres,
-                  date: Date.now(),
-                  isMovie: true,
-                };
-                controlWatchLater('add', watchLaterJson);
-                ToastAndroid.show('Ditambahkan ke tonton nanti', ToastAndroid.SHORT);
-              }}
-              disabled={isInList}>
-              {isInList ? 'Sudah Ditambahkan' : 'Tonton Nanti'}
-            </Button>
-
-            {isEpisode(data) && (
-              <TextInput
-                mode="outlined"
-                label="Cari Episode"
-                placeholder="Contoh: 1, 2, atau 1 - 1"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                left={<TextInput.Icon icon="magnify" />}
-                style={{ backgroundColor: styles.mainContainer.backgroundColor }}
-                dense
-              />
-            )}
-          </View>
-        </View>
-      </View>
-    );
-  }, [
-    data,
-    styles.mainContainer,
-    styles.mainContent,
-    styles.thumbnail,
-    styles.type,
-    styles.infoContainer,
-    styles.title,
-    styles.genreContainer,
-    styles.secondaryInfoContainer,
-    styles.additionalInfo,
-    styles.additionalInfoTextSurface,
-    styles.additionalInfoText,
-    styles.synopsisContainer,
-    styles.synopsisTitle,
-    styles.synopsisView,
-    styles.synopsisText,
-    styles.genre,
-    headerImageStyle,
-    theme.colors.elevation.level2,
-    theme.colors.onBackground,
-    theme.colors.errorContainer,
-    theme.colors.primary,
-    theme.colors.onPrimary,
-    colorScheme,
-    globalStyles.text,
-    isSynopsisTranslationPending,
-    translatedSynopsis,
-    translateSynopsisToIndonesia,
-    lastWatchedEpisodeData,
-    lastWatched,
-    isInList,
-    searchQuery,
-    props.navigation,
-    props.route.params.link,
-  ]);
-
-  const modifiedSeasonData = useMemo(() => {
-    if (!isEpisode(data))
-      return [
-        {
-          type: 'episode',
-          episodeNumber: '',
-          episodeTitle: '',
-          episodeUrl: props.route.params.link,
-          episodeImage: 'coverImage' in data.info ? data.info.coverImage : data.info.thumbnailUrl,
-          releaseDate: data.info.releaseDate,
-        } as ModifiedFilmSeason[number],
-      ];
-    return (searchQuery === '' ? data.seasonData : data.seasonData.toReversed()).flatMap(item => {
-      const filteredEpisodes = item.episodes.filter(ep =>
-        ep.episodeNumber.toLowerCase().includes(searchQuery.toLowerCase()),
+  // Play handler: fetch stream URLs then navigate to player
+  const handlePlay = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const detailPath = selectedLang?.detailPath || data.detailPath;
+      const streams = await getPlayStreams(
+        data.subjectId,
+        detailPath,
+        isTV ? season : undefined,
+        isTV ? episode : undefined,
       );
 
-      if (searchQuery && filteredEpisodes.length === 0) {
-        return [];
+      if (!streams.length) {
+        // Try original detail path as fallback
+        if (detailPath !== data.detailPath) {
+          const fallbackStreams = await getPlayStreams(
+            data.subjectId,
+            data.detailPath,
+            isTV ? season : undefined,
+            isTV ? episode : undefined,
+          );
+          if (fallbackStreams.length) {
+            props.navigation.navigate('FilmPlayer', {
+              streams: fallbackStreams,
+              title: isTV ? `${data.title} S${season}E${episode}` : data.title,
+              subjectId: data.subjectId,
+              detailPath: data.detailPath,
+              type: isTV ? 'tv' : 'movie',
+              season: isTV ? season : undefined,
+              episode: isTV ? episode : undefined,
+              poster: data.cover?.url,
+              language: selectedLang?.label,
+            });
+            setIsLoading(false);
+            return;
+          }
+        }
+        ToastAndroid.show('Video tidak tersedia untuk episode ini', ToastAndroid.LONG);
+        setIsLoading(false);
+        return;
       }
 
-      return [
-        {
-          type: 'season',
-          text: item.season,
-        },
-        ...filteredEpisodes.map(ep => ({
-          type: 'episode',
-          ...ep,
-        })),
-      ];
-    }) as ModifiedFilmSeason;
-  }, [data, props.route.params.link, searchQuery]);
-
-  const handlePlayNow = useCallback(() => {
-    if (isEpisode(data)) return;
-    let historyData: { lastDuration: number; resolution: string } | undefined;
-    const startFilm = () => {
-      setFilmStreamHistory(props.route.params.link, data, historyData);
-      props.navigation.navigate('Video_Film', {
-        data,
-        link: props.route.params.link,
-        historyData,
+      props.navigation.navigate('FilmPlayer', {
+        streams,
+        title: isTV ? `${data.title} S${season}E${episode}` : data.title,
+        subjectId: data.subjectId,
+        detailPath,
+        type: isTV ? 'tv' : 'movie',
+        season: isTV ? season : undefined,
+        episode: isTV ? episode : undefined,
+        poster: data.cover?.url,
+        language: selectedLang?.label,
       });
-    };
-    if (lastWatched) {
-      DialogManager.alert(
-        'Lanjutkan durasi?',
-        'Kamu sudah menonton film ini sebelumnya. Apakah kamu ingin melanjutkan dari durasi terakhir yang kamu tonton?',
-        [
-          {
-            text: 'Mulai dari awal',
-            onPress: () => {
-              historyData = undefined;
-              startFilm();
-            },
-          },
-          {
-            text: 'Lanjutkan',
-            onPress: () => {
-              historyData = {
-                lastDuration: lastWatched?.lastDuration ?? 0,
-                resolution: lastWatched?.resolution ?? '',
-              };
-              startFilm();
-            },
-          },
-        ],
-      );
-      return;
+    } catch (e: any) {
+      ToastAndroid.show(e.message || 'Gagal memuat video', ToastAndroid.LONG);
+    } finally {
+      setIsLoading(false);
     }
-    startFilm();
-  }, [data, lastWatched, props.navigation, props.route.params.link]);
+  }, [data, episode, isTV, props.navigation, season, selectedLang]);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior="height">
-      <ReanimatedFlashList
-        ref={scrollRef}
-        data={modifiedSeasonData}
-        getItemType={item => item.type}
-        renderItem={({ item: s }) => {
-          return s.type === 'season' ? (
-            <View style={styles.seasonContainer}>
-              <View style={styles.seasonHeader}>
-                <View style={styles.seasonIndicator} />
-                <Text style={[globalStyles.text, styles.seasonText]}>{s.text}</Text>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.episodeListContainer}>
-              {!isEpisode(data) ? (
-                <Button
-                  icon="movie-open-play"
-                  buttonColor={styles.additionalInfoTextSurface.backgroundColor}
-                  textColor={styles.additionalInfoText.color}
-                  mode="elevated"
-                  style={{ flex: 1 }}
-                  onPress={handlePlayNow}>
-                  Tonton Sekarang
-                </Button>
-              ) : (
-                <RenderEpisodeList
-                  globalStyles={globalStyles}
-                  colorScheme={colorScheme}
-                  props={props}
-                  item={s}
-                  styles={styles}
-                  lastWatched={lastWatched}
-                />
-              )}
-            </View>
-          );
-        }}
-        // keyExtractor={item => item.season}
-        contentContainerStyle={{
-          backgroundColor: styles.mainContainer.backgroundColor,
-          paddingLeft: insets.left,
-          paddingRight: insets.right,
-          paddingBottom: insets.bottom + 20,
-        }}
-        ListHeaderComponentStyle={[styles.mainContainer, { marginBottom: 12 }]}
-        ListHeaderComponent={ListHeaderComponent}
-        ListFooterComponent={null}
-        extraData={colorScheme}
-        // estimatedItemSize={60}
-        showsVerticalScrollIndicator={false}
-      />
-    </KeyboardAvoidingView>
-  );
-}
-
-function RenderEpisodeList({
-  props,
-  item,
-  styles,
-  lastWatched,
-  globalStyles,
-  colorScheme,
-}: {
-  props: Props;
-  item: FilmEpisode;
-  styles: ReturnType<typeof useStyles>;
-  lastWatched: HistoryJSON | undefined;
-  globalStyles: ReturnType<typeof useGlobalStyles>;
-  colorScheme: ColorSchemeName;
-}) {
-  const rawData = props.route.params.data;
-  const data = useCompatibleData(rawData);
-  const episodeLastWatchedModified =
-    lastWatched &&
-    lastWatched.episode &&
-    lastWatched.episode.replace('Season ', '').trim().replace('Episode', '-').trim();
-  const isEpisodeLastWatched =
-    (lastWatched &&
-      episodeLastWatchedModified &&
-      item.episodeNumber === episodeLastWatchedModified) ||
-    (!isEpisode(data) && lastWatched);
-  return (
-    <TouchableOpacity
-      style={[styles.episodeButton, isEpisodeLastWatched && styles.lastWatchedButton]}
-      onPress={() => {
-        if (!isEpisode(data)) {
-          setFilmStreamHistory(props.route.params.link, data, {
-            lastDuration: lastWatched?.lastDuration ?? 0,
-            resolution: lastWatched?.resolution ?? '',
-          });
-          props.navigation.navigate('Video_Film', {
-            data,
-            link: item.episodeUrl,
-            historyData: {
-              lastDuration: lastWatched?.lastDuration ?? 0,
-              resolution: lastWatched?.resolution ?? '',
-            },
-          });
-          return;
-        }
-        props.navigation.navigate('FromUrl', {
-          title: data.info.title,
-          link: item.episodeUrl,
-          historyData: isEpisodeLastWatched
-            ? {
-                lastDuration: lastWatched.lastDuration ?? 0,
-                resolution: lastWatched.resolution ?? '',
-              }
-            : !isEpisode(data)
-              ? {
-                  lastDuration: lastWatched?.lastDuration ?? 0,
-                  resolution: lastWatched?.resolution ?? '',
-                }
-              : undefined,
-          type: 'film',
-        });
-      }}>
-      <View style={styles.episodeMainContent}>
-        <View style={styles.episodeNumberBox}>
-          <Text style={styles.episodeNumberText}>{item.episodeNumber}</Text>
-        </View>
-        <View style={styles.episodeTitleWrapper}>
-          <Text
-            numberOfLines={1}
-            style={[
-              globalStyles.text,
-              styles.episodeText,
-              isEpisodeLastWatched ? styles.lastWatchedTextColor : undefined,
-            ]}>
-            {item.episodeTitle}
-          </Text>
-          {isEpisodeLastWatched && <Text style={styles.watchingNowTag}>Terakhir Ditonton</Text>}
-        </View>
-        <Icon
-          name={isEpisodeLastWatched ? 'history' : 'play-circle'}
-          size={20}
-          color={
-            isEpisodeLastWatched
-              ? styles.lastWatchedTextColor.color
-              : colorScheme === 'dark'
-                ? '#5ddfff'
-                : '#00608d'
-          }
+    <ScrollView
+      style={{ flex: 1, backgroundColor: isDark ? '#0f0f0f' : '#fafafa' }}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+      showsVerticalScrollIndicator={false}>
+      {/* Backdrop Header */}
+      <View style={{ width: '100%', height: 220 }}>
+        <ImageLoading
+          source={{ uri: data.cover?.url }}
+          style={{ width: '100%', height: '100%' }}
+          resizeMode="cover"
+        />
+        <LinearGradient
+          colors={['transparent', isDark ? '#0f0f0f' : '#fafafa']}
+          style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80 }}
         />
       </View>
-    </TouchableOpacity>
+
+      {/* Content */}
+      <View style={{ paddingHorizontal: 16, marginTop: -60, flexDirection: 'row', gap: 14 }}>
+        {/* Poster */}
+        <View style={{ width: posterWidth, height: posterHeight, borderRadius: 10, elevation: 6, overflow: 'hidden', backgroundColor: isDark ? '#1a1a1a' : '#ddd' }}>
+          <ImageLoading
+            source={{ uri: data.cover?.url }}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="cover"
+          />
+        </View>
+
+        {/* Info */}
+        <View style={{ flex: 1, paddingTop: 64 }}>
+          {/* Type badge */}
+          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+            <View style={{
+              backgroundColor: isTV ? '#f59e0b' : '#3b82f6',
+              paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4,
+            }}>
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 11 }}>
+                {isTV ? 'TV Series' : 'Movie'}
+              </Text>
+            </View>
+            {hasIndonesian(data) && (
+              <View style={{
+                backgroundColor: '#ef4444',
+                paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4,
+              }}>
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 11 }}>
+                  Indonesian
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <Text style={[styles.title, { color: isDark ? '#f0f0f0' : '#111' }]} numberOfLines={3}>
+            {data.title}
+          </Text>
+
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            {data.releaseDate ? (
+              <Text style={[styles.meta, { color: isDark ? '#aaa' : '#666' }]}>
+                <Icon name="calendar" size={12} color={isDark ? '#aaa' : '#666'} /> {data.releaseDate.slice(0, 4)}
+              </Text>
+            ) : null}
+            {data.imdbRatingValue ? (
+              <Text style={[styles.meta, { color: '#f5c518' }]}>
+                <Icon name="star" size={12} color="#f5c518" /> {data.imdbRatingValue}
+              </Text>
+            ) : null}
+            {data.countryName ? (
+              <Text style={[styles.meta, { color: isDark ? '#888' : '#999', fontSize: 11 }]}>
+                {data.countryName}
+              </Text>
+            ) : null}
+          </View>
+
+          {/* Genres */}
+          {genres.length > 0 && (
+            <View style={{ flexDirection: 'row', gap: 4, marginTop: 8, flexWrap: 'wrap' }}>
+              {genres.slice(0, 4).map(g => (
+                <View key={g} style={{ backgroundColor: isDark ? '#222' : '#eee', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                  <Text style={{ fontSize: 10, color: isDark ? '#aaa' : '#666' }}>{g}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* Synopsis */}
+      {data.description ? (
+        <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
+          <Text style={[styles.sectionTitle, { color: isDark ? '#f0f0f0' : '#111' }]}>Synopsis</Text>
+          <Text style={[styles.synopsis, { color: isDark ? '#bbb' : '#444' }]}>
+            {data.description}
+          </Text>
+        </View>
+      ) : null}
+
+      {/* Language Picker */}
+      {langOptions.length > 1 && (
+        <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
+          <Text style={[styles.sectionTitle, { color: isDark ? '#f0f0f0' : '#111' }]}>Bahasa</Text>
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+            {langOptions.map(lang => (
+              <TouchableOpacity
+                key={lang.detailPath}
+                onPress={() => setSelectedLang(lang)}
+                style={{
+                  paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8,
+                  backgroundColor: selectedLang?.detailPath === lang.detailPath ? '#3b82f6' : (isDark ? '#1a1a1a' : '#f0f0f0'),
+                  borderWidth: 1, borderColor: selectedLang?.detailPath === lang.detailPath ? '#3b82f6' : (isDark ? '#333' : '#ddd'),
+                }}>
+                <Text style={{
+                  fontWeight: '600', fontSize: 13,
+                  color: selectedLang?.detailPath === lang.detailPath ? '#fff' : (isDark ? '#ccc' : '#444'),
+                }}>
+                  {lang.isIndonesian ? '🇮🇩 ' : ''}{lang.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* TV Season/Episode Picker */}
+      {isTV && (
+        <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
+          <Text style={[styles.sectionTitle, { color: isDark ? '#f0f0f0' : '#111' }]}>Season & Episode</Text>
+          <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.inputLabel, { color: isDark ? '#aaa' : '#666' }]}>Season</Text>
+              <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                <TouchableOpacity onPress={() => setSeason(Math.max(1, season - 1))}
+                  style={styles.epBtn}>
+                  <Text style={styles.epBtnText}>-</Text>
+                </TouchableOpacity>
+                <Text style={[styles.epNum, { color: isDark ? '#eee' : '#222' }]}>{season}</Text>
+                <TouchableOpacity onPress={() => setSeason(season + 1)}
+                  style={styles.epBtn}>
+                  <Text style={styles.epBtnText}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.inputLabel, { color: isDark ? '#aaa' : '#666' }]}>Episode</Text>
+              <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                <TouchableOpacity onPress={() => setEpisode(Math.max(1, episode - 1))}
+                  style={styles.epBtn}>
+                  <Text style={styles.epBtnText}>-</Text>
+                </TouchableOpacity>
+                <Text style={[styles.epNum, { color: isDark ? '#eee' : '#222' }]}>{episode}</Text>
+                <TouchableOpacity onPress={() => setEpisode(episode + 1)}
+                  style={styles.epBtn}>
+                  <Text style={styles.epBtnText}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Play + Watch Later Buttons */}
+      <View style={{ paddingHorizontal: 16, marginTop: 20, gap: 10 }}>
+        <Button
+          mode="contained"
+          buttonColor="#3b82f6"
+          textColor="#fff"
+          icon="play"
+          style={{ borderRadius: 10, paddingVertical: 4 }}
+          labelStyle={{ fontSize: 16, fontWeight: '700' }}
+          onPress={handlePlay}
+          disabled={isLoading}>
+          {isLoading
+            ? 'Memuat...'
+            : isTV
+              ? `Tonton S${season} E${episode}`
+              : 'Tonton Sekarang'}
+        </Button>
+
+        <Button
+          mode={inWatchLater ? 'contained-tonal' : 'outlined'}
+          icon={inWatchLater ? 'check' : 'bookmark-plus-outline'}
+          style={{ borderRadius: 10 }}
+          labelStyle={{ fontSize: 14, fontWeight: '600' }}
+          onPress={handleToggleWatchLater}>
+          {inWatchLater ? 'Tersimpan di Tonton Nanti' : 'Tonton Nanti'}
+        </Button>
+
+        {isLoading && (
+          <ActivityIndicator size="small" color="#3b82f6" style={{ marginTop: 4 }} />
+        )}
+      </View>
+
+      {/* Subtitles info */}
+      {data.subtitles && (
+        <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
+          <Text style={[styles.meta, { color: isDark ? '#666' : '#999', fontSize: 11 }]}>
+            <Icon name="language" size={10} color={isDark ? '#666' : '#999'} /> Subtitle: {data.subtitles}
+          </Text>
+        </View>
+      )}
+    </ScrollView>
   );
 }
 
 function useStyles() {
-  const theme = useTheme();
-  const globalStyles = useGlobalStyles();
-  const colorScheme = useColorScheme();
-  const dimensions = useWindowDimensions();
-  return useMemo(
-    () =>
-      StyleSheet.create({
-        mainContainer: {
-          flex: 1,
-          backgroundColor: colorScheme === 'dark' ? '#0c0c0c' : '#f5f5f5',
-        },
-        mainContent: {
-          gap: 15,
-          flex: 1,
-          flexWrap: 'wrap',
-          flexDirection: 'row',
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          paddingHorizontal: 20,
-          paddingVertical: 15,
-          marginTop: -20,
-        },
-        infoContainer: {
-          gap: 5,
-          flex: 1,
-          flexDirection: 'column',
-        },
-        thumbnail: {
-          margin: 15,
-          width: dimensions.width * 0.3,
-          height: 150,
-          borderRadius: 10,
-          transform: [{ translateY: -40 }],
-        },
-        type: {
-          color: colorScheme === 'dark' ? 'white' : 'black',
-          fontWeight: 'bold',
-        },
-        title: {
-          flexShrink: 1,
-          fontSize: 22,
-          fontWeight: 'bold',
-          color: globalStyles.text.color,
-        },
-        author: {
-          color: colorScheme === 'dark' ? '#5ddfff' : '#00608d',
-          marginTop: 5,
-        },
-        secondaryInfoContainer: {
-          width: '100%',
-          gap: 15,
-        },
-        genreContainer: {
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          gap: 8,
-          marginTop: 10,
-        },
-        genre: {
-          color: globalStyles.text.color,
-          fontWeight: 'bold',
-          borderRadius: 8,
-          paddingHorizontal: 8,
-          paddingVertical: 4,
-        },
-        additionalInfo: {
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          gap: 8,
-          justifyContent: 'flex-start',
-          alignItems: 'center',
-          paddingVertical: 8,
-        },
-        additionalInfoTextSurface: {
-          borderRadius: 12,
-          paddingHorizontal: 12,
-          paddingVertical: 6,
-          backgroundColor: theme.colors.secondaryContainer,
-        },
-        additionalInfoText: {
-          color: theme.colors.onSecondaryContainer,
-          fontWeight: '600',
-          fontSize: 12,
-        },
-        synopsisContainer: {},
-        synopsisTitle: {
-          fontSize: 18,
-          fontWeight: 'bold',
-          marginBottom: 8,
-          color: globalStyles.text.color,
-        },
-        synopsisView: {
-          paddingBottom: 10,
-        },
-        synopsisText: {
-          textAlign: 'justify',
-          fontSize: 14,
-          lineHeight: 20,
-          color: globalStyles.text.color,
-          opacity: 0.9,
-        },
-        listChapterTextContainer: {
-          paddingVertical: 15,
-          borderBottomWidth: 1,
-          borderBottomColor: colorScheme === 'dark' ? '#222' : '#ddd',
-          marginBottom: 10,
-        },
-        listChapterText: {
-          fontWeight: 'bold',
-          fontSize: 20,
-          color: globalStyles.text.color,
-          textAlign: 'left',
-          letterSpacing: 0.5,
-        },
-        chapterButtonsContainer: {
-          gap: 10,
-          marginBottom: 15,
-        },
-        seasonContainer: {
-          marginVertical: 10,
-          paddingHorizontal: 15,
-        },
-        seasonHeader: {
-          flexDirection: 'row',
-          alignItems: 'center',
-          marginBottom: 12,
-          paddingLeft: 5,
-        },
-        seasonIndicator: {
-          width: 4,
-          height: 20,
-          backgroundColor: colorScheme === 'dark' ? '#5ddfff' : '#00608d',
-          borderRadius: 2,
-          marginRight: 10,
-        },
-        seasonText: {
-          fontSize: 18,
-          fontWeight: '800',
-          textTransform: 'uppercase',
-          letterSpacing: 1,
-          color: globalStyles.text.color,
-        },
-        episodeListContainer: {
-          margin: 5,
-        },
-        episodeButton: {
-          backgroundColor: colorScheme === 'dark' ? '#1e1e1e' : '#ffffff',
-          borderRadius: 12,
-          padding: 12,
-          elevation: 2,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.1,
-          shadowRadius: 2,
-        },
-        lastWatchedButton: {
-          backgroundColor: theme.colors.secondaryContainer,
-          borderWidth: 1,
-          borderColor: theme.colors.secondary,
-        },
-        episodeMainContent: {
-          flexDirection: 'row',
-          alignItems: 'center',
-        },
-        episodeNumberBox: {
-          height: 35,
-          backgroundColor: colorScheme === 'dark' ? '#333' : '#f0f0f0',
-          borderRadius: 8,
-          justifyContent: 'center',
-          alignItems: 'center',
-          marginRight: 12,
-        },
-        episodeNumberText: {
-          fontSize: 14,
-          fontWeight: 'bold',
-          color: colorScheme === 'dark' ? '#fff' : '#333',
-        },
-        episodeTitleWrapper: {
-          flex: 1,
-          justifyContent: 'center',
-        },
-        episodeText: {
-          fontSize: 15,
-          fontWeight: '600',
-          color: colorScheme === 'dark' ? '#ffffff' : '#333333',
-        },
-        watchingNowTag: {
-          fontSize: 10,
-          fontWeight: 'bold',
-          color: theme.colors.primary,
-          marginTop: 2,
-        },
-        lastWatchedTextColor: {
-          color: theme.colors.onPrimaryContainer,
-        },
-        chapterDivider: {
-          display: 'none',
-        },
-      }),
-    [
-      colorScheme,
-      dimensions.width,
-      globalStyles.text.color,
-      theme.colors.secondaryContainer,
-      theme.colors.onSecondaryContainer,
-      theme.colors.secondary,
-      theme.colors.primary,
-      theme.colors.onPrimaryContainer,
-    ],
-  );
-}
-
-export async function setFilmStreamHistory(
-  link: string,
-  data: FilmDetail_Stream,
-  historyData?: { resolution: string | undefined; lastDuration: number },
-) {
-  const isFilm = URL.parse(link).host!?.includes('idlix') && link.includes('/episode/');
-  const episodeIndex = data.title.toLowerCase().lastIndexOf('x');
-  const title = (
-    isFilm
-      ? data.title.split(': ').slice(0, -1).join(': ')
-      : episodeIndex >= 0
-        ? data.title.slice(0, episodeIndex)
-        : data.title
-  ).trim();
-  const watchLater: watchLaterJSON[] = JSON.parse((await DatabaseManager.get('watchLater'))!);
-  const watchLaterIndex = watchLater.findIndex(
-    z => z.title.trim() === title.trim() && z.isMovie === true,
-  );
-  if (watchLaterIndex >= 0) {
-    controlWatchLater('delete', watchLaterIndex);
-    ToastAndroid.show(`${title} dihapus dari daftar tonton nanti`, ToastAndroid.SHORT);
-  }
-  setHistory(data, link, false, historyData, true);
+  const { width } = useWindowDimensions();
+  return useMemo(() => StyleSheet.create({
+    title: { fontSize: 20, fontWeight: '800', lineHeight: 26 },
+    meta: { fontSize: 13, fontWeight: '500' },
+    sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
+    synopsis: { fontSize: 14, lineHeight: 22 },
+    inputLabel: { fontSize: 12, fontWeight: '600', marginBottom: 4 },
+    epBtn: {
+      width: 36, height: 36, borderRadius: 8,
+      backgroundColor: '#3b82f6', justifyContent: 'center', alignItems: 'center',
+    },
+    epBtnText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+    epNum: { fontSize: 20, fontWeight: '800', minWidth: 30, textAlign: 'center' },
+  }), [width]);
 }
 
 export default memo(FilmDetail);

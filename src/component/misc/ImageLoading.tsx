@@ -5,8 +5,7 @@ import { Image, ImageProps, ImageSourcePropType, StyleSheet, View } from 'react-
 import URL from 'url';
 import { generateUrlWithLatestDomain } from '../../utils/domainChanger';
 import { BASE } from '../../utils/scrapers/animeSeries';
-import { BASE_URL } from '../../utils/scrapers/comics1';
-import LoadingIndicator from './LoadingIndicator';
+import LoadingIndicator from '../misc/LoadingIndicator';
 
 const ImageLoading = (
   props: ImageProps & { children?: React.ReactNode; displayLoading?: boolean },
@@ -61,10 +60,6 @@ const ImageLoading = (
     }
 
     let computedHeaders: Record<string, string> = { ...baseSourceObj.headers };
-
-    if (typeof baseSourceObj.uri === 'string' && baseSourceObj.uri.includes('softkomik')) {
-      computedHeaders.Referer = BASE_URL;
-    }
 
     if (Object.keys(computedHeaders).length > 0) {
       baseSourceObj.headers = computedHeaders;

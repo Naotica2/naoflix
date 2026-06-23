@@ -9,13 +9,12 @@ import { useTheme } from 'react-native-paper';
 import useGlobalStyles from '../../assets/style';
 import { NewAnimeList } from '../../types/anime';
 import { HomeNavigator, RootStackNavigator } from '../../types/navigation';
-import { Movies } from '../../utils/scrapers/animeMovie';
-
 import { LatestComicsRelease } from '../../utils/scrapers/comicsv2';
-import { FilmHomePage } from '../../utils/scrapers/film';
-import { MIN_IMAGE_HEIGHT, MIN_IMAGE_WIDTH } from '../Home/AnimeList';
+import { LatestNovel } from '../../utils/scrapers/meionovel';
+import { MIN_IMAGE_HEIGHT, MIN_IMAGE_WIDTH } from '../Home/AnimePage';
 import ImageLoading from './ImageLoading';
 import { TouchableOpacity } from './TouchableOpacityRNGH';
+import DarkOverlay from './DarkOverlay';
 
 export function ListAnimeComponent(
   props: (
@@ -23,124 +22,81 @@ export function ListAnimeComponent(
         newAnimeData: NewAnimeList;
         type?: 'anime';
       }
-    | { newAnimeData: Movies; type: 'movie' }
-    | { newAnimeData: LatestComicsRelease; type: 'comics' }
-    | { newAnimeData: FilmHomePage[number]; type: 'film' }
+
+    | { newAnimeData: LatestComicsRelease | any; type: 'comics' }
+    | { newAnimeData: LatestNovel; type: 'novel' }
   ) & {
     navigationProp:
-      | NativeStackNavigationProp<HomeNavigator, 'AnimeList', undefined>
+      | NativeStackNavigationProp<HomeNavigator, 'HomePage', undefined>
       | NativeStackNavigationProp<RootStackNavigator, 'SeeMore', undefined>
-      | BottomTabNavigationProp<HomeNavigator, 'AnimeList', undefined>
+      | BottomTabNavigationProp<HomeNavigator, 'HomePage', undefined>
       | BottomTabNavigationProp<RootStackNavigator, 'SeeMore', undefined>;
-  } & { gap?: boolean; fromSeeMore?: boolean },
+  } & { gap?: boolean; isGrid?: boolean; fromSeeMore?: boolean },
 ) {
   const styles = useStyles();
   const z = props.newAnimeData;
   const navigation = props.navigationProp;
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   const episodeOrChapter = useMemo(() => {
-    if (props.type === 'movie') {
-      return 'Movie';
-    } else if (props.type === 'comics') {
-      return 'Chapter ' + props.newAnimeData.latestChapter;
-    } else if (props.type === 'film') {
-      return 'Film';
+    if (props.type === 'comics') {
+      return 'Ch. ' + props.newAnimeData.latestChapter;
+    } else if (props.type === 'novel') {
+      return props.newAnimeData.latestChapter || 'Novel';
     } else {
       return props.newAnimeData.episode;
-    }
-  }, [props.newAnimeData, props.type]);
-  const releaseDay = useMemo(() => {
-    if (props.type === 'movie') {
-      return 'Sub Indo';
-    } else if (props.type === 'comics') {
-      return props.newAnimeData.type + ' | ' + moment(props.newAnimeData.updatedAt).fromNow();
-    } else {
-      return props.type === 'film' ? props.newAnimeData.year : props.newAnimeData.releaseDay;
     }
   }, [props.newAnimeData, props.type]);
 
   return (
     <TouchableOpacity
       style={[
-        {
-          margin: props.gap ? 3 : 0,
-          // minWidth:
-          //   props.type === 'comics' ? styles.listBackground.height : styles.listBackground.width,
-          gap: 6,
-        },
-        styles.listContainer,
+        styles.card,
+        props.gap ? { marginRight: 10 } : {},
+        props.isGrid ? { width: '100%', flex: 1, margin: 6 } : {},
       ]}
+      activeOpacity={0.85}
       onPress={() => {
         navigation.dispatch(
           StackActions.push('FromUrl', {
             title: props.newAnimeData.title,
             link:
-              props.type === 'movie'
-                ? props.newAnimeData.url
-                : props.type === 'comics'
+              props.type === 'comics'
+                ? props.newAnimeData.detailUrl
+                : props.type === 'novel'
                   ? props.newAnimeData.detailUrl
-                  : props.type === 'film'
-                    ? props.newAnimeData.url
-                    : props.newAnimeData.streamingLink,
+                  : props.newAnimeData.streamingLink,
             type: props.type,
+            thumbnailUrl: props.newAnimeData.thumbnailUrl,
+            synopsis: props.newAnimeData.synopsis || props.newAnimeData.shortDescription,
           }),
         );
       }}>
       <ImageLoading
-        resizeMode="stretch"
+        resizeMode="cover"
         key={z.thumbnailUrl}
         source={{ uri: z.thumbnailUrl }}
-        style={[
-          styles.listBackground,
-          // {
-          //   width:
-          //     props.type === 'comics' ? styles.listBackground.height : styles.listBackground.width,
-          //   height:
-          //     props.type === 'comics' ? styles.listBackground.width : styles.listBackground.height,
-          // },
-        ]}>
-        <View style={{ flex: 1, justifyContent: 'space-between', flexDirection: 'row' }}>
-          <View style={styles.animeEpisodeContainer}>
-            <Text style={styles.animeEpisode}>{episodeOrChapter}</Text>
+        style={[styles.poster, props.isGrid ? { width: '100%', height: undefined, aspectRatio: 1 / 1.5 } : {}]}>
+        {/* Bottom gradient overlay */}
+        <View style={styles.gradientOverlay} />
+        {/* Episode/Chapter badge */}
+        <View style={styles.badgeContainer}>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{episodeOrChapter}</Text>
           </View>
-          {'rating' in z && (
-            <View style={[styles.animeEpisodeContainer]}>
-              <Text style={styles.animeEpisode}>
-                <Icon name="star" size={12} color="#FFD700" /> {z.rating}
-              </Text>
+          {'rating' in z && z.rating && (
+            <View style={[styles.badge, styles.ratingBadge]}>
+              <Icon name="star" size={9} color="#FFD700" />
+              <Text style={[styles.badgeText, { marginLeft: 3 }]}>{z.rating}</Text>
             </View>
           )}
         </View>
       </ImageLoading>
-      <View
-        style={[
-          styles.animeTitleContainer,
-          {
-            maxWidth: styles.listBackground.width,
-          },
-        ]}>
-        <Text numberOfLines={1} style={styles.animeTitle}>
+      <View style={styles.titleContainer}>
+        <Text numberOfLines={2} style={styles.title}>
           {z.title}
         </Text>
-      </View>
-      <View
-        style={[
-          styles.infoContainer,
-          {
-            maxWidth: styles.listBackground.width,
-          },
-        ]}>
-        <View style={styles.animeReleaseDayContainer}>
-          <Text style={styles.animeReleaseDay}>
-            <Icon
-              color={styles.animeReleaseDay.color}
-              name={
-                props.type === 'movie' ? 'check' : props.type === 'comics' ? 'book' : 'calendar'
-              }
-            />{' '}
-            {releaseDay}
-          </Text>
-        </View>
       </View>
     </TouchableOpacity>
   );
@@ -151,71 +107,68 @@ function useStyles() {
   const theme = useTheme();
   const globalStyles = useGlobalStyles();
   const colorScheme = useColorScheme();
-  let LIST_BACKGROUND_HEIGHT = (dimensions.height * 120) / 200 / 2.5;
-  let LIST_BACKGROUND_WIDTH = (dimensions.width * 120) / 200 / 2;
-  LIST_BACKGROUND_HEIGHT = Math.max(LIST_BACKGROUND_HEIGHT, MIN_IMAGE_HEIGHT);
-  LIST_BACKGROUND_WIDTH = Math.max(LIST_BACKGROUND_WIDTH, MIN_IMAGE_WIDTH);
+  const isDark = colorScheme === 'dark';
+  const CARD_WIDTH = Math.max((dimensions.width - 48) / 3, MIN_IMAGE_WIDTH);
+  const POSTER_HEIGHT = CARD_WIDTH * 1.5;
   return useMemo(
     () =>
       StyleSheet.create({
-        listContainer: {
+        card: {
+          width: CARD_WIDTH,
+          borderRadius: 8,
           overflow: 'hidden',
-          elevation: 4,
-          padding: 8,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: theme.colors.onBackground,
-          backgroundColor: colorScheme === 'dark' ? '#2e2e2e' : '#f3f3f3',
-          borderRadius: 12,
+          backgroundColor: isDark ? '#1a1a1a' : '#fff',
         },
-        listBackground: {
+        poster: {
+          width: CARD_WIDTH,
+          height: POSTER_HEIGHT,
+          borderRadius: 8,
           overflow: 'hidden',
-          width: LIST_BACKGROUND_WIDTH,
-          height: LIST_BACKGROUND_HEIGHT,
-          borderRadius: 7,
-          alignSelf: 'center',
         },
-        infoContainer: {
-          flex: 1,
+        gradientOverlay: {
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '40%',
+          backgroundColor: 'transparent',
+        },
+        badgeContainer: {
+          position: 'absolute',
+          bottom: 6,
+          left: 6,
+          right: 6,
           flexDirection: 'row',
           justifyContent: 'space-between',
-          flexWrap: 'wrap',
+          alignItems: 'flex-end',
         },
-        animeTitleContainer: {
-          justifyContent: 'flex-start',
+        badge: {
+          backgroundColor: 'rgba(59, 130, 246, 0.92)',
+          paddingHorizontal: 6,
+          paddingVertical: 2,
+          borderRadius: 4,
+        },
+        ratingBadge: {
+          backgroundColor: 'rgba(0,0,0,0.75)',
+          flexDirection: 'row',
           alignItems: 'center',
         },
-        animeTitle: {
-          fontSize: 13,
-          textAlign: 'center',
-          color: globalStyles.text.color,
-          fontWeight: 'bold',
+        badgeText: {
+          fontSize: 10,
+          color: '#fff',
+          fontWeight: '700',
         },
-        animeEpisodeContainer: {
-          backgroundColor: '#000000b0',
-          alignSelf: 'flex-start',
-          padding: 5,
-          borderRadius: 5,
+        titleContainer: {
+          paddingHorizontal: 4,
+          paddingVertical: 6,
         },
-        animeEpisode: {
-          fontSize: 11,
-          color: 'white',
-          fontWeight: 'bold',
-        },
-        animeReleaseDayContainer: {},
-        animeReleaseDay: {
+        title: {
           fontSize: 12,
-          color: theme.colors.tertiary,
-          opacity: 0.8,
-          fontWeight: 'bold',
+          color: isDark ? '#e0e0e0' : '#222',
+          fontWeight: '600',
+          lineHeight: 16,
         },
       }),
-    [
-      theme.colors.onBackground,
-      theme.colors.tertiary,
-      colorScheme,
-      LIST_BACKGROUND_WIDTH,
-      LIST_BACKGROUND_HEIGHT,
-      globalStyles.text.color,
-    ],
+    [isDark, CARD_WIDTH, POSTER_HEIGHT, globalStyles.text.color],
   );
 }

@@ -5,5 +5,8 @@
     "enableNowPlayingNotification": "false",
     "historyKeyCollectionsOrder": "[]",
     "searchHistory": "[]",
-    "watchLater": "[]"
+    "novelSearchHistory": "[]",
+    "watchLater": "[]",
+    "extensionPreferences": "[]",
+    "local_exp": "0"
 }

@@ -5,45 +5,68 @@ import { HistoryAdditionalData, HistoryJSON } from '../types/historyJSON';
 import { RootStackNavigator } from '../types/navigation';
 import { DatabaseManager } from './DatabaseManager';
 import { ComicsReading } from './scrapers/comicsv2';
-import { FilmDetail_Stream } from './scrapers/film';
 import { KomikuReading } from './scrapers/komiku';
+import { NovelReading } from './scrapers/meionovel';
 
 async function setHistory(
   targetData:
     | RootStackNavigator['Video']['data']
     | ComicsReading
     | KomikuReading
-    | FilmDetail_Stream,
+    | NovelReading,
   link: string,
   skipUpdateDate = false,
   additionalData: Partial<HistoryAdditionalData> | {} = {},
   isMovie?: boolean,
   isComics?: boolean,
+  seriesTitle?: string,
 ) {
-  const isFilm = URL.parse(link).host!?.includes('idlix') && link.includes('/episode/');
   let title: string;
   let episode: string | null;
   if (isComics && !('releaseDate' in targetData) && 'chapter' in targetData) {
     episode = (link.includes('softkomik') ? 'Chapter ' : '') + targetData.chapter;
     title = targetData.title;
   } else {
-    const episodeIndex = targetData.title
+    const safeTitle = (targetData as any)?.title || '';
+    const episodeIndex = safeTitle
       .toLowerCase()
-      .lastIndexOf(isFilm ? 'x' : isComics ? 'chapter' : 'episode');
-    const isFilmEpisode = targetData.title.split(': ').at(-1)?.split('x');
-    episode =
-      episodeIndex < 0
-        ? null
-        : isFilm
-          ? `Season ${isFilmEpisode?.[0]} Episode ${isFilmEpisode?.[1]}`
-          : targetData.title.slice(episodeIndex).trim();
-    title = (
-      isFilm
-        ? targetData.title.split(': ').slice(0, -1).join(': ')
-        : episodeIndex >= 0
-          ? targetData.title.slice(0, episodeIndex)
-          : targetData.title
-    ).trim();
+      .lastIndexOf(isComics ? 'chapter' : 'episode');
+    
+    if (isComics && episodeIndex < 0 && 'chapter' in targetData && (targetData as any).chapter) {
+      episode = (targetData as any).chapter;
+      title = safeTitle.trim();
+    } else {
+      episode =
+        episodeIndex < 0
+          ? null
+          : safeTitle.slice(episodeIndex).trim();
+      title = (
+        episodeIndex >= 0
+          ? safeTitle.slice(0, episodeIndex)
+          : safeTitle
+      ).trim();
+    }
+  }
+
+  // Normalize comic episode to always have "Chapter " prefix for cross-source consistency
+  if (isComics && episode && !episode.toLowerCase().startsWith('chapter')) {
+    const numMatch = episode.match(/(\d+\.?\d*)/);
+    if (numMatch) {
+      episode = `Chapter ${numMatch[1]}`;
+    }
+  }
+
+  // Allow explicit episode override from additionalData (used by FilmPlayer for TV episodes)
+  const additionalEpisode = (additionalData as any).episode;
+  if (additionalEpisode !== undefined) {
+    episode = additionalEpisode;
+  }
+
+  // Use explicit series title if provided (fixes cross-source history key collision)
+  // Some scrapers return chapter title instead of series name in targetData.title,
+  // causing all comics to share the same history key. seriesTitle overrides this.
+  if (seriesTitle && seriesTitle.trim()) {
+    title = seriesTitle.trim();
   }
   const dataKey =
     `historyItem:${title}:${isComics ?? 'false'}:${isMovie ?? 'false'}` as HistoryItemKey;
@@ -71,7 +94,7 @@ async function setHistory(
       title,
       episode,
       link,
-      thumbnailUrl: targetData.thumbnailUrl,
+      thumbnailUrl: (targetData as any).thumbnailUrl || (targetData as any).coverImage || historyData.thumbnailUrl || ((targetData as any).comicImages?.[0]) || '',
       date: skipUpdateDate ? historyData?.date : Date.now(),
       isMovie,
       isComics,

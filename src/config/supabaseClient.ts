@@ -6,9 +6,9 @@ export interface Database {
   public: {
     Tables: {
       profiles: {
-        Row: { id: string; username: string; avatar_url: string | null; display_name: string | null; created_at: string };
-        Insert: { id: string; username: string; avatar_url?: string | null; display_name?: string | null };
-        Update: { id?: string; username?: string; avatar_url?: string | null; display_name?: string | null };
+        Row: { id: string; username: string; avatar_url: string | null; display_name: string | null; total_exp: number; level: number; created_at: string };
+        Insert: { id: string; username: string; avatar_url?: string | null; display_name?: string | null; total_exp?: number; level?: number };
+        Update: { id?: string; username?: string; avatar_url?: string | null; display_name?: string | null; total_exp?: number; level?: number };
         Relationships: [];
       };
       comments: {
@@ -16,6 +16,12 @@ export interface Database {
         Insert: { id?: string; user_id: string; content_id: string; content_type: string; parent_id?: string | null; text: string };
         Update: { id?: string; user_id?: string; content_id?: string; content_type?: string; parent_id?: string | null; text?: string };
         Relationships: [{ foreignKeyName: 'comments_user_id_fkey'; columns: ['user_id']; isOneToOne: false; referencedRelation: 'profiles'; referencedColumns: ['id'] }];
+      };
+      chat_messages: {
+        Row: { id: string; user_id: string; username: string; avatar_url: string | null; text: string; created_at: string };
+        Insert: { id?: string; user_id: string; username: string; avatar_url?: string | null; text: string };
+        Update: { id?: string; user_id?: string; username?: string; avatar_url?: string | null; text?: string };
+        Relationships: [{ foreignKeyName: 'chat_messages_user_id_fkey'; columns: ['user_id']; isOneToOne: false; referencedRelation: 'profiles'; referencedColumns: ['id'] }];
       };
     };
     Views: Record<string, never>;

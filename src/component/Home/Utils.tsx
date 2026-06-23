@@ -1,17 +1,19 @@
 import { createNativeStackNavigator, NativeStackScreenProps } from '@react-navigation/native-stack';
-import { memo, useMemo } from 'react';
-import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { memo, useEffect, useMemo } from 'react';
+import { ScrollView, StyleSheet, useWindowDimensions, View, useColorScheme } from 'react-native';
 import { Appbar, Surface, Text, TouchableRipple, useTheme } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { UtilsStackNavigator } from '../../types/navigation';
+import { UtilsStackNavigator, RootStackNavigator } from '../../types/navigation';
 import About from './Utilitas/About';
 import Changelog from './Utilitas/Changelog';
 import SearchAnimeByImage from './Utilitas/SearchAnimeByImage';
 import Setting from './Utilitas/Setting';
+import ExtensionManager from './Utilitas/ExtensionManager';
 
 const Stack = createNativeStackNavigator<UtilsStackNavigator>();
 
-function Utils() {
+function Utils({ route }: NativeStackScreenProps<RootStackNavigator, 'Utils'>) {
+  const initialScreen = route?.params?.screen ?? 'ChooseScreen';
   return (
     <Stack.Navigator
       screenOptions={{
@@ -35,7 +37,7 @@ function Utils() {
           </Appbar.Header>
         ),
       }}
-      initialRouteName="ChooseScreen">
+      initialRouteName={initialScreen as keyof UtilsStackNavigator}>
       <Stack.Screen
         name="ChooseScreen"
         component={ChooseScreen}
@@ -49,6 +51,7 @@ function Utils() {
       <Stack.Screen name="Changelog" component={Changelog} options={{ title: 'Changelog' }} />
       <Stack.Screen name="Setting" component={Setting} options={{ title: 'Pengaturan' }} />
       <Stack.Screen name="About" component={About} options={{ title: 'Tentang' }} />
+      <Stack.Screen name="ExtensionManager" component={ExtensionManager} options={{ title: 'Sumber Ekstensi' }} />
     </Stack.Navigator>
   );
 }
@@ -56,6 +59,13 @@ function Utils() {
 export default memo(Utils);
 
 const Screens = [
+  {
+    title: 'Pengaturan Sumber',
+    desc: 'Atur website yang jadi sumber utama Anime & Komik',
+    icon: 'web',
+    color: '#d84b3e',
+    screen: 'ExtensionManager',
+  },
   {
     title: 'Cari Anime dari Gambar',
     desc: 'Cari judul anime dari gambar screenshot.',
@@ -92,30 +102,27 @@ function ChooseScreen(props: NativeStackScreenProps<UtilsStackNavigator, 'Choose
 
   return (
     <ScrollView
-      contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}>
+      contentContainerStyle={[styles.container]}>
       {Screens.map((screen, index) => (
-        <Surface key={index} style={styles.surface} elevation={2}>
+        <Surface key={index} style={styles.surface} elevation={0}>
           <TouchableRipple
             background={{ color: 'white', foreground: true }}
             onPress={() => props.navigation.navigate(screen.screen as any)}
             style={styles.touchable}
-            rippleColor={theme.colors.primaryContainer}>
+            rippleColor="rgba(59, 130, 246, 0.2)">
             <View style={styles.content}>
               <View
                 style={[
                   styles.iconContainer,
-                  { backgroundColor: theme.colors.secondaryContainer },
                 ]}>
-                <MaterialCommunityIcons name={screen.icon} size={32} color={screen.color} />
+                <MaterialCommunityIcons name={screen.icon} size={28} color={screen.color} />
               </View>
               <Text
-                variant="titleMedium"
-                style={[styles.titleText, { color: theme.colors.onSurface }]}>
+                style={[styles.titleText]}>
                 {screen.title}
               </Text>
               <Text
-                variant="bodySmall"
-                style={[styles.descText, { color: theme.colors.onSurfaceVariant }]}>
+                style={[styles.descText]}>
                 {screen.desc}
               </Text>
             </View>
@@ -129,6 +136,8 @@ function ChooseScreen(props: NativeStackScreenProps<UtilsStackNavigator, 'Choose
 function useStyles() {
   const dimensions = useWindowDimensions();
   const theme = useTheme();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const GAP = 12;
   const devidedWidth = (dimensions.width - GAP * 3) / 2;
 
@@ -141,13 +150,16 @@ function useStyles() {
           padding: GAP,
           gap: GAP,
           paddingBottom: 24,
+          backgroundColor: isDark ? '#0f0f0f' : '#fafafa',
         },
         surface: {
-          borderRadius: 16,
+          borderRadius: 12,
           overflow: 'hidden',
-          backgroundColor: theme.colors.surface,
+          backgroundColor: isDark ? '#1a1a1a' : '#fff',
           width: devidedWidth < 150 ? '100%' : devidedWidth,
-          minHeight: 160,
+          minHeight: 140,
+          borderWidth: 1,
+          borderColor: isDark ? '#2a2a2a' : '#e0e0e0',
         },
         touchable: {
           flex: 1,
@@ -159,22 +171,27 @@ function useStyles() {
           flex: 1,
         },
         iconContainer: {
-          width: 56,
-          height: 56,
-          borderRadius: 28,
+          width: 50,
+          height: 50,
+          borderRadius: 25,
           justifyContent: 'center',
           alignItems: 'center',
           marginBottom: 12,
+          backgroundColor: isDark ? '#222' : '#f0f0f0',
         },
         titleText: {
           textAlign: 'center',
-          fontWeight: 'bold',
-          marginBottom: 4,
+          fontWeight: '700',
+          marginBottom: 6,
+          color: isDark ? '#f0f0f0' : '#111',
+          fontSize: 15,
         },
         descText: {
           textAlign: 'center',
+          color: isDark ? '#aaa' : '#666',
+          fontSize: 12,
         },
       }),
-    [theme.colors.surface, devidedWidth],
+    [theme.colors.surface, devidedWidth, isDark],
   );
 }

@@ -3,7 +3,7 @@ import { StackActions } from '@react-navigation/native';
 import { FlashList, FlashListRef, ListRenderItem } from '@shopify/flash-list';
 import moment from 'moment';
 import { memo, useCallback, useMemo, useRef } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import Icon from '@react-native-vector-icons/material-design-icons';
 import URL from 'url';
@@ -24,6 +24,7 @@ function WatchLater(props: Props) {
   const watchLaterLists = useModifiedKeyValueIfFocused<watchLaterJSON[]>(
     'watchLater',
     result => JSON.parse(result) as watchLaterJSON[],
+    [] as watchLaterJSON[],
   );
 
   const flashlistRef = useRef<FlashListRef<watchLaterJSON>>(null);
@@ -37,13 +38,40 @@ function WatchLater(props: Props) {
           // layout={LinearTransition}
           style={styles.listContainer}
           onPress={() => {
+            // Film watch later: navigate to FilmDetail instead of playing
+            if (item.link?.startsWith('film://')) {
+              const filmRaw = item.link.replace('film://', '');
+              const [filmPath] = filmRaw.split('?');
+              const parts = filmPath.split('/');
+              const subjectId = parts[0];
+              const detailPath = parts.slice(1).join('/');
+              props.navigation.dispatch(
+                StackActions.push('FilmDetail', {
+                  data: {
+                    subjectId,
+                    detailPath,
+                    title: item.title,
+                    cover: { url: item.thumbnailUrl },
+                    imdbRatingValue: item.rating || '',
+                    releaseDate: item.releaseYear || '',
+                    genre: item.genre?.join(', ') || '',
+                    subjectType: item.isMovie ? 1 : 2,
+                    subtitles: '',
+                    dubs: [],
+                    hasResource: true,
+                    description: '',
+                    countryName: '',
+                  },
+                }),
+              );
+              return;
+            }
             props.navigation.dispatch(
               StackActions.push('FromUrl', {
                 title: item.title,
                 link: item.link,
-                type: URL.parse(item.link).hostname!?.includes('idlix')
-                  ? 'film'
-                  : item.isMovie
+                thumbnailUrl: item.thumbnailUrl,
+                type: item.isMovie
                     ? 'movie'
                     : item.isComics
                       ? 'comics'
@@ -140,6 +168,7 @@ function WatchLater(props: Props) {
           ref={flashlistRef}
           data={watchLaterLists}
           extraData={styles}
+          estimatedItemSize={170}
           renderItem={renderItem}
           keyExtractor={extractKey}
           ListHeaderComponent={() => (
@@ -168,53 +197,57 @@ const extractKey = (item: watchLaterJSON) => item.date.toString();
 
 function useStyles() {
   const theme = useTheme();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   return useMemo(
     () =>
       StyleSheet.create({
         listContainer: {
           flexDirection: 'row',
-          marginVertical: 5,
-          backgroundColor: theme.colors.surface,
-          borderWidth: 0.2,
-          borderColor: theme.colors.onSurfaceVariant,
-          borderRadius: 16,
-          elevation: 5,
+          marginVertical: 4,
+          marginHorizontal: 12,
+          backgroundColor: isDark ? '#1a1a1a' : '#fff',
+          borderWidth: 1,
+          borderColor: isDark ? '#2a2a2a' : '#e0e0e0',
+          borderRadius: 12,
+          elevation: 0,
           height: 160,
           overflow: 'hidden',
         },
         listInfoContainer: {
           flex: 1,
           flexDirection: 'column',
+          padding: 8,
         },
         thumbnail: {
           height: 160,
           width: 80,
-          borderTopLeftRadius: 16,
-          borderBottomLeftRadius: 16,
+          borderTopLeftRadius: 12,
+          borderBottomLeftRadius: 12,
           marginRight: 7,
         },
         ratingContainer: {
           position: 'absolute',
-          left: 3,
-          top: 0,
+          left: 4,
+          top: 4,
         },
         listRatingText: {
-          backgroundColor: 'orange',
-          color: 'black',
-          padding: 3,
-          borderTopLeftRadius: 16,
-          borderBottomLeftRadius: 16,
-          borderBottomRightRadius: 16,
-          borderTopRightRadius: 16,
-          fontWeight: '600',
+          backgroundColor: '#F47521',
+          color: '#fff',
+          paddingHorizontal: 6,
+          paddingVertical: 2,
+          borderRadius: 8,
+          fontWeight: '700',
+          fontSize: 11,
         },
         titleContainer: {
           justifyContent: 'center',
           flex: 1,
         },
         listGenreText: {
-          color: theme.colors.onSecondaryContainer,
-          fontWeight: 'bold',
+          color: '#F47521',
+          fontWeight: '600',
+          fontSize: 12,
         },
         emptyList: {
           flex: 1,
@@ -223,28 +256,29 @@ function useStyles() {
         },
         listBottom: {
           flexDirection: 'row',
+          alignItems: 'center',
         },
         listGenreContainer: {
           justifyContent: 'flex-start',
           flex: 1,
         },
         listDateText: {
-          color: 'gray',
-          fontSize: 12,
+          color: isDark ? '#888' : '#666',
+          fontSize: 11,
           fontWeight: '500',
         },
         listDeleteContainer: {
           justifyContent: 'flex-end',
-          backgroundColor: theme.colors.errorContainer,
-          borderRadius: 5,
-          padding: 3,
+          backgroundColor: '#ff4d4d',
+          borderRadius: 6,
+          padding: 6,
           marginHorizontal: 2,
         },
         listDeleteIcon: {
-          color: theme.colors.onErrorContainer,
+          color: '#fff',
         },
       }),
-    [theme],
+    [theme, isDark],
   );
 }
 

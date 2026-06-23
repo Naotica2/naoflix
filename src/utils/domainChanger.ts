@@ -1,20 +1,22 @@
 import { __ALIAS as aliasAnime, BASE as animeBase } from './scrapers/animeSeries';
-import { __ALIAS as aliasComics1, DOMAIN as comics1Domain } from './scrapers/comics1';
-import { __ALIAS as aliasComics2, DOMAIN as comics2Domain } from './scrapers/comics2';
-import { __ALIAS as filmAlias, FILM_DOMAIN as filmDomain } from './scrapers/film';
 import { __ALIAS as aliasKomiku, DOMAIN as komikuDomain } from './scrapers/komiku';
+import { __ALIAS as aliasAnimeindo, DOMAIN as animeindoDomain } from './scrapers/animeindo';
+import { __ALIAS as aliasMeio, DOMAIN as meioDomain } from './scrapers/meionovel';
+import { __ALIAS as aliasAnimelovers, DOMAIN as animeloversDomain } from './scrapers/animelovers';
 
-type Type = 'komiku' | 'comics1' | 'comics2' | 'anime' | 'movie' | 'film';
+type Type = 'komiku' | 'anime' | 'movie' | 'komikcast' | 'animeindo' | 'novel' | 'animelovers';
 
 export function determineType(url: string): Type {
   const urlObj = new URL(url);
+  if (urlObj.hostname.includes(aliasAnimeindo) || urlObj.hostname.includes('anime-indo')) return 'animeindo';
+  if (urlObj.hostname.includes(aliasAnimelovers) || urlObj.hostname.includes('api.fruatre.my.id')) return 'animelovers';
   if (urlObj.hostname.includes(aliasKomiku)) return 'komiku';
-  if (urlObj.hostname.includes(aliasComics1)) return 'comics1';
-  if (urlObj.hostname.includes(aliasComics2)) return 'comics2';
+
+  if (urlObj.hostname.includes(aliasMeio)) return 'novel';
   if (urlObj.hostname.includes(aliasAnime)) return 'anime';
-  if (urlObj.hostname.includes(filmAlias)) return 'film';
   return 'movie';
 }
+
 
 export function generateUrlWithLatestDomain(url: string): string {
   const urlObj = new URL(url);
@@ -28,21 +30,21 @@ export function generateUrlWithLatestDomain(url: string): string {
       newDomain = komikuDomain;
       matchedAlias = aliasKomiku;
       break;
-    case 'comics1':
-      newDomain = comics1Domain;
-      matchedAlias = aliasComics1;
-      break;
-    case 'comics2':
-      newDomain = comics2Domain;
-      matchedAlias = aliasComics2;
-      break;
     case 'anime':
       newDomain = animeBase.domain;
       matchedAlias = aliasAnime;
       break;
-    case 'film':
-      newDomain = filmDomain;
-      matchedAlias = filmAlias;
+    case 'animeindo':
+      newDomain = animeindoDomain;
+      matchedAlias = aliasAnimeindo;
+      break;
+    case 'animelovers':
+      newDomain = animeloversDomain;
+      matchedAlias = aliasAnimelovers;
+      break;
+    case 'novel':
+      newDomain = meioDomain;
+      matchedAlias = aliasMeio;
       break;
     case 'movie':
       return urlObj.toString();

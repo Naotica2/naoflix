@@ -59,6 +59,43 @@ export async function getLatestKomikuReleases(
     .toArray();
 }
 
+export async function getKomikuByGenre(
+  genre: string,
+  page: number = 1,
+  signal?: AbortSignal,
+): Promise<LatestKomikuRelease[]> {
+  const response = await fetch(`${API_URL}/genre/${genre}/page/${page}/`, {
+    headers: { 'User-Agent': deviceUserAgent },
+    signal,
+  });
+  const data = await response.text();
+  const $ = cheerio.load(data);
+  const list = $('div.bge');
+  return list
+    .map((i, el) => {
+      const listItem = $(el);
+      const title = listItem.find('div.kan h3').text().trim();
+      const thumbnailUrl = listItem.find('img').attr('src') || '';
+      const detailUrl = listItem.find('a').attr('href') || '';
+      const type = listItem.find('div.tpe1_inf b').text().trim() as LatestKomikuRelease['type'];
+      const latestChapter = listItem.find('div.new1').eq(1).find('span').eq(1).text().trim();
+      const concept = listItem.find('div.tpe1_inf').clone().find('b').remove().end().text().trim();
+      const shortDescription = listItem.find('div.kan p').text().trim();
+      const additionalInfo = listItem.find('span.judul2').text().trim();
+      return {
+        title,
+        thumbnailUrl: normalizeUrl(thumbnailUrl),
+        detailUrl: normalizeUrl(detailUrl),
+        type,
+        latestChapter,
+        concept,
+        shortDescription,
+        additionalInfo,
+      };
+    })
+    .toArray();
+}
+
 export interface KomikuDetail {
   title: string;
   indonesianTitle: string;
@@ -98,24 +135,24 @@ export async function getKomikuDetailFromUrl(
     })
     .toArray();
   const titleRaw =
-    tableInfo.find(item => item.key === 'Judul Komik')?.value ?? 'Data tidak tersedia';
+    tableInfo.find(item => item.key === 'Judul:' || item.key === 'Judul Komik')?.value ?? 'Data tidak tersedia';
   const title = he.decode(titleRaw);
   const indonesianTitleRaw =
-    tableInfo.find(item => item.key === 'Judul Indonesia')?.value ?? 'Data tidak tersedia';
+    tableInfo.find(item => item.key === 'Judul Alternatif:' || item.key === 'Judul Indonesia')?.value ?? 'Data tidak tersedia';
   const indonesianTitle = he.decode(indonesianTitleRaw);
   const type =
-    (tableInfo.find(item => item.key === 'Jenis Komik')?.value as KomikuDetail['type']) ??
+    (tableInfo.find(item => item.key === 'Tipe:' || item.key === 'Jenis Komik')?.value as KomikuDetail['type']) ??
     'Data tidak tersedia';
-  const author = tableInfo.find(item => item.key === 'Pengarang')?.value ?? 'Data tidak tersedia';
+  const author = tableInfo.find(item => item.key === 'Author:' || item.key === 'Pengarang')?.value ?? 'Data tidak tersedia';
   const status =
-    (tableInfo.find(item => item.key === 'Status')?.value as KomikuDetail['status']) ??
+    (tableInfo.find(item => item.key === 'Status:' || item.key === 'Status')?.value as KomikuDetail['status']) ??
     'Data tidak tersedia';
   const minAge =
-    tableInfo.find(item => item.key === 'Umur Pembaca')?.value ?? 'Data tidak tersedia';
+    tableInfo.find(item => item.key === 'Rating:' || item.key === 'Umur Pembaca')?.value ?? 'Data tidak tersedia';
   const concept =
-    tableInfo.find(item => item.key === 'Konsep Cerita')?.value ?? 'Data tidak tersedia';
+    tableInfo.find(item => item.key === 'Tema:' || item.key === 'Konsep Cerita')?.value ?? 'Data tidak tersedia';
   const readingDirection =
-    tableInfo.find(item => item.key === 'Cara Baca')?.value ?? 'Data tidak tersedia';
+    tableInfo.find(item => item.key === 'Cara Baca:' || item.key === 'Cara Baca')?.value ?? 'Data tidak tersedia';
   const headerImageUrl = data.match(/url\((.*?)\)/)?.[1] ?? '';
   const thumbnailUrl = $('.ims > img').attr('src') ?? '';
   const genres = $('ul.genre > li')
@@ -204,13 +241,24 @@ export async function getKomikuReading(url: string, signal?: AbortSignal): Promi
     } else thumbnailUrl = coverUrl;
   }
   const releaseDate = $('time[property="datePublished"]').text().trim() || 'Data tidak tersedia';
-  const comicImages = $('div#Baca_Komik img')
+  const comicImages = $('img.klazy, img.ww, div#Baca_Komik img')
     .map((_i, el) => {
       return $(el).attr('src');
     })
     .toArray();
-  const nextChapter = normalizeUrl($('svg[data-icon="caret-right"]').parent().attr('href') ?? '');
-  const prevChapter = normalizeUrl($('svg[data-icon="caret-left"]').parent().attr('href') ?? '');
+  // New selectors: aria-label, fallback to old SVG data-icon
+  const nextChapter = normalizeUrl(
+    $('a[aria-label="Next"]').attr('href')
+    ?? $('svg[data-icon="caret-right"]').parent().attr('href')
+    ?? $('svg.fa-caret-right').closest('a').attr('href')
+    ?? '',
+  );
+  const prevChapter = normalizeUrl(
+    $('a[aria-label="Prev"]').attr('href')
+    ?? $('svg[data-icon="caret-left"]').parent().attr('href')
+    ?? $('svg.fa-caret-left').closest('a').attr('href')
+    ?? '',
+  );
 
   return {
     title,
