@@ -22,6 +22,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { HistoryItemKey } from '../../types/databaseTarget';
 import { HistoryJSON } from '../../types/historyJSON';
 import { DatabaseManager, useModifiedKeyValueIfFocused } from '../../utils/DatabaseManager';
+import controlWatchLater from '../../utils/watchLaterControl';
+import watchLaterJSON from '../../types/watchLaterJSON';
+import { ToastAndroid } from 'react-native';
 
 type Props = NativeStackScreenProps<RootStackNavigator, 'NovelDetail'>;
 
@@ -66,6 +69,15 @@ export default function NovelDetail(props: Props) {
     const match = lastReaded.episode.match(/(\d+\.?\d*)/);
     return match ? parseFloat(match[1]) : -1;
   }, [lastReaded]);
+
+  const watchLaterListsJson = useModifiedKeyValueIfFocused(
+    'watchLater',
+    state => JSON.parse(state) as watchLaterJSON[],
+  );
+  const isInList = useMemo(
+    () => watchLaterListsJson.some(item => item.title === data.title && !item.isComics && item.rating === 'Novel'),
+    [data.title, watchLaterListsJson],
+  );
 
   useEffect(() => {
     props.navigation.setOptions({
@@ -291,19 +303,79 @@ export default function NovelDetail(props: Props) {
 
         {/* CHAPTER LIST HEADER */}
         <View style={{ marginTop: 20, paddingHorizontal: 16 }}>
-          {lastReaded && lastReaded.episode && (
+          <Button
+            buttonColor="rgba(59, 130, 246, 0.15)"
+            textColor="#3b82f6"
+            mode="contained-tonal"
+            icon="playlist-plus"
+            style={{ borderRadius: 6, marginBottom: 16 }}
+            onPress={() => {
+              if (!data.chapters[0]) {
+                ToastAndroid.show('Data chapter tidak ditemukan', ToastAndroid.SHORT);
+                return;
+              }
+              const watchLaterJson: watchLaterJSON = {
+                title: data.title,
+                link: props.route.params.link || '',
+                rating: 'Novel',
+                releaseYear: (data as any).releaseYear || 'Data tidak tersedia',
+                thumbnailUrl: data.thumbnailUrl,
+                genre: data.genres || [],
+                date: Date.now(),
+                isComics: false,
+              };
+              controlWatchLater('add', watchLaterJson);
+              ToastAndroid.show('Ditambahkan ke tonton nanti', ToastAndroid.SHORT);
+            }}>
+            {isInList ? 'Sudah Ditambahkan' : 'Baca Nanti'}
+          </Button>
+          <View style={{ flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+            {lastReaded && lastReaded.episode && (
+              <Button
+                mode="contained"
+                buttonColor="#3b82f6"
+                textColor="#fff"
+                icon="book-open"
+                style={{ borderRadius: 6 }}
+                onPress={() => {
+                  navigateToChapter(lastReaded.link, { lastDuration: lastReaded.lastDuration ?? 0 });
+                }}>
+                Lanjutkan Membaca ({lastReaded.episode})
+              </Button>
+            )}
             <Button
-              mode="contained"
-              buttonColor="#3b82f6"
-              textColor="#fff"
-              icon="book-open"
-              style={{ borderRadius: 6, marginBottom: 12 }}
               onPress={() => {
-                navigateToChapter(lastReaded.link, { lastDuration: lastReaded.lastDuration ?? 0 });
-              }}>
-              Lanjutkan Membaca ({lastReaded.episode})
+                const chapterData = data.chapters[data.chapters.length - 1]; // Novel chapters usually oldest to newest or newest to oldest?
+                // Wait, typically data.chapters array might be newest first. Let's rely on finding the first one.
+                const firstCh = [...data.chapters].reverse()[0];
+                if (!firstCh?.chapterUrl) {
+                  ToastAndroid.show('Chapter tidak ditemukan', ToastAndroid.SHORT);
+                  return;
+                }
+                navigateToChapter(firstCh.chapterUrl);
+              }}
+              mode="contained-tonal"
+              buttonColor={isDark ? '#2a2a2a' : '#e0e0e0'}
+              textColor={isDark ? '#fff' : '#000'}
+              style={{ borderRadius: 6 }}>
+              Baca Chapter Pertama
             </Button>
-          )}
+            <Button
+              onPress={() => {
+                const lastCh = data.chapters[0];
+                if (!lastCh?.chapterUrl) {
+                  ToastAndroid.show('Chapter tidak ditemukan', ToastAndroid.SHORT);
+                  return;
+                }
+                navigateToChapter(lastCh.chapterUrl);
+              }}
+              mode="contained-tonal"
+              buttonColor={isDark ? '#2a2a2a' : '#e0e0e0'}
+              textColor={isDark ? '#fff' : '#000'}
+              style={{ borderRadius: 6 }}>
+              Baca Chapter Terbaru
+            </Button>
+          </View>
           <View
             style={{
               flexDirection: 'row',

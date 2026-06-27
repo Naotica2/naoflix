@@ -192,6 +192,7 @@ export default function NovelReading(props: Props) {
       </Portal>
 
       <LegendList
+        key={fontSizeIndex}
         ref={scrollViewRef as any}
         style={{ flex: 1 }}
         contentContainerStyle={styles.contentContainer}

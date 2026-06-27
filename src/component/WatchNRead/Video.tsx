@@ -147,49 +147,6 @@ function Video(props: Props) {
     }
   }, [currentEpisodeIndex]);
 
-  const hasNextEp = useMemo(() => {
-    if (!animeDetail?.episodeList || currentEpisodeIndex === -1 || animeDetail.episodeList.length < 2) return false;
-    const firstEpNum = Number(extractEpNum(animeDetail.episodeList[0].title) || 0);
-    const lastEpNum = Number(extractEpNum(animeDetail.episodeList[animeDetail.episodeList.length - 1].title) || 0);
-    const isReversed = firstEpNum < lastEpNum; // If index 0 is smaller than last index, list is Oldest to Newest
-    const nextIndex = isReversed ? currentEpisodeIndex + 1 : currentEpisodeIndex - 1;
-    return nextIndex >= 0 && nextIndex < animeDetail.episodeList.length;
-  }, [animeDetail, currentEpisodeIndex, extractEpNum]);
-
-  const hasPrevEp = useMemo(() => {
-    if (!animeDetail?.episodeList || currentEpisodeIndex === -1 || animeDetail.episodeList.length < 2) return false;
-    const firstEpNum = Number(extractEpNum(animeDetail.episodeList[0].title) || 0);
-    const lastEpNum = Number(extractEpNum(animeDetail.episodeList[animeDetail.episodeList.length - 1].title) || 0);
-    const isReversed = firstEpNum < lastEpNum;
-    const prevIndex = isReversed ? currentEpisodeIndex - 1 : currentEpisodeIndex + 1;
-    return prevIndex >= 0 && prevIndex < animeDetail.episodeList.length;
-  }, [animeDetail, currentEpisodeIndex, extractEpNum]);
-
-  const goNextEp = useCallback(() => {
-    if (!animeDetail?.episodeList || currentEpisodeIndex === -1 || animeDetail.episodeList.length < 2) return;
-    const firstEpNum = Number(extractEpNum(animeDetail.episodeList[0].title) || 0);
-    const lastEpNum = Number(extractEpNum(animeDetail.episodeList[animeDetail.episodeList.length - 1].title) || 0);
-    const isReversed = firstEpNum < lastEpNum;
-    const nextIndex = isReversed ? currentEpisodeIndex + 1 : currentEpisodeIndex - 1;
-    if (nextIndex >= 0 && nextIndex < animeDetail.episodeList.length) {
-      episodeDataControl(animeDetail.episodeList[nextIndex].link);
-    } else {
-      ToastAndroid.show('Episode terakhir', ToastAndroid.SHORT);
-    }
-  }, [animeDetail, currentEpisodeIndex, episodeDataControl, extractEpNum]);
-
-  const goPrevEp = useCallback(() => {
-    if (!animeDetail?.episodeList || currentEpisodeIndex === -1 || animeDetail.episodeList.length < 2) return;
-    const firstEpNum = Number(extractEpNum(animeDetail.episodeList[0].title) || 0);
-    const lastEpNum = Number(extractEpNum(animeDetail.episodeList[animeDetail.episodeList.length - 1].title) || 0);
-    const isReversed = firstEpNum < lastEpNum;
-    const prevIndex = isReversed ? currentEpisodeIndex - 1 : currentEpisodeIndex + 1;
-    if (prevIndex >= 0 && prevIndex < animeDetail.episodeList.length) {
-      episodeDataControl(animeDetail.episodeList[prevIndex].link);
-    } else {
-      ToastAndroid.show('Episode pertama', ToastAndroid.SHORT);
-    }
-  }, [animeDetail, currentEpisodeIndex, episodeDataControl, extractEpNum]);
 
   useEffect(() => {
     AnimeAPI.fromUrl(data.episodeData.animeDetail, undefined, undefined, true).then(detail => {
@@ -562,6 +519,50 @@ function Video(props: Props) {
     },
     [loading],
   );
+
+  const hasNextEp = useMemo(() => {
+    if (!animeDetail?.episodeList || currentEpisodeIndex === -1 || animeDetail.episodeList.length < 2) return false;
+    const firstEpNum = Number(extractEpNum(animeDetail.episodeList[0].title) || 0);
+    const lastEpNum = Number(extractEpNum(animeDetail.episodeList[animeDetail.episodeList.length - 1].title) || 0);
+    const isReversed = firstEpNum < lastEpNum; // If index 0 is smaller than last index, list is Oldest to Newest
+    const nextIndex = isReversed ? currentEpisodeIndex + 1 : currentEpisodeIndex - 1;
+    return nextIndex >= 0 && nextIndex < animeDetail.episodeList.length;
+  }, [animeDetail, currentEpisodeIndex, extractEpNum]);
+
+  const hasPrevEp = useMemo(() => {
+    if (!animeDetail?.episodeList || currentEpisodeIndex === -1 || animeDetail.episodeList.length < 2) return false;
+    const firstEpNum = Number(extractEpNum(animeDetail.episodeList[0].title) || 0);
+    const lastEpNum = Number(extractEpNum(animeDetail.episodeList[animeDetail.episodeList.length - 1].title) || 0);
+    const isReversed = firstEpNum < lastEpNum;
+    const prevIndex = isReversed ? currentEpisodeIndex - 1 : currentEpisodeIndex + 1;
+    return prevIndex >= 0 && prevIndex < animeDetail.episodeList.length;
+  }, [animeDetail, currentEpisodeIndex, extractEpNum]);
+
+  const goNextEp = useCallback(() => {
+    if (!animeDetail?.episodeList || currentEpisodeIndex === -1 || animeDetail.episodeList.length < 2) return;
+    const firstEpNum = Number(extractEpNum(animeDetail.episodeList[0].title) || 0);
+    const lastEpNum = Number(extractEpNum(animeDetail.episodeList[animeDetail.episodeList.length - 1].title) || 0);
+    const isReversed = firstEpNum < lastEpNum;
+    const nextIndex = isReversed ? currentEpisodeIndex + 1 : currentEpisodeIndex - 1;
+    if (nextIndex >= 0 && nextIndex < animeDetail.episodeList.length) {
+      episodeDataControl(animeDetail.episodeList[nextIndex].link);
+    } else {
+      ToastAndroid.show('Episode terakhir', ToastAndroid.SHORT);
+    }
+  }, [animeDetail, currentEpisodeIndex, episodeDataControl, extractEpNum]);
+
+  const goPrevEp = useCallback(() => {
+    if (!animeDetail?.episodeList || currentEpisodeIndex === -1 || animeDetail.episodeList.length < 2) return;
+    const firstEpNum = Number(extractEpNum(animeDetail.episodeList[0].title) || 0);
+    const lastEpNum = Number(extractEpNum(animeDetail.episodeList[animeDetail.episodeList.length - 1].title) || 0);
+    const isReversed = firstEpNum < lastEpNum;
+    const prevIndex = isReversed ? currentEpisodeIndex - 1 : currentEpisodeIndex + 1;
+    if (prevIndex >= 0 && prevIndex < animeDetail.episodeList.length) {
+      episodeDataControl(animeDetail.episodeList[prevIndex].link);
+    } else {
+      ToastAndroid.show('Episode pertama', ToastAndroid.SHORT);
+    }
+  }, [animeDetail, currentEpisodeIndex, episodeDataControl, extractEpNum]);
 
   const cancelLoading = useCallback(() => {
     abortController.current?.abort();

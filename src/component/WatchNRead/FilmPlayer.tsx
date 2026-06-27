@@ -26,6 +26,7 @@ import { throttle } from '../../utils/throttle';
 import VideoPlayer, { PlayerRef } from '../VideoPlayer';
 import CommentSection from '../Comments/CommentSection';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Props = NativeStackScreenProps<RootStackNavigator, 'FilmPlayer'>;
 
@@ -57,6 +58,33 @@ function FilmPlayer(props: Props) {
   const [captions, setCaptions] = useState<MovieboxCaption[]>([]);
   const [subtitleUrl, setSubtitleUrl] = useState<string | undefined>(undefined);
   const [selectedCaptionLan, setSelectedCaptionLan] = useState<string>('');
+
+  // User preferences refs to retain selections across episodes
+  const preferredCaptionLan = useRef<string | null>(null);
+  const preferredResolution = useRef<string | null>(null);
+
+  // Position to seek to after a stream/resolution change (preserves playback position)
+  const pendingSeekRef = useRef<number | null>(null);
+
+  // AsyncStorage keys for persisting user preferences
+  const PREF_RES_KEY = `film_pref_res_${subjectId}`;
+  const PREF_SUB_KEY = `film_pref_sub_${subjectId}`;
+
+  // Load persisted preferences on mount, then apply to initial stream selection
+  useEffect(() => {
+    AsyncStorage.multiGet([PREF_RES_KEY, PREF_SUB_KEY]).then(([[, savedRes], [, savedSub]]) => {
+      if (savedRes) {
+        preferredResolution.current = savedRes;
+        // Re-select stream matching persisted resolution
+        const match = streams.find(s => s.resolutions === savedRes);
+        if (match) setSelectedStream(match);
+      }
+      if (savedSub) {
+        preferredCaptionLan.current = savedSub;
+      }
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const videoRef = useRef<VideoView>(null);
   const playerRef = useRef<PlayerRef>(null);
@@ -119,9 +147,17 @@ function FilmPlayer(props: Props) {
     // Resume from last duration if coming from history
     if (firstTimeLoad.current && historyData?.lastDuration && historyData.lastDuration > 0) {
       firstTimeLoad.current = false;
+      pendingSeekRef.current = historyData.lastDuration;
+    }
+    // Also handle resume from resolution switch
+    if (pendingSeekRef.current !== null && pendingSeekRef.current > 0) {
+      const seekTo = pendingSeekRef.current;
+      pendingSeekRef.current = null;
       setTimeout(() => {
-        playerRef.current?.skipTo(historyData.lastDuration!);
-        ToastAndroid.show('Otomatis kembali ke durasi terakhir', ToastAndroid.SHORT);
+        playerRef.current?.skipTo(seekTo);
+        if (historyData?.lastDuration && seekTo === historyData.lastDuration && firstTimeLoad.current === false) {
+          ToastAndroid.show('Otomatis kembali ke durasi terakhir', ToastAndroid.SHORT);
+        }
       }, 500);
     }
     firstTimeLoad.current = false;
@@ -132,13 +168,22 @@ function FilmPlayer(props: Props) {
     try {
       const caps = await getCaptions(streamId, subjectId, detailPath);
       setCaptions(caps);
-      // Auto-select Indonesian if available
-      const idCap = caps.find(c => c.lan === 'id');
-      if (idCap) {
-        setSubtitleUrl(idCap.url);
-        setSelectedCaptionLan('id');
+      
+      const targetLan = preferredCaptionLan.current || 'id';
+      
+      if (targetLan === 'off') {
+        setSubtitleUrl(undefined);
+        setSelectedCaptionLan('off');
+        return;
+      }
+      
+      // Auto-select preferred language (or Indonesian) if available
+      const targetCap = caps.find(c => c.lan === targetLan);
+      if (targetCap) {
+        setSubtitleUrl(targetCap.url);
+        setSelectedCaptionLan(targetLan);
       } else if (caps.length > 0) {
-        // Fall back to first available caption
+        // Fall back to first available caption if preferred is not found
         setSubtitleUrl(caps[0].url);
         setSelectedCaptionLan(caps[0].lan);
       }
@@ -163,13 +208,16 @@ function FilmPlayer(props: Props) {
   const handleCaptionChange = useCallback((val: any) => {
     const lan = typeof val === 'string' ? val : val?.value || 'off';
     setSelectedCaptionLan(lan);
+    preferredCaptionLan.current = lan;
+    // Persist preference
+    AsyncStorage.setItem(PREF_SUB_KEY, lan).catch(() => {});
     if (lan === 'off') {
       setSubtitleUrl(undefined);
     } else {
       const cap = captions.find(c => c.lan === lan);
       if (cap) setSubtitleUrl(cap.url);
     }
-  }, [captions]);
+  }, [captions, PREF_SUB_KEY]);
 
   // Header title
   useEffect(() => {
@@ -239,12 +287,22 @@ function FilmPlayer(props: Props) {
 
   const selectedResId = selectedStream?.id || '';
 
-  // Switch resolution
+  // Switch resolution — preserves current playback position
   const handleResChange = useCallback((val: any) => {
     const id = typeof val === 'string' ? val : val?.value || '';
     const stream = currentStreams.find(s => s.id === id);
-    if (stream) setSelectedStream(stream);
-  }, [currentStreams]);
+    if (stream) {
+      // Capture current position so handleVideoLoad can seek back after stream reinit
+      const currentTime = playerRef.current?.getCurrentTime?.() ?? 0;
+      if (currentTime > 1) {
+        pendingSeekRef.current = currentTime;
+      }
+      setSelectedStream(stream);
+      preferredResolution.current = stream.resolutions;
+      // Persist preference
+      AsyncStorage.setItem(PREF_RES_KEY, stream.resolutions).catch(() => {});
+    }
+  }, [currentStreams, PREF_RES_KEY]);
 
   // Load different episode (TV only)
   const loadEpisode = useCallback(async (s: number, e: number) => {
@@ -253,7 +311,10 @@ function FilmPlayer(props: Props) {
       const newStreams = await getPlayStreams(subjectId, detailPath, s, e);
       if (newStreams.length > 0) {
         setCurrentStreams(newStreams);
-        const matchRes = newStreams.find(ns => ns.resolutions === selectedStream?.resolutions);
+        
+        // Retain user's preferred resolution or fallback to highest
+        const targetRes = preferredResolution.current || selectedStream?.resolutions;
+        const matchRes = newStreams.find(ns => ns.resolutions === targetRes);
         const sorted = [...newStreams].sort((a, b) => parseInt(b.resolutions) - parseInt(a.resolutions));
         setSelectedStream(matchRes || sorted[0]);
         // Fetch captions for new stream
@@ -297,7 +358,7 @@ function FilmPlayer(props: Props) {
       <View style={fullscreen ? styles.fullscreen : styles.notFullscreen}>
         {selectedStream?.url ? (
           <VideoPlayer
-            title={title}
+            title={isTV ? `${title} - S${season} E${episode}` : title}
             thumbnailURL={poster}
             streamingURL={selectedStream.url}
             subtitleURL={subtitleUrl}

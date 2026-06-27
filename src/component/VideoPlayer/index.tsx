@@ -50,6 +50,7 @@ type SubtitleObj = Awaited<ReturnType<typeof parseSubtitles>>;
 export type PlayerRef = {
   skipTo: (duration: number) => void;
   overwriteSubtitleObj: (obj: SubtitleObj) => void;
+  getCurrentTime: () => number;
 };
 type VideoPlayerProps = {
   title: string;
@@ -269,6 +270,7 @@ function VideoPlayer({
       overwriteSubtitleObj: (obj: SubtitleObj) => {
         setSubtitles(obj);
       },
+      getCurrentTime: () => currentDurationSecond.get(),
     }),
     [player, currentDurationSecond, seekBarProgress],
   );

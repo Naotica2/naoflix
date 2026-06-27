@@ -329,7 +329,7 @@ const RenderList = memo(function RenderList({
 
         <View style={{ flexDirection: 'row' }}>
           <View style={styles.listEpisodeAndPart}>
-            <Text style={styles.listEpisode}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
               {item?.isComics && (
                 <View
                   style={{
@@ -346,11 +346,11 @@ const RenderList = memo(function RenderList({
                     Komik
                   </Text>
                 </View>
-              )}{' '}
-              {(item?.isMovie || item?.link?.startsWith('film://') || (item?.episode && item.episode.match(/^S\d+E\d+/))) && (
+              )}
+              {(!!item?.isMovie || !!item?.link?.startsWith('film://') || (typeof item?.episode === 'string' && /S\d+E\d+/i.test(item.episode))) && (
                 <View
                   style={{
-                    backgroundColor: (item?.link?.includes('se=') || (item?.episode && item.episode.match(/^S\d+E\d+/))) ? '#f59e0b' : '#ff7300',
+                    backgroundColor: (item?.link?.includes('se=') || (typeof item?.episode === 'string' && /S\d+E\d+/i.test(item.episode))) ? '#f59e0b' : '#ff7300',
                     borderRadius: 4,
                     paddingHorizontal: 6,
                     paddingVertical: 2,
@@ -360,10 +360,10 @@ const RenderList = memo(function RenderList({
                       styles.listEpisode,
                       { color: '#ffffff', fontWeight: 'bold', fontSize: 12 },
                     ]}>
-                    {(item?.link?.includes('se=') || (item?.episode && item.episode.match(/^S\d+E\d+/))) ? 'TV Series' : 'Movie'}
+                    {(item?.link?.includes('se=') || (typeof item?.episode === 'string' && /S\d+E\d+/i.test(item.episode))) ? 'TV Series' : 'Movie'}
                   </Text>
                 </View>
-              )}{' '}
+              )}
               {URL.parse(item?.link ?? '').hostname!?.includes('meionovel') && (
                 <View
                   style={{
@@ -380,7 +380,7 @@ const RenderList = memo(function RenderList({
                     Novel
                   </Text>
                 </View>
-              )}{' '}
+              )}
               {(URL.parse(item?.link ?? '').hostname!?.includes('idlix') || URL.parse(item?.link ?? '').hostname!?.includes('lk21')) && (
                 <View
                   style={{
@@ -397,9 +397,11 @@ const RenderList = memo(function RenderList({
                     Movie
                   </Text>
                 </View>
-              )}{' '}
-              {item?.episode}
-            </Text>
+              )}
+              {item?.episode && (
+                <Text style={styles.listEpisode}>{item.episode}</Text>
+              )}
+            </View>
             {/* this commented code is keep for historical reason (nostalgic lmao) */}
             {/* {item?.part !== undefined && (
                   <Text style={styles.listPart}>

@@ -195,6 +195,7 @@ function ContinueWatchingRow({ navigation }: { navigation: any }) {
           const raw = await DatabaseManager.get(key);
           if (raw) {
             const parsed: HistoryJSON = JSON.parse(raw);
+            if (parsed.link?.includes('meionovel')) continue; // Exclude novels
             if (parsed.title && parsed.link) {
               // Determine content type for correct navigation
               let contentType = 'anime';

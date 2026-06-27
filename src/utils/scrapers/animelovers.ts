@@ -76,6 +76,9 @@ export async function home(signal?: AbortSignal): Promise<EpisodeBaruHome> {
 }
 
 export async function latestAnime(page: number = 1, signal?: AbortSignal): Promise<NewAnimeList[]> {
+  if (page > 1) {
+    return []; // API Animelovers tidak mendukung pagination untuk rilis terbaru
+  }
   const result = await apiCall('/api/anime/animelovers-latest', { page }, signal);
   return result.map((item: any) => ({
     title: item.judul,

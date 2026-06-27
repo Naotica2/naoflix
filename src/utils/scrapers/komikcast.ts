@@ -201,51 +201,5 @@ export async function getComicsSearchWithGenre(
   page: number = 1,
   signal?: AbortSignal,
 ): Promise<LatestComicsRelease[]> {
-  const genreSlug = genre.toLowerCase().replace(/\s+/g, '-');
-  const genreId = KC_GENRES[genreSlug];
-
-  // Strategy 1: Try genre slug as query parameter (most common API pattern)
-  let data = await apiGet(
-    `/series?genre=${encodeURIComponent(genreSlug)}&take=24&takeChapter=1&page=${page}`,
-    signal,
-  );
-
-  // Strategy 2: If slug didn't work, try genre ID
-  if ((!Array.isArray(data) || data.length === 0) && genreId) {
-    data = await apiGet(
-      `/series?genreIds[]=${genreId}&take=24&takeChapter=1&page=${page}`,
-      signal,
-    );
-  }
-
-  // Strategy 3: Try fetching genre ID dynamically from /genres endpoint
-  if (!Array.isArray(data) || data.length === 0) {
-    try {
-      const gData = await apiGet('/genres', signal);
-      if (Array.isArray(gData)) {
-        const found = gData.find((g: any) =>
-          g.data?.name?.toLowerCase() === genre.toLowerCase() ||
-          g.data?.name?.toLowerCase().replace(/\s+/g, '-') === genreSlug
-        );
-        if (found?.id) {
-          data = await apiGet(
-            `/series?genreIds[]=${found.id}&take=24&takeChapter=1&page=${page}`,
-            signal,
-          );
-        }
-      }
-    } catch {}
-  }
-
-  if (Array.isArray(data) && data.length > 0) {
-    return data.map(mapListItem);
-  }
-
-  // Final fallback: search by genre name with pagination support
-  const searchData = await apiGet(
-    `/series?title=${encodeURIComponent(genre)}&take=24&takeChapter=1&page=${page}`,
-    signal,
-  );
-  if (!Array.isArray(searchData)) return [];
-  return searchData.map(mapListItem);
+  throw new Error('Komikcast tidak mendukung pencarian berdasarkan genre.');
 }
