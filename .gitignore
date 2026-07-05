@@ -101,3 +101,4 @@ android/app/*.jks
 
 #android keystore
 android/gradle.propertiesdesktop/src-tauri/target/
+android/gradle.properties
