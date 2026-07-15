@@ -1,1 +1,1 @@
-## sebentar lagi update naoflix v2.0.2 btw jangan lupa donasi https://saweria.co/naotica
+## naoflix v2.1.0 telah rilis coy, jangan lupaa untuk membeli naoflix VIP yaa
