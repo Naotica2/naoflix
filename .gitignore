@@ -1,0 +1,129 @@
+# OSX
+#
+.DS_Store
+
+# Xcode
+#
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata
+*.xccheckout
+*.moved-aside
+DerivedData
+*.hmap
+*.ipa
+*.xcuserstate
+**/.xcode.env.local
+
+# Android/IntelliJ
+#
+build/
+.idea
+.gradle
+local.properties
+*.iml
+*.hprof
+.cxx/
+*.keystore
+!debug.keystore
+.kotlin/
+
+# node.js
+#
+node_modules/
+*_node_modules
+npm-debug.log
+yarn-error.log
+
+# fastlane
+#
+# It is recommended to not store the screenshots in the git repo. Instead, use fastlane to re-generate the
+# screenshots whenever they are needed.
+# For more information about the recommended setup visit:
+# https://docs.fastlane.tools/best-practices/source-control/
+
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/screenshots
+**/fastlane/test_output
+
+# Bundle artifact
+*.jsbundle
+
+# Ruby / CocoaPods
+**/Pods/
+/vendor/bundle/
+
+# Temporary files created by Metro to check the health of the file watcher
+.metro-health-check*
+
+
+# testing
+/coverage
+
+# my keystore password i put it if i forgot lol
+mykeystore.txt
+
+ 
+# Yarn
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# env
+.env
+
+# expo dist
+dist
+
+# etc
+.git*
+!.github
+
+!.gitignore
+google-services.json
+
+#keystore
+*.keystore
+*.jks
+android/app/*.keystore
+android/app/*.jks
+
+#android keystore
+desktop/src-tauri/target/
+
+#keystore
+android/gradle.properties
+
+# Test & scratch files
+tes-webhook.js
+scratch_test*.js
+test-nimegami.js
+test_nimegami.js
+nimegami_test.html
+detail.html
+patch_*.js
+
+# Log files
+*.log
+errors.txt
+tmp_tsc_out*.txt
+tsc_*.txt
+tsc_*.log
+
+# Vercel
+.vercel/
+pg-backend/.vercel/
+
+# Supabase temp
+supabase/.temp/

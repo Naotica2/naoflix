@@ -1,0 +1,81 @@
+{
+  "name": "NaoFlix",
+  "displayName": "NaoFlix",
+  "scheme": "naoflix",
+  "extra": {
+    "eas": {
+      "projectId": "ccdabe85-93a9-4297-936c-074a7cf27a4a"
+    }
+  },
+  "updates": {
+    "checkAutomatically": "NEVER",
+    "url": "https://u.expo.dev/ccdabe85-93a9-4297-936c-074a7cf27a4a"
+  },
+  "android": {
+    "runtimeVersion": "2.1.0",
+    "intentFilters": [
+      {
+        "action": "VIEW",
+        "category": [
+          "DEFAULT"
+        ],
+        "data": [
+          {
+            "scheme": "file"
+          },
+          {
+            "scheme": "content"
+          },
+          {
+            "mimeType": "application/x-cbz"
+          },
+          {
+            "mimeType": "application/vnd.comicbook+zip"
+          }
+        ]
+      },
+      {
+        "action": "VIEW",
+        "category": [
+          "DEFAULT"
+        ],
+        "data": [
+          {
+            "host": "*"
+          },
+          {
+            "scheme": "file"
+          },
+          {
+            "scheme": "content"
+          },
+          {
+            "pathPattern": ".*\\\\.cbz"
+          },
+          {
+            "pathPattern": ".*\\\\.cbz"
+          },
+          {
+            "pathPattern": ".*\\\\..*\\\\.cbz"
+          },
+          {
+            "pathPattern": ".*\\\\..*\\\\.cbz"
+          }
+        ]
+      }
+    ]
+  },
+  "experiments": {
+    "reactCompiler": true
+  },
+  "plugins": [
+    [
+      "expo-video",
+      {
+        "supportsBackgroundPlayback": true,
+        "supportsPictureInPicture": true
+      }
+    ],
+    "expo-sqlite"
+  ]
+}

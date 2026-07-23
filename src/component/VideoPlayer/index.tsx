@@ -1,0 +1,881 @@
+/* eslint-disable react-compiler/react-compiler */
+import {
+  AudioMixingMode,
+  VideoPlayer as ExpoVideoPlayer,
+  VideoView,
+  useVideoPlayer,
+} from 'expo-video';
+
+import Icons from '@react-native-vector-icons/material-icons';
+import { useFocusEffect } from '@react-navigation/core';
+import { useEventListener } from 'expo';
+import { useKeepAwake } from 'expo-keep-awake';
+import {
+  default as React,
+  memo,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
+import {
+  AppState,
+  GestureResponderEvent,
+  Pressable,
+  Text,
+  ToastAndroid,
+  TouchableOpacity,
+  View,
+  ViewStyle,
+} from 'react-native';
+import { ActivityIndicator } from 'react-native-paper';
+import Reanimated, {
+  ReduceMotion,
+  SharedValue,
+  useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import { runOnJS, runOnRuntime } from 'react-native-worklets';
+import AniFlixRuntime from '../../misc/AniFlixRuntime';
+import { DatabaseManager, useModifiedKeyValueIfFocused } from '../../utils/DatabaseManager';
+import deviceUserAgent from '../../utils/deviceUserAgent';
+import ReText from '../misc/ReText';
+import SeekBar from './SeekBar';
+
+type SubtitleObj = Awaited<ReturnType<typeof parseSubtitles>>;
+export type PlayerRef = {
+  skipTo: (duration: number) => void;
+  overwriteSubtitleObj: (obj: SubtitleObj) => void;
+  getCurrentTime: () => number;
+  pause: () => void;
+  play: () => void;
+};
+type VideoPlayerProps = {
+  title: string;
+  thumbnailURL?: string;
+  streamingURL: string;
+  subtitleURL?: string;
+  onSubtitleLoad?: (data: string) => void;
+  style?: ViewStyle;
+  videoRef?: React.RefObject<VideoView | null>;
+  ref?: React.Ref<PlayerRef>;
+  onFullscreenUpdate?: (isFullscreen: boolean) => void;
+  fullscreen?: boolean;
+  onLoad?: () => void;
+  isPaused?: boolean;
+  onDurationChange?: (positionSecond: number) => void;
+  headers?: Record<string, string>;
+  batteryAndClock?: React.JSX.Element;
+  isHls?: boolean;
+  onNextEp?: () => void;
+  onPrevEp?: () => void;
+  disableNextEp?: boolean;
+  disablePrevEp?: boolean;
+  showNextPrevButtons?: boolean;
+  disableControls?: boolean;
+  onPlayingChange?: (isPlaying: boolean, currentTime: number) => void;
+};
+
+const ICON_SIZE = 45;
+
+export default memo(VideoPlayer);
+
+function VideoPlayer({
+  title,
+  thumbnailURL,
+  streamingURL,
+  subtitleURL,
+  onSubtitleLoad,
+  style,
+  videoRef,
+  ref,
+  onFullscreenUpdate,
+  fullscreen,
+  onLoad,
+  isPaused,
+  onDurationChange,
+  headers,
+  batteryAndClock,
+  isHls = false,
+  onNextEp,
+  onPrevEp,
+  disableNextEp,
+  disablePrevEp,
+  showNextPrevButtons,
+  disableControls,
+  onPlayingChange,
+}: VideoPlayerProps) {
+  useKeepAwake();
+
+  const currentDurationSecond = useSharedValue(0);
+  const totalDurationSecond = useSharedValue(0);
+
+  const enableNowPlayingNotification = useModifiedKeyValueIfFocused(
+    'enableNowPlayingNotification',
+    res => res === 'true',
+  );
+
+  const player = useVideoPlayer(
+    {
+      contentType: isHls ? 'hls' : 'auto',
+      uri: streamingURL,
+      metadata: {
+        title,
+        artist: 'NaoFlix',
+        artwork: thumbnailURL,
+      },
+      headers: {
+        'User-Agent': deviceUserAgent,
+        ...headers,
+      },
+    },
+    initialPlayer => {
+      initialPlayer.audioMixingMode = DatabaseManager.getSync('audioMixingMode') as AudioMixingMode;
+      initialPlayer.timeUpdateEventInterval = subtitleURL ? 25 / 1000 : 1;
+      initialPlayer.showNowPlayingNotification = enableNowPlayingNotification;
+    },
+  );
+
+  const seekBarProgress = useSharedValue(0);
+  const seekBarProgressDisabled = useSharedValue(false);
+
+  const pressableShowControlsLocation = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const [isBuffering, setIsBuffering] = useState(true);
+  useEffect(() => {
+    setIsBuffering(true);
+    seekBarProgress.set(0);
+    currentDurationSecond.set(0);
+    totalDurationSecond.set(0);
+  }, [currentDurationSecond, seekBarProgress, streamingURL, totalDurationSecond]);
+
+  const [isError, setIsError] = useState(false);
+
+  const [paused, setPaused] = useState(isPaused ?? false);
+  useEffect(() => {
+    setPaused(isPaused ?? false);
+  }, [isPaused]);
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const [showControls, setShowControls] = useState(true);
+  const controlsShowedCzOfLag = useRef(false);
+  const preventAutoHideControls = useRef(true);
+  const showControlsOpacity = useSharedValue(1);
+
+  const [subtitles, setSubtitles] = useState<Awaited<ReturnType<typeof parseSubtitles>> | null>(
+    null,
+  );
+  const [currentSubtitle, setCurrentSubtitle] = useState<string>('');
+  const [subtitleError, setSubtitleError] = useState(false);
+  const [subtitleRetryToken, setSubtitleRetryToken] = useState(0);
+  const [isSubtitleEnabled, setIsSubtitleEnabled] = useState(true);
+
+  const onSubtitleLoadRef = useRef(onSubtitleLoad);
+  onSubtitleLoadRef.current = onSubtitleLoad;
+
+  useFocusEffect(
+    useCallback(() => {
+      const abortController = new AbortController();
+      async function fetchSubtitles(url: string) {
+        setSubtitleError(false);
+        try {
+          const response = await fetch(url, {
+            signal: abortController.signal,
+          });
+          if (!response.ok) throw new Error('Network response was not ok');
+          const subtitleText = await response.text();
+          onSubtitleLoadRef.current?.(subtitleText);
+          const subtitle = await parseSubtitles(subtitleText ?? '');
+          setSubtitles(subtitle);
+        } catch (error) {
+          setSubtitleError(true);
+          ToastAndroid.show('Gagal mendapatkan subtitle', ToastAndroid.SHORT);
+        }
+      }
+      subtitleURL && fetchSubtitles(subtitleURL);
+      return () => {
+        abortController.abort();
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [subtitleURL, subtitleRetryToken]),
+  );
+
+  useLayoutEffect(() => {
+    setIsFullscreen(fullscreen ?? false);
+  }, [fullscreen]);
+
+  useEventListener(player, 'sourceLoad', () => {
+    if (!paused) {
+      setPaused(false);
+      player.play();
+    } else {
+      player.pause();
+    }
+  });
+  useEventListener(player, 'statusChange', ({ status }) => {
+    if (status === 'readyToPlay') {
+      setIsError(false);
+      setIsBuffering(false);
+      totalDurationSecond.set(player.duration ?? 0);
+      if (seekBarProgressDisabled.get() === false) currentDurationSecond.set(player.currentTime);
+
+      if (seekBarProgressDisabled.get() === false)
+        seekBarProgress.set(player.currentTime / (player.duration ?? 1));
+
+      currentDurationSecond.get() < 1 && onLoad?.();
+      onDurationChange?.(player.currentTime);
+
+      // Fix: video is playing when app is in background
+      if (AppState.currentState === 'background') {
+        setPaused(true);
+        player.pause();
+      } else if (paused) {
+        player.pause();
+      }
+    } else if (status === 'loading') {
+      setIsBuffering(true);
+    } else if (status === 'error') {
+      setIsError(true);
+      setIsBuffering(false);
+    }
+  });
+  useEventListener(player, 'playingChange', e => {
+    // Prevent overriding user's play state while buffering/seeking
+    if (player.status !== 'loading') {
+      setPaused(!e.isPlaying);
+    }
+    onPlayingChange?.(e.isPlaying, player.currentTime);
+    if (!e.isPlaying) {
+      setShowControls(true);
+      controlsShowedCzOfLag.current = player.status === 'loading';
+    } else {
+      if (controlsShowedCzOfLag.current && !preventAutoHideControls.current) {
+        setShowControls(false);
+      }
+      controlsShowedCzOfLag.current = false;
+    }
+  });
+  useEventListener(player, 'timeUpdate', e => {
+    if (!player.playing) return; // Do not update time if video is paused (fix for video history not synced)
+    if (seekBarProgressDisabled.get() === false) currentDurationSecond.set(e.currentTime);
+    if (seekBarProgressDisabled.get() === false)
+      seekBarProgress.set(e.currentTime / (player.duration ?? 1));
+    const currentSub = subtitles?.find(subtitle => {
+      const start = Number(subtitle.startTime);
+      const end = Number(subtitle.endTime);
+      return e.currentTime >= start && e.currentTime <= end;
+    });
+    setCurrentSubtitle(currentSub?.text || '');
+    onDurationChange?.(e.currentTime);
+  });
+  useImperativeHandle(
+    ref,
+    () => ({
+      skipTo: (duration: number) => {
+        player.currentTime = duration;
+        currentDurationSecond.set(duration);
+        seekBarProgress.set(duration / (player.duration ?? 1));
+      },
+      overwriteSubtitleObj: (obj: SubtitleObj) => {
+        setSubtitles(obj);
+      },
+      getCurrentTime: () => currentDurationSecond.get(),
+      pause: () => {
+        player.pause();
+        setPaused(true);
+      },
+      play: () => {
+        player.play();
+        setPaused(false);
+      }
+    }),
+    [player, currentDurationSecond, seekBarProgress],
+  );
+  useEventListener(player, 'playToEnd', () => {
+    setShowControls(true);
+  });
+
+  const setPositionAsync = (duration: number) => {
+    player.currentTime = duration;
+    if (!paused) {
+      try { player.play(); } catch { }
+    }
+    onPlayingChange?.(!paused, duration);
+  };
+  const onPressIn = useCallback((e: GestureResponderEvent) => {
+    pressableShowControlsLocation.current = {
+      x: e.nativeEvent.locationX,
+      y: e.nativeEvent.locationY,
+    };
+  }, []);
+  const onPressOut = useCallback((e: GestureResponderEvent) => {
+    if (
+      Math.abs(e.nativeEvent.locationX - pressableShowControlsLocation.current.x) < 10 &&
+      Math.abs(e.nativeEvent.locationY - pressableShowControlsLocation.current.y) < 10
+    ) {
+      controlsShowedCzOfLag.current = false;
+      setShowControls(a => {
+        preventAutoHideControls.current = !a;
+        return !a;
+      });
+    }
+  }, []);
+
+  const onRewind = useCallback(() => {
+    if (disableControls) return;
+    const rewind = Math.max(0, currentDurationSecond.get() - 5);
+    player.currentTime = rewind;
+    currentDurationSecond.set(rewind);
+    seekBarProgress.set(rewind / totalDurationSecond.get());
+    if (!paused) {
+      try { player.play(); } catch { }
+    }
+    onPlayingChange?.(!paused, rewind);
+  }, [currentDurationSecond, player, seekBarProgress, totalDurationSecond, paused, disableControls, onPlayingChange]);
+
+  const onForward = useCallback(() => {
+    if (disableControls) return;
+    const forward = Math.min(totalDurationSecond.get(), currentDurationSecond.get() + 10);
+    player.currentTime = forward;
+    currentDurationSecond.set(forward);
+    seekBarProgress.set(forward / totalDurationSecond.get());
+    if (!paused) {
+      try { player.play(); } catch { }
+    }
+    onPlayingChange?.(!paused, forward);
+  }, [currentDurationSecond, player, seekBarProgress, totalDurationSecond, paused, disableControls, onPlayingChange]);
+  const onPlayPausePressed = useCallback(() => {
+    if (disableControls) return;
+    if (!paused) {
+      player.pause();
+      setPaused(true);
+    } else {
+      player.play();
+      setPaused(false);
+    }
+  }, [paused, player, disableControls]);
+
+  const onFullScreenButtonPressed = useCallback(() => {
+    onFullscreenUpdate?.(isFullscreen);
+    setIsFullscreen(a => !a);
+  }, [onFullscreenUpdate, isFullscreen]);
+
+  // fix: video is paused when changing streaming url
+  // useEffect(() => {
+  //   player.play();
+  // }, [streamingURL]);
+
+  useEffect(() => {
+    showControlsOpacity.set(
+      withTiming(showControls ? 1 : 0, {
+        duration: 150,
+        reduceMotion: ReduceMotion.Never,
+      }),
+    );
+  }, [showControls, showControlsOpacity]);
+
+  const showControlsStyle = useAnimatedStyle(() => {
+    return {
+      opacity: showControlsOpacity.get(),
+      display: showControlsOpacity.get() === 0 ? 'none' : 'flex',
+    };
+  });
+
+  const pipTimeout = useRef<NodeJS.Timeout>(null);
+  const onPiPStop = useCallback(() => {
+    pipTimeout.current = setTimeout(() => {
+      if (AppState.currentState === 'active' && !paused) {
+        try {
+          player.play();
+        } catch { }
+        setPaused(false);
+      }
+    }, 100);
+    player.pause();
+    setPaused(true);
+  }, [paused, player]);
+
+  useEffect(() => {
+    return () => {
+      pipTimeout.current && clearTimeout(pipTimeout.current);
+    };
+  }, []);
+
+  // run gc on streamingURL change
+  useEffect(() => {
+    return () => {
+      globalThis.gc?.();
+    };
+  }, [streamingURL]);
+
+  return (
+    <View style={[style]}>
+      <VideoView
+        onPictureInPictureStop={onPiPStop}
+        allowsPictureInPicture={true}
+        pointerEvents="none"
+        player={player}
+        key={streamingURL}
+        contentFit="contain"
+        nativeControls={false}
+        style={{ position: 'absolute', top: 0, left: 0, bottom: 0, right: 0, zIndex: 0 }}
+        ref={videoRef}
+      />
+      <Pressable onPressIn={onPressIn} onPressOut={onPressOut} style={{ flex: 1 }}>
+        {batteryAndClock}
+
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 15,
+            zIndex: 10,
+            left: 0,
+            right: 0,
+            flexDirection: 'row',
+            alignSelf: 'flex-start',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+          <Text
+            style={{
+              marginHorizontal: 20,
+              backgroundColor:
+                currentSubtitle === '' || !isSubtitleEnabled ? undefined : '#0000006b',
+              fontSize: isFullscreen ? 24 : 14,
+              textAlign: 'center',
+              color: 'white',
+              textShadowColor: 'black',
+              textShadowOffset: { width: -1, height: 1 },
+              textShadowRadius: 1,
+            }}>
+            {isSubtitleEnabled
+              ? subtitles === null && !subtitleError && subtitleURL
+                ? 'Memuat Subtitle...'
+                : currentSubtitle
+              : ''}
+          </Text>
+        </View>
+        <Reanimated.View
+          pointerEvents="box-none"
+          style={[{ flex: 1, zIndex: 999, backgroundColor: '#00000094' }, showControlsStyle]}>
+          <Top
+            title={title}
+            videoRef={videoRef}
+            subtitleURL={subtitleURL}
+            subtitleError={subtitleError}
+            onRetrySubtitle={() => setSubtitleRetryToken(p => p + 1)}
+            isSubtitleEnabled={isSubtitleEnabled}
+            onToggleSubtitle={() => setIsSubtitleEnabled(p => !p)}
+          />
+          <CenterControl
+            isBuffering={isBuffering}
+            isError={isError}
+            onRewind={onRewind}
+            onForward={onForward}
+            onPlayPausePressed={onPlayPausePressed}
+            paused={paused}
+            player={player}
+            streamingURL={streamingURL}
+            headers={headers}
+            lastTimeError={currentDurationSecond}
+            onLoad={onLoad}
+            onNextEp={onNextEp}
+            onPrevEp={onPrevEp}
+            disableNextEp={disableNextEp}
+            disablePrevEp={disablePrevEp}
+            showNextPrevButtons={showNextPrevButtons}
+            disableControls={disableControls}
+          />
+          <BottomControl
+            currentDurationSecond={currentDurationSecond}
+            totalDurationSecond={totalDurationSecond}
+            isFullscreen={isFullscreen}
+            onFullScreenButtonPressed={onFullScreenButtonPressed}
+            onProgressChange={e => {
+              'worklet';
+              seekBarProgress.set(e);
+              seekBarProgressDisabled.set(true);
+              currentDurationSecond.set(e * totalDurationSecond.get());
+            }}
+            onProgressChangeEnd={e => {
+              'worklet';
+              seekBarProgress.set(e);
+              seekBarProgressDisabled.set(false);
+              runOnJS(setPositionAsync)?.(e * totalDurationSecond.get());
+            }}
+            seekBarProgress={seekBarProgress}
+          />
+        </Reanimated.View>
+
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            alignSelf: 'center',
+            justifyContent: 'center',
+            display: isError ? 'flex' : 'none',
+          }}>
+          <Icons name="error" size={50} color="red" />
+        </View>
+      </Pressable>
+    </View>
+  );
+}
+
+function Top({
+  title,
+  videoRef,
+  subtitleURL,
+  subtitleError,
+  onRetrySubtitle,
+  isSubtitleEnabled,
+  onToggleSubtitle,
+}: {
+  title: string;
+  videoRef?: React.RefObject<VideoView | null>;
+  subtitleURL?: string;
+  subtitleError: boolean;
+  onRetrySubtitle: () => void;
+  isSubtitleEnabled: boolean;
+  onToggleSubtitle: () => void;
+}) {
+  const requestPiP = useCallback(() => {
+    videoRef?.current?.startPictureInPicture();
+  }, [videoRef]);
+  const isPiPEnabled = useModifiedKeyValueIfFocused(
+    'enableNowPlayingNotification',
+    res => res === 'true',
+  );
+  return (
+    <View
+      style={{
+        width: '100%',
+        height: 50,
+        flexDirection: 'row',
+        alignItems: 'center',
+      }}>
+      <TouchableOpacity
+        style={{
+          display: isPiPEnabled ? 'flex' : 'none',
+          justifyContent: 'center',
+          marginLeft: 6,
+          backgroundColor: '#00000062',
+          padding: 5,
+          borderRadius: 5,
+        }}
+        /* //rngh - containerStyle */ onPress={requestPiP}
+        hitSlop={2}>
+        <Icons name={'picture-in-picture'} size={20} color={'white'} />
+      </TouchableOpacity>
+      {subtitleURL &&
+        (subtitleError ? (
+          <TouchableOpacity
+            style={{
+              justifyContent: 'center',
+              marginLeft: 6,
+              backgroundColor: '#00000062',
+              padding: 5,
+              borderRadius: 5,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+            }}
+            onPress={onRetrySubtitle}
+            hitSlop={2}>
+            <Icons name={'closed-caption-off'} size={18} color={'#ff6b6b'} />
+            <Text style={{ color: '#ff6b6b', fontSize: 10, fontWeight: 'bold' }}>
+              RETRY SUBTITLE
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={{
+              justifyContent: 'center',
+              marginLeft: 6,
+              backgroundColor: '#00000062',
+              padding: 5,
+              borderRadius: 5,
+            }}
+            onPress={onToggleSubtitle}
+            hitSlop={2}>
+            <Icons
+              name={isSubtitleEnabled ? 'closed-caption' : 'closed-caption-off'}
+              size={20}
+              color={'white'}
+            />
+          </TouchableOpacity>
+        ))}
+      <Text
+        style={{
+          color: '#dadada',
+          fontWeight: 'bold',
+          textAlign: 'center',
+          flex: 1,
+          marginHorizontal: 10,
+        }}
+        numberOfLines={2}>
+        {title}
+      </Text>
+    </View>
+  );
+}
+
+function CenterControl({
+  isBuffering,
+  isError,
+  onPlayPausePressed,
+  paused,
+  onForward,
+  onRewind,
+  player,
+  headers,
+  streamingURL,
+  lastTimeError,
+  onLoad,
+  onNextEp,
+  onPrevEp,
+  disableNextEp,
+  disablePrevEp,
+  showNextPrevButtons,
+  disableControls,
+}: {
+  isBuffering: boolean;
+  isError: boolean;
+  onPlayPausePressed: () => void;
+  paused: boolean;
+  onForward: () => void;
+  onRewind: () => void;
+  player: ExpoVideoPlayer;
+  lastTimeError: SharedValue<number>;
+  onNextEp?: () => void;
+  onPrevEp?: () => void;
+  disableNextEp?: boolean;
+  disablePrevEp?: boolean;
+  showNextPrevButtons?: boolean;
+  disableControls?: boolean;
+} & Pick<VideoPlayerProps, 'streamingURL' | 'headers' | 'onLoad'>) {
+  return (
+    <View
+      pointerEvents="box-none"
+      onStartShouldSetResponder={() => true}
+      style={{
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        alignSelf: 'center',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 20,
+      }}>
+      {/* Im wrapping the TouchableOpacity in "View" with onStartShouldSetResponder because RNGH's Touchables still execute the parent "Pressable" pressIn/Out */}
+      {showNextPrevButtons && !disableControls && (
+        <TouchableOpacity onPress={onPrevEp} disabled={disablePrevEp} style={{ borderRadius: 50, opacity: disablePrevEp ? 0.3 : 1 }}>
+          <Icons name="skip-previous" size={ICON_SIZE - 5} color={'white'} />
+        </TouchableOpacity>
+      )}
+
+      {!disableControls && (
+        <TouchableOpacity onPress={onRewind} style={{ borderRadius: 50 }}>
+          <Icons name="replay-5" size={ICON_SIZE} color={'white'} />
+        </TouchableOpacity>
+      )}
+      {isBuffering ? (
+        <ActivityIndicator
+          style={{ width: ICON_SIZE, height: ICON_SIZE }}
+          color="white"
+          size={ICON_SIZE - 10}
+        />
+      ) : !isError && !disableControls ? (
+        <TouchableOpacity onPress={onPlayPausePressed} style={{ borderRadius: 50 }}>
+          <Icons name={!paused ? 'pause' : 'play-arrow'} size={ICON_SIZE} color={'white'} />
+        </TouchableOpacity>
+      ) : isError ? (
+        <TouchableOpacity
+          onPress={() => {
+            player.replace('');
+            player.replace({
+              uri: streamingURL,
+              headers: {
+                'User-Agent': deviceUserAgent,
+                ...headers,
+              },
+            });
+            const lastTime = lastTimeError.get();
+            if (lastTime > 0) player.currentTime = lastTime;
+            else onLoad?.();
+          }}
+          style={{ borderRadius: 50 }}>
+          <Icons name="refresh" size={ICON_SIZE} color={'white'} />
+        </TouchableOpacity>
+      ) : null}
+      {!disableControls && (
+        <TouchableOpacity onPress={onForward} style={{ borderRadius: 50 }}>
+          <Icons name="forward-10" size={ICON_SIZE} color={'white'} />
+        </TouchableOpacity>
+      )}
+
+      {showNextPrevButtons && !disableControls && (
+        <TouchableOpacity onPress={onNextEp} disabled={disableNextEp} style={{ borderRadius: 50, opacity: disableNextEp ? 0.3 : 1 }}>
+          <Icons name="skip-next" size={ICON_SIZE - 5} color={'white'} />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+function BottomControl({
+  seekBarProgress,
+  onProgressChange,
+  onProgressChangeEnd,
+  onFullScreenButtonPressed,
+  isFullscreen,
+  currentDurationSecond,
+  totalDurationSecond,
+}: {
+  seekBarProgress: SharedValue<number>;
+  onProgressChange: (value: number) => void;
+  onProgressChangeEnd: (lastValue: number) => void;
+  onFullScreenButtonPressed: () => void;
+  isFullscreen: boolean;
+  currentDurationSecond: SharedValue<number>;
+  totalDurationSecond: SharedValue<number>;
+  disabled?: boolean;
+}) {
+  const totalSecond = useDerivedValue(() => {
+    'worklet';
+    const sec = Math.floor(totalDurationSecond.get() % 60);
+    const min = Math.floor(totalDurationSecond.get() / 60);
+    const hour = Math.floor(min / 60);
+    const minStr = (min % 60).toString().padStart(2, '0');
+    const secStr = sec.toString().padStart(2, '0');
+    return `${hour > 0 ? `${hour.toString().padStart(2, '0')}:` : ''}${minStr}:${secStr}`;
+  });
+  const currentSecond = useDerivedValue(() => {
+    'worklet';
+    const totalSecStr = totalSecond.get();
+    const hasHour = totalSecStr.split(':').length === 3;
+    const sec = Math.floor(currentDurationSecond.get() % 60);
+    const min = Math.floor(currentDurationSecond.get() / 60);
+    const hour = Math.floor(min / 60);
+    const minStr = (min % 60).toString().padStart(2, '0');
+    const secStr = sec.toString().padStart(2, '0');
+    return hasHour
+      ? `${hour.toString().padStart(2, '0')}:${minStr}:${secStr}`
+      : `${minStr}:${secStr}`;
+  });
+  return (
+    <Pressable
+      style={{
+        position: 'absolute',
+        bottom: 0,
+        alignSelf: 'center',
+        width: '100%',
+        paddingHorizontal: 15,
+        marginBottom: 2,
+      }}>
+      <View style={{ flex: 1 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 2 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <ReText style={{ color: 'white', zIndex: 1, fontSize: 12 }} text={currentSecond} />
+            <Text style={{ color: '#dadada', zIndex: 1, fontSize: 12 }}>/</Text>
+            <ReText style={{ color: '#dadada', zIndex: 1, fontSize: 12 }} text={totalSecond} />
+          </View>
+          <TouchableOpacity
+            style={{ justifyContent: 'center' }}
+            /* //rngh - containerStyle */ onPress={onFullScreenButtonPressed}
+            hitSlop={2}>
+            <Icons
+              name={isFullscreen ? 'fullscreen-exit' : 'fullscreen'}
+              size={28}
+              color={'white'}
+            />
+          </TouchableOpacity>
+        </View>
+        <View style={{ width: '100%' }}>
+          <SeekBar
+            progress={seekBarProgress}
+            style={{ flex: 1, zIndex: 0 }}
+            onProgressChange={onProgressChange}
+            onProgressChangeEnd={onProgressChangeEnd}
+          />
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+const RE_BLOCK =
+  /(?:\d+\s+)?((?:\d{1,2}:)?\d{2}:\d{2}[.,]\d{3})\s+(?:-->|--&gt;)\s+((?:\d{1,2}:)?\d{2}:\d{2}[.,]\d{3})[^\n\r]*\s+([\s\S]*?)(?=\s*(?:\d+\s+)?(?:\d{1,2}:)?\d{2}:\d{2}[.,]\d{3}|$)/g;
+const RE_TAGS = /\{[^}]*\}|<\/?[^>]+>/g;
+const RE_ASS_NL = /\\N/g;
+const RE_SPLIT = /[:.,]/;
+
+const toSec = (t: string) => {
+  'worklet';
+  const d = t.split(RE_SPLIT);
+  if (d.length === 3) {
+    return +d[0] * 60 + +d[1] + +d[2] / 1000;
+  }
+  if (d.length === 4) {
+    return +d[0] * 3600 + +d[1] * 60 + +d[2] + +d[3] / 1000;
+  }
+  return 0;
+};
+
+export const parseSubtitles = async (raw: string) => {
+  return await new Promise<
+    {
+      startTime: number;
+      endTime: number;
+      text: string;
+    }[]
+  >(resolve => {
+    runOnRuntime(AniFlixRuntime, () => {
+      'worklet';
+      const res = [];
+      let m;
+      RE_BLOCK.lastIndex = 0;
+
+      while ((m = RE_BLOCK.exec(raw)) !== null) {
+        const rawText = m[3];
+        const lines = rawText.split(/\r?\n/);
+
+        const cleanLines = [];
+
+        for (let i = 0; i < lines.length; i++) {
+          let line = lines[i];
+          line = line.replace(RE_ASS_NL, ' ');
+          line = line.replace(RE_TAGS, '');
+          line = line
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>');
+
+          line = line.trim();
+
+          if (line.length > 0) {
+            cleanLines.push(line);
+          }
+        }
+
+        const finalTxt = cleanLines.join('\n');
+
+        if (finalTxt) {
+          res.push({
+            startTime: toSec(m[1]),
+            endTime: toSec(m[2]),
+            text: finalTxt,
+          });
+        }
+      }
+      runOnJS(resolve)(res);
+    })();
+  });
+};
