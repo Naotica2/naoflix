@@ -80,10 +80,6 @@ function useDownloadAnime() {
                 }
               : {}),
           })
-          // .then(resp => {
-          //   // the path of downloaded file
-          //   console.log(resp.path());
-          // })
           .catch(() => {});
         callback?.();
       }

@@ -44,7 +44,6 @@ export default function NovelDetail(props: Props) {
   const [showFullSynopsis, setShowFullSynopsis] = useState(false);
   const [sortAsc, setSortAsc] = useState(false);
 
-  // History tracking
   const historyListsJson = useModifiedKeyValueIfFocused(
     'historyKeyCollectionsOrder',
     state => JSON.parse(state) as HistoryItemKey[],
@@ -124,7 +123,6 @@ export default function NovelDetail(props: Props) {
     [data.title, props.navigation],
   );
 
-  // Render the chapter item for FlashList
   const renderChapter = useCallback(
     ({ item: ch }: { item: ChapterItem }) => {
       const chapterNumMatch = ch.chapter.match(/(\d+\.?\d*)/);
@@ -184,7 +182,6 @@ export default function NovelDetail(props: Props) {
     [isDark, globalStyles.text, lastReadChapterNum, lastReaded, navigateToChapter],
   );
 
-  // Header content rendered above the chapter list
   const ListHeader = useMemo(
     () => (
       <View>
@@ -346,7 +343,6 @@ export default function NovelDetail(props: Props) {
             <Button
               onPress={() => {
                 const chapterData = data.chapters[data.chapters.length - 1]; // Novel chapters usually oldest to newest or newest to oldest?
-                // Wait, typically data.chapters array might be newest first. Let's rely on finding the first one.
                 const firstCh = [...data.chapters].reverse()[0];
                 if (!firstCh?.chapterUrl) {
                   ToastAndroid.show('Chapter tidak ditemukan', ToastAndroid.SHORT);

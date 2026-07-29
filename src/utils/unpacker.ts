@@ -1,11 +1,9 @@
 /* eslint-disable radix */
 export function detect(source: string) {
-  /* Detects whether `source` is P.A.C.K.E.R. coded. */
   return source.replace(' ', '').startsWith('eval(function(p,a,c,k,e,');
 }
 
 export function unpack(source: string) {
-  /* Unpacks P.A.C.K.E.R. packed js code. */
   let { payload, symtab, radix, count } = _filterargs(source);
 
   if (count !== symtab.length) {
@@ -20,7 +18,6 @@ export function unpack(source: string) {
   }
 
   function lookup(match: string): string {
-    /* Look up symbols in the synthetic symtab. */
     const word = match;
     let word2: string;
     if (radix === 1) {
@@ -36,7 +33,6 @@ export function unpack(source: string) {
   return _replacestrings(source);
 
   function _filterargs(src: string) {
-    /* Juice from a source file the four args needed by decoder. */
     const juicers = [
       /}\('(.*)', *(\d+|\[\]), *(\d+), *'(.*)'\.split\('\|'\), *(\d+), *(.*)\)\)/,
       /}\('(.*)', *(\d+|\[\]), *(\d+), *'(.*)'\.split\('\|'\)/,
@@ -47,9 +43,7 @@ export function unpack(source: string) {
       if (args) {
         let a = args;
         if (a[2] === '[]') {
-          //don't know what it is
           // a = list(a);
-          // a[1] = 62;
           // a = tuple(a);
         }
         try {
@@ -68,15 +62,11 @@ export function unpack(source: string) {
   }
 
   function _replacestrings(src: string): string {
-    /* Strip string lookup table (list) and replace values in source. */
-    /* Need to work on this. */
     return src;
   }
 }
 
 class Unbaser {
-  /* Functor for a given base. Will efficiently convert
-    strings to natural numbers. */
   protected ALPHABET: Record<number, string> = {
     62: '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
     // eslint-disable-next-line no-useless-escape
@@ -88,15 +78,12 @@ class Unbaser {
   constructor(base: number) {
     this.base = base;
 
-    // fill elements 37...61, if necessary
     if (base > 36 && base < 62) {
       this.ALPHABET[base] = this.ALPHABET[base] || this.ALPHABET[62].substr(0, base);
     }
-    // If base can be handled by int() builtin, let it do it for us
     if (base >= 2 && base <= 36) {
       this.unbase = value => parseInt(value, base);
     } else {
-      // Build conversion dictionary cache
       try {
         [...this.ALPHABET[base]].forEach((cipher, index) => {
           this.dictionary[cipher] = index;
@@ -111,7 +98,6 @@ class Unbaser {
   public unbase: (a: string) => number;
 
   private _dictunbaser(value: string): number {
-    /* Decodes a value to an integer. */
     let ret = 0;
     [...value].reverse().forEach((cipher, index) => {
       ret = ret + this.base ** index * this.dictionary[cipher];

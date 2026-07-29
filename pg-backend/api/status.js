@@ -1,11 +1,9 @@
-// Supabase client minimalis
 async function updateSupabase(transactionRef, userId, durationDays) {
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_KEY;
 
   if (!supabaseUrl || !serviceKey) return;
 
-  // 1. Update status transaksi
   await fetch(`${supabaseUrl}/rest/v1/transactions?ref=eq.${transactionRef}`, {
     method: 'PATCH',
     headers: {
@@ -17,7 +15,6 @@ async function updateSupabase(transactionRef, userId, durationDays) {
     body: JSON.stringify({ status: 'success' })
   });
 
-  // 2. Update profil jadi VIP beserta masa aktifnya
   const vipUntil = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
 
   await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
@@ -33,7 +30,6 @@ async function updateSupabase(transactionRef, userId, durationDays) {
 }
 
 export default async function handler(req, res) {
-  // CORS setup
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
@@ -56,7 +52,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Cek status ke Hams PG (Pastikan tidak kena cache)
     const pgResponse = await fetch(`https://pg.hamsoffc.my.id/api/deposit/${ref}`, {
       method: 'GET',
       headers: {
@@ -67,9 +62,7 @@ export default async function handler(req, res) {
 
     const data = await pgResponse.json();
     
-    // Jika sukses dibayar, kita jalankan tugas webhook secara manual di sini!
     if (data.status === 'success') {
-      // Ambil data user dari Supabase
       const supabaseUrl = process.env.SUPABASE_URL;
       const serviceKey = process.env.SUPABASE_SERVICE_KEY;
       

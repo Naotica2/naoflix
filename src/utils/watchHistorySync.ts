@@ -2,7 +2,6 @@ import { supabase } from '../config/supabaseClient';
 import { HistoryJSON, HistoryAdditionalData } from '../types/historyJSON';
 import URL from 'url';
 
-// Debounce map to prevent spamming the database with rapid watch progress updates
 const syncTimeouts = new Map<string, NodeJS.Timeout>();
 
 export async function syncHistoryToCloud(
@@ -11,7 +10,6 @@ export async function syncHistoryToCloud(
 ) {
   if (!userId) return;
 
-  // 1. Determine Content Type
   let contentType = 'unknown';
   if (historyData.isComics) {
     contentType = 'comic';
@@ -20,11 +18,9 @@ export async function syncHistoryToCloud(
   } else if (URL.parse(historyData.link ?? '').hostname!?.includes('meionovel')) {
     contentType = 'novel';
   } else {
-    // Default to anime if not explicitly comic/film/novel
     contentType = 'anime';
   }
 
-  // 2. Determine Source
   let source = 'unknown';
   const hostname = URL.parse(historyData.link ?? '').hostname || '';
   if (historyData.link?.startsWith('film://')) source = 'moviebox';
@@ -35,19 +31,14 @@ export async function syncHistoryToCloud(
   else if (hostname.includes('meionovel')) source = 'meionovel';
   else if (hostname.includes('idlix') || hostname.includes('lk21')) source = 'idlix';
 
-  // 3. Create a unique identifier for this content
-  // We use the link as the primary ID if available, otherwise fallback to title slug
   let contentId = historyData.seriesLink || historyData.link || historyData.title.toLowerCase().replace(/[^a-z0-9]/g, '-');
   
-  // For moviebox film links, strip query parameters so all episodes map to the same series entry
   if (contentId.startsWith('film://') && contentId.includes('?')) {
     contentId = contentId.split('?')[0];
   }
   
-  // Create a unique key for debouncing per piece of content
   const syncKey = `${userId}_${contentType}_${contentId}`;
 
-  // 4. Debounce the actual upload (wait 3 seconds after last update)
   if (syncTimeouts.has(syncKey)) {
     clearTimeout(syncTimeouts.get(syncKey)!);
   }

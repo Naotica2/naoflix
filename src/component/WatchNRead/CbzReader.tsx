@@ -35,7 +35,6 @@ export default function ComicsReading(props: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [currentlyVisibleImageId, setCurrentlyVisibleImageId] = useState(0);
 
-  // --- Comics preparation ---
   const [comicImages, setComicsImages] = useState<string[]>([]);
   useEffect(() => {
     (async () => {
@@ -51,7 +50,6 @@ export default function ComicsReading(props: Props) {
       );
     })();
   }, [props.route.params.fileUrl]);
-  // --- Layout & Handlers ---
 
   useFocusEffect(
     useCallback(() => {
@@ -161,7 +159,6 @@ export default function ComicsReading(props: Props) {
     });
   };
 
-  // --- HTML Generation ---
 
   const bgColor = theme.dark ? '#121212' : '#ffffff';
   const shimmerBase = theme.dark ? '#333333' : '#e0e0e0';
@@ -236,7 +233,6 @@ export default function ComicsReading(props: Props) {
         display: none;
       }
 
-      /* Error Styles */
       .img-wrapper.is-error {
         min-height: 250px;
         background-color: ${theme.dark ? '#2a2a2a' : '#ffebee'};
@@ -290,11 +286,9 @@ export default function ComicsReading(props: Props) {
   const html = `<head><meta name="viewport" content="width=device-width, initial-scale=1.0" />${styles}</head><body>${body}</body>`;
 
   const injectedJavaScript = `
-    // --- Communication ---
     function sendToRN(data) {
         window.ReactNativeWebView.postMessage(JSON.stringify(data));
     }
-    // --- Auto Scroll ---
     const PIXELS_PER_SECOND = 60;
     window.autoScrollFrame = null;
     window.scrollSpeed = PIXELS_PER_SECOND;
@@ -332,7 +326,6 @@ export default function ComicsReading(props: Props) {
       if (window.autoScrollFrame) cancelAnimationFrame(window.autoScrollFrame);
       window.autoScrollFrame = null;
     };
-    // --- OBSERVERS ---
     const sendScrollUpdate = (id) => {
         sendToRN({ type: 'SCROLL_UPDATE', id: id });
     }
@@ -344,7 +337,6 @@ export default function ComicsReading(props: Props) {
     };
 
     const historyObserver = new IntersectionObserver((entries) => {
-      // Kita hanya ambil elemen yang intersecting
       const visibleEntry = entries.find(e => e.isIntersecting);
       if (visibleEntry) {
          sendScrollUpdate(visibleEntry.target.id);

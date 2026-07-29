@@ -45,7 +45,6 @@ function FollowListScreen() {
     setLoading(true);
     try {
       if (activeTab === 'Followers') {
-        // Get people who follow this user
         const { data, error } = await supabase
           .from('follows')
           .select('profiles!follows_follower_id_fkey(id, username, display_name, avatar_url, level)')
@@ -54,7 +53,6 @@ function FollowListScreen() {
         if (error) throw error;
         setUsers(data?.map((d: any) => d.profiles).filter(Boolean) || []);
       } else {
-        // Get people this user is following
         const { data, error } = await supabase
           .from('follows')
           .select('profiles!follows_following_id_fkey(id, username, display_name, avatar_url, level)')

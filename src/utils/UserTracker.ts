@@ -99,7 +99,6 @@ export async function getUserStats(): Promise<UserStats> {
   };
 
   try {
-    // 1. Get Time Stats
     const rawTimeStats = await DatabaseManager.get('user_time_statistics' as any);
     if (rawTimeStats && rawTimeStats !== 'null') {
       try {
@@ -116,11 +115,9 @@ export async function getUserStats(): Promise<UserStats> {
       }
     }
 
-    // 2. Get Count Stats from History
     const keyOrderStr = await DatabaseManager.get('historyKeyCollectionsOrder' as any);
     if (keyOrderStr) {
       const keyOrder: HistoryItemKey[] = JSON.parse(keyOrderStr);
-      // Fetch all history data at once
       const itemsPromises = keyOrder.map(key => DatabaseManager.get(key));
       const items = await Promise.all(itemsPromises);
       
@@ -129,7 +126,6 @@ export async function getUserStats(): Promise<UserStats> {
         try {
           const item: HistoryJSON = JSON.parse(value);
           
-          // Parse Episode / Chapter Number
           let epNum = 1;
           if (item.episode) {
             const numMatch = item.episode.match(/(\d+)/);
@@ -158,7 +154,6 @@ export async function getUserStats(): Promise<UserStats> {
             stats.animeEpisodes += epNum;
           }
         } catch (e) {
-          // ignore parsing error for individual item
         }
       });
     }

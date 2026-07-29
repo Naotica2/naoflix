@@ -53,7 +53,6 @@ function BrowsePage({ navigation }: { navigation: any }) {
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Results
   const [animeResults, setAnimeResults] = useState<SearchAnimeList[]>([]);
   const [filmResults, setFilmResults] = useState<MovieboxSearchItem[]>([]);
   const [mangaResults, setMangaResults] = useState<ComicsSearch[]>([]);
@@ -62,7 +61,6 @@ function BrowsePage({ navigation }: { navigation: any }) {
 
   const abortController = useRef<AbortController | null>(null);
 
-  // Auto search if navigated from WatchHistoryGrid
   useEffect(() => {
     if (route.params?.autoSearch) {
       setSearchText(route.params.autoSearch);
@@ -70,14 +68,10 @@ function BrowsePage({ navigation }: { navigation: any }) {
         setActiveTab(route.params.type);
       }
       executeSearch(route.params.autoSearch, route.params.type || activeTab);
-      // Clear params so it doesn't trigger again on tab switch
       navigation.setParams({ autoSearch: undefined, type: undefined });
     }
   }, [route.params]);
 
-  // Debounced search for accounts only, OR we can just rely on manual search submission for all.
-  // For Netflix/Letterboxd feel, manual search on enter is fine for media, but accounts is better debounced.
-  // We'll stick to onSubmitEditing for media, and debounce for accounts.
   useEffect(() => {
     if (activeTab === 'akun' && searchText.trim().length > 1) {
       const timer = setTimeout(() => {
@@ -154,7 +148,6 @@ function BrowsePage({ navigation }: { navigation: any }) {
     }
   };
 
-  // Renderers
   const renderAnime = ({ item }: { item: SearchAnimeList }) => (
     <TouchableOpacity 
       style={styles.card}
@@ -318,7 +311,6 @@ function BrowsePage({ navigation }: { navigation: any }) {
             ) as any}
           />
         ) : (
-          /* Default Discover View when not searching */
           <ScrollView contentContainerStyle={{ padding: 16 }}>
             {activeTab === 'akun' ? (
               <View style={styles.center}>

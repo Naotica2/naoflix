@@ -53,10 +53,8 @@ function FilmPlayer(props: Props) {
 
   useTimeTracker(isTV ? 'series' : 'movie');
 
-  // Stream/resolution state
   const [currentStreams, setCurrentStreams] = useState<MovieboxStream[]>(streams);
   const [selectedStream, setSelectedStream] = useState<MovieboxStream>(() => {
-    // Pick highest resolution available
     const sorted = [...streams].sort((a, b) => parseInt(b.resolutions) - parseInt(a.resolutions));
     return sorted[0] || streams[0];
   });
@@ -66,7 +64,6 @@ function FilmPlayer(props: Props) {
   const [season, setSeason] = useState(initialSeason);
   const [episode, setEpisode] = useState(initialEpisode);
 
-  // Nobar State
   const isGuest = (props.route.params as any).isGuest || false;
   const initialRoomId = (props.route.params as any).roomId || '';
   const [inviteVisible, setInviteVisible] = useState(false);
@@ -82,28 +79,22 @@ function FilmPlayer(props: Props) {
 
   usePresenceActivity(`Sedang menonton ${title}${isTV ? ` S${season} E${episode}` : ''}`);
 
-  // Subtitle state
   const [captions, setCaptions] = useState<MovieboxCaption[]>([]);
   const [subtitleUrl, setSubtitleUrl] = useState<string | undefined>(undefined);
   const [selectedCaptionLan, setSelectedCaptionLan] = useState<string>('');
 
-  // User preferences refs to retain selections across episodes
   const preferredCaptionLan = useRef<string | null>(null);
   const preferredResolution = useRef<string | null>(null);
 
-  // Position to seek to after a stream/resolution change (preserves playback position)
   const pendingSeekRef = useRef<number | null>(null);
 
-  // AsyncStorage keys for persisting user preferences
   const PREF_RES_KEY = `film_pref_res_${subjectId}`;
   const PREF_SUB_KEY = `film_pref_sub_${subjectId}`;
 
-  // Load persisted preferences on mount, then apply to initial stream selection
   useEffect(() => {
     AsyncStorage.multiGet([PREF_RES_KEY, PREF_SUB_KEY]).then(([[, savedRes], [, savedSub]]) => {
       if (savedRes) {
         preferredResolution.current = savedRes;
-        // Re-select stream matching persisted resolution
         const match = streams.find(s => s.resolutions === savedRes);
         if (match) setSelectedStream(match);
       }
@@ -121,7 +112,6 @@ function FilmPlayer(props: Props) {
   const awardedExpRef = useRef(new Set<string>());
   const firstTimeLoad = useRef(true);
   const historyData = props.route.params.historyData;
-  // Host re-broadcasts media state when a new guest joins
   const participantsCount = participants.length;
   useEffect(() => {
     if (!isGuest && roomId && selectedStream) {
@@ -131,7 +121,6 @@ function FilmPlayer(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [participantsCount, isGuest, roomId]);
 
-  // Handle Sync for Guests
   useEffect(() => {
     if (roomId && remoteState && playerRef.current) {
       const timeDiff = Math.abs(remoteState.currentTime - playerRef.current.getCurrentTime());
@@ -147,7 +136,6 @@ function FilmPlayer(props: Props) {
     }
   }, [remoteState, roomId]);
 
-  // Handle Nobar Disconnects
   useEffect(() => {
     if (roomId) {
       if (connectionStatus === 'DISCONNECTED') {
@@ -162,7 +150,6 @@ function FilmPlayer(props: Props) {
     }
   }, [roomId, connectionStatus, isHostMissing, isGuest]);
 
-  // Build film link with se/ep for TV series (so history can be resumed properly)
   const filmLink = useMemo(() =>
     isTV
       ? `film://${subjectId}/${detailPath}?se=${season}&ep=${episode}`
@@ -170,8 +157,6 @@ function FilmPlayer(props: Props) {
     [subjectId, detailPath, isTV, season, episode],
   );
 
-  // Throttled progress tracking — saves lastDuration to history every 2s
-  // Also broadcasts state if we are the Host in a Watch Party
   const updateHistory = useMemo(
     () =>
       throttle(
@@ -201,10 +186,6 @@ function FilmPlayer(props: Props) {
     [roomId, isGuest, broadcastState],
   );
 
-  // Award EXP + save history on video load:
-  // - Movies: once per movie (keyed by subjectId)
-  // - Series: once per episode (keyed by subjectId-S#E#)
-  // Uses base title (no S#E#) so all episodes of a series share ONE history entry
   const handleVideoLoad = useCallback(() => {
     const expKey = isTV ? `${subjectId}-S${season}E${episode}` : subjectId;
     if (!awardedExpRef.current.has(expKey)) {
@@ -214,7 +195,6 @@ function FilmPlayer(props: Props) {
       ToastAndroid.show(`+${amount} EXP`, ToastAndroid.SHORT);
     }
 
-    // Save to history (base title = show title, no S#E# suffix)
     const episodeStr = isTV ? `S${season}E${episode}` : null;
     setHistory(
       { title, thumbnailUrl: poster || '' } as any,
@@ -224,12 +204,10 @@ function FilmPlayer(props: Props) {
       !isTV, // isMovie
     );
 
-    // Resume from last duration if coming from history
     if (firstTimeLoad.current && historyData?.lastDuration && historyData.lastDuration > 0) {
       firstTimeLoad.current = false;
       pendingSeekRef.current = historyData.lastDuration;
     }
-    // Also handle resume from resolution switch
     if (pendingSeekRef.current !== null && pendingSeekRef.current > 0) {
       const seekTo = pendingSeekRef.current;
       pendingSeekRef.current = null;
@@ -243,7 +221,6 @@ function FilmPlayer(props: Props) {
     firstTimeLoad.current = false;
   }, [addExp, episode, isTV, season, subjectId, title, poster, filmLink, historyData]);
 
-  // Fetch captions for current stream
   const fetchCaptions = useCallback(async (streamId: string) => {
     try {
       const caps = await getCaptions(streamId, subjectId, detailPath);
@@ -257,34 +234,28 @@ function FilmPlayer(props: Props) {
         return;
       }
 
-      // Auto-select preferred language (or Indonesian) if available
       const targetCap = caps.find(c => c.lan === targetLan);
       if (targetCap) {
         setSubtitleUrl(targetCap.url);
         setSelectedCaptionLan(targetLan);
       } else if (caps.length > 0) {
-        // Fall back to first available caption if preferred is not found
         setSubtitleUrl(caps[0].url);
         setSelectedCaptionLan(caps[0].lan);
       }
     } catch {
-      // Captions are optional, don't show error
     }
   }, [subjectId, detailPath]);
 
-  // Fetch captions on initial load and when stream changes
   useEffect(() => {
     if (selectedStream?.id) fetchCaptions(selectedStream.id);
   }, [selectedStream?.id, fetchCaptions]);
 
-  // Caption dropdown data
   const captionData = useMemo(() => {
     const items = [{ label: 'Off', value: 'off' }];
     captions.forEach(c => items.push({ label: c.lanName, value: c.lan }));
     return items;
   }, [captions]);
 
-  // Switch caption
   const handleCaptionChange = useCallback((val: any) => {
     const lan = typeof val === 'string' ? val : val?.value || 'off';
     setSelectedCaptionLan(lan);
@@ -301,12 +272,10 @@ function FilmPlayer(props: Props) {
     }
   }, [captions, PREF_SUB_KEY, isGuest, roomId, season, episode, broadcastMediaChange]);
 
-  // Header title
   useEffect(() => {
     props.navigation.setOptions({ headerTitle: title, headerShown: !fullscreen });
   }, [title, fullscreen, props.navigation]);
 
-  // Fullscreen handlers
   const enterFullscreen = useCallback((landscape?: OrientationType) => {
     if (landscape === undefined) Orientation.lockToLandscape();
     else {
@@ -358,7 +327,6 @@ function FilmPlayer(props: Props) {
     return false;
   }, [exitFullscreen, fullscreen]));
 
-  // Resolution dropdown data
   const resolutionData = useMemo(() =>
     currentStreams.map(s => ({
       label: `${s.resolutions}p (${(parseInt(s.size) / 1024 / 1024).toFixed(0)} MB)`,
@@ -369,7 +337,6 @@ function FilmPlayer(props: Props) {
 
   const selectedResId = selectedStream?.id || '';
 
-  // Switch resolution — preserves current playback position
   const handleResChange = useCallback((val: any) => {
     const id = typeof val === 'string' ? val : val?.value || '';
     const stream = currentStreams.find(s => s.id === id);
@@ -387,7 +354,6 @@ function FilmPlayer(props: Props) {
     }
   }, [currentStreams, PREF_RES_KEY, isGuest, roomId, season, episode, broadcastMediaChange]);
 
-  // Load different episode (TV only)
   const loadEpisode = useCallback(async (s: number, e: number, forceRes?: string, forceSub?: string) => {
     setIsLoadingEp(true);
     try {
@@ -435,7 +401,6 @@ function FilmPlayer(props: Props) {
 
   const lastMediaChangeRef = useRef<string | null>(null);
 
-  // Sync Watch Party Media Change
   useEffect(() => {
     if (mediaChangeLink && isGuest && mediaChangeLink !== lastMediaChangeRef.current) {
       lastMediaChangeRef.current = mediaChangeLink;
@@ -584,7 +549,6 @@ function FilmPlayer(props: Props) {
                         return;
                       }
 
-                      // VIP Logic Check
                       const now = new Date();
                       const today = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
                       let currentCount = profile.nobar_count || 0;
@@ -599,12 +563,10 @@ function FilmPlayer(props: Props) {
                           return; // Stop here, limit reached
                         }
 
-                        // Increment usage in background
                         supabase.from('profiles').update({
                           nobar_count: currentCount + 1,
                           last_nobar_date: today
                         }).eq('id', user.id).then();
-                        // Ideally we refresh profile, but doing this locally is fine for now
                         profile.nobar_count = currentCount + 1;
                         profile.last_nobar_date = today;
                       }

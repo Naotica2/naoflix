@@ -230,7 +230,6 @@ function VideoPlayer({
       currentDurationSecond.get() < 1 && onLoad?.();
       onDurationChange?.(player.currentTime);
 
-      // Fix: video is playing when app is in background
       if (AppState.currentState === 'background') {
         setPaused(true);
         player.pause();
@@ -245,7 +244,6 @@ function VideoPlayer({
     }
   });
   useEventListener(player, 'playingChange', e => {
-    // Prevent overriding user's play state while buffering/seeking
     if (player.status !== 'loading') {
       setPaused(!e.isPlaying);
     }
@@ -365,10 +363,7 @@ function VideoPlayer({
     setIsFullscreen(a => !a);
   }, [onFullscreenUpdate, isFullscreen]);
 
-  // fix: video is paused when changing streaming url
   // useEffect(() => {
-  //   player.play();
-  // }, [streamingURL]);
 
   useEffect(() => {
     showControlsOpacity.set(
@@ -406,7 +401,6 @@ function VideoPlayer({
     };
   }, []);
 
-  // run gc on streamingURL change
   useEffect(() => {
     return () => {
       globalThis.gc?.();
@@ -569,7 +563,6 @@ function Top({
           padding: 5,
           borderRadius: 5,
         }}
-        /* //rngh - containerStyle */ onPress={requestPiP}
         hitSlop={2}>
         <Icons name={'picture-in-picture'} size={20} color={'white'} />
       </TouchableOpacity>
@@ -788,7 +781,6 @@ function BottomControl({
           </View>
           <TouchableOpacity
             style={{ justifyContent: 'center' }}
-            /* //rngh - containerStyle */ onPress={onFullScreenButtonPressed}
             hitSlop={2}>
             <Icons
               name={isFullscreen ? 'fullscreen-exit' : 'fullscreen'}

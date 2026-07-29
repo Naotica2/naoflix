@@ -98,7 +98,6 @@ export async function getComicsDetail(
   const slug = urlRaw.replace('komikcast://detail/', '').replace('komikcast://detail', '');
   if (!slug) throw new Error('Invalid komikcast detail URL');
 
-  // Fetch series detail + chapters with images in one call
   const listData = await apiGet(`/series?slug=${encodeURIComponent(slug)}&takeChapter=500`, signal);
   if (!Array.isArray(listData) || listData.length === 0) throw new Error('Gagal memuat detail komik');
 
@@ -106,12 +105,10 @@ export async function getComicsDetail(
   const d = series.data || {};
   const chaptersRaw = series.chapters || [];
 
-  // Genres are objects: {id, data: {name, description}}
   const genres = Array.isArray(d.genres)
     ? d.genres.map((g: any) => g?.data?.name || g?.name || '').filter(Boolean)
     : [];
 
-  // Map chapters - use data.index as chapter number
   const chapters = chaptersRaw.map((ch: any) => ({
     chapter: ch.data?.title || `Chapter ${ch.data?.index ?? ch.chapterIndex ?? ''}`,
     chapterUrl: `komikcast://chapter/${slug}/${ch.data?.index ?? ch.chapterIndex ?? ch.id}`,
@@ -140,7 +137,6 @@ export async function getComicsReading(
   urlRaw: string,
   signal?: AbortSignal,
 ): Promise<ComicsReading> {
-  // URL format: komikcast://chapter/{slug}/{chapterIndex}
   const clean = urlRaw.replace('komikcast://chapter/', '');
   const lastSlash = clean.lastIndexOf('/');
   const slug = clean.substring(0, lastSlash);
@@ -148,14 +144,12 @@ export async function getComicsReading(
 
   if (!slug) throw new Error('Gagal memuat chapter');
 
-  // Fetch the series with all chapters (includes dataImages)
   const listData = await apiGet(`/series?slug=${encodeURIComponent(slug)}&takeChapter=1000`, signal);
   if (!Array.isArray(listData) || listData.length === 0) throw new Error('Gagal memuat chapter');
 
   const series = listData[0];
   const chaptersRaw = series.chapters || [];
 
-  // Find the chapter by index (data.index or chapterIndex or id)
   const chapter = chaptersRaw.find(
     (ch: any) => String(ch.data?.index ?? ch.chapterIndex ?? ch.id ?? '') === String(chapterIndex),
   );
@@ -166,7 +160,6 @@ export async function getComicsReading(
   const sortedKeys = Object.keys(dataImages).sort((a, b) => Number(a) - Number(b));
   const images = sortedKeys.map(k => dataImages[k]).filter(Boolean);
 
-  // Find prev/next chapter by position in the sorted array
   const chapterPos = chaptersRaw.indexOf(chapter);
   const prevCh = chapterPos < chaptersRaw.length - 1 ? chaptersRaw[chapterPos + 1] : null;
   const nextCh = chapterPos > 0 ? chaptersRaw[chapterPos - 1] : null;
@@ -182,7 +175,6 @@ export async function getComicsReading(
   };
 }
 
-// Common Komikcast genre IDs
 const KC_GENRES: Record<string, number> = {
   '4-koma': 11, 'action': 19, 'adventure': 16, 'comedy': 22, 'cooking': 7,
   'demons': 40, 'drama': 29, 'ecchi': 47, 'fantasy': 28, 'game': 17,

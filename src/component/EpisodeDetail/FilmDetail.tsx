@@ -40,10 +40,8 @@ function FilmDetail(props: Props) {
 
   const isTV = data.subjectType === 2;
 
-  // Watch Later state
   const [inWatchLater, setInWatchLater] = useState(false);
 
-  // Check if already in watch later
   useEffect(() => {
     const checkWatchLater = async () => {
       try {
@@ -58,22 +56,18 @@ function FilmDetail(props: Props) {
     checkWatchLater();
   }, [data.subjectId]);
 
-  // Language selection
   const langOptions = useMemo(() => getLanguageOptions(data), [data]);
   const [selectedLang, setSelectedLang] = useState(() => {
-    // Auto-select Indonesian if available
     const id = langOptions.find(l => l.isIndonesian);
     return id || langOptions[0];
   });
 
-  // Season/episode for TV
   const [seasons, setSeasons] = useState<MovieboxSeason[]>([]);
   const [selectedSeason, setSelectedSeason] = useState<MovieboxSeason | null>(null);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
   const [loadingSeasons, setLoadingSeasons] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch season info on mount / language change for TV series
   useEffect(() => {
     if (!isTV) return;
     let cancelled = false;
@@ -111,7 +105,6 @@ function FilmDetail(props: Props) {
     setLoadingSeasons(false);
   }, [data.subjectId, data.detailPath, selectedLang]);
 
-  // Reset episode when season changes
   useEffect(() => {
     setSelectedEpisode(1);
   }, [selectedSeason]);
@@ -119,7 +112,6 @@ function FilmDetail(props: Props) {
   const posterWidth = width * 0.35;
   const posterHeight = posterWidth * 1.5;
 
-  // Parse genres
   const genres = data.genre
     ? data.genre
         .split(',')
@@ -127,10 +119,8 @@ function FilmDetail(props: Props) {
         .filter(Boolean)
     : [];
 
-  // Toggle Watch Later
   const handleToggleWatchLater = useCallback(() => {
     if (inWatchLater) {
-      // Remove from watch later - find index
       const wlStr = DatabaseManager.getSync('watchLater');
       if (wlStr) {
         const wl: any[] = JSON.parse(wlStr);
@@ -142,7 +132,6 @@ function FilmDetail(props: Props) {
         }
       }
     } else {
-      // Add to watch later
       controlWatchLater('add', {
         link: `film://${data.subjectId}/${data.detailPath || ''}`,
         title: data.title,
@@ -158,7 +147,6 @@ function FilmDetail(props: Props) {
     }
   }, [data, genres, inWatchLater, isTV]);
 
-  // Play handler: fetch stream URLs then navigate to player
   const handlePlay = useCallback(async () => {
     setIsLoading(true);
     const s = selectedSeason?.se ?? 1;
@@ -166,7 +154,6 @@ function FilmDetail(props: Props) {
     try {
       const detailPath = selectedLang?.detailPath || data.detailPath;
       
-      // Strategy 1: Default standard request (with se/ep for TV, without for Movies)
       let streams = await getPlayStreams(
         data.subjectId,
         detailPath,
@@ -174,7 +161,6 @@ function FilmDetail(props: Props) {
         isTV ? e : undefined,
       );
 
-      // Strategy 2: If Movie and empty streams, fallback to sending se=1 & ep=1
       if (!streams.length && !isTV) {
         streams = await getPlayStreams(
           data.subjectId,
@@ -186,7 +172,6 @@ function FilmDetail(props: Props) {
 
       if (!streams.length) {
         if (detailPath !== data.detailPath) {
-          // Strategy 3: Try fallback original detail path
           let fallbackStreams = await getPlayStreams(
             data.subjectId,
             data.detailPath,
@@ -559,7 +544,6 @@ function useStyles() {
   );
 }
 
-// ─── Episode Grid ──────────────────────────────────────────────────────
 
 const EpisodeGrid = memo(
   ({

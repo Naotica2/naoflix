@@ -61,7 +61,6 @@ function CommentSection({ contentId, contentType }: CommentSectionProps) {
         .limit(100);
       setComments((data as unknown as CommentRow[]) ?? []);
     } catch {
-      /* ignore */
     } finally {
       setLoading(false);
     }

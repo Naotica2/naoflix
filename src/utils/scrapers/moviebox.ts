@@ -11,7 +11,6 @@ const UA =
   'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
 const JWT_STORAGE_KEY = 'moviebox_jwt';
 
-// ─── Types ──────────────────────────────────────────────────────────────────
 
 export type MovieboxCover = { url: string; width: number; height: number };
 export type MovieboxDub = {
@@ -59,23 +58,16 @@ export type MovieboxCaption = {
   delay: number;
 };
 
-// ─── Auth (X-Client-Token based — same as the website) ─────────────────────
 
 let cachedJwt: string | null = null;
 let jwtLoadedFromStorage = false;
 
-// ─── Season Info Cache ───────────────────────────────────────────────────────
-// Two-layer cache to avoid re-fetching season/episode data on every open:
-//   1. sessionCache (Map) — in-memory, instant, lives until app restart
-//   2. AsyncStorage      — persists across restarts, TTL = 6 hours
 const SEASON_CACHE_PREFIX = 'moviebox_seasons_';
 const SEASON_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 const sessionSeasonCache = new Map<string, MovieboxSeason[]>();
 
-/** Clear season cache for a specific show or all shows */
 export async function clearSeasonCache(subjectId?: string): Promise<void> {
   if (subjectId) {
-    // Clear specific show
     for (const key of sessionSeasonCache.keys()) {
       if (key.includes(subjectId)) sessionSeasonCache.delete(key);
     }
@@ -85,7 +77,6 @@ export async function clearSeasonCache(subjectId?: string): Promise<void> {
       if (matching.length) await AsyncStorage.multiRemove(matching);
     } catch {}
   } else {
-    // Clear all
     sessionSeasonCache.clear();
     try {
       const allKeys = await AsyncStorage.getAllKeys();
@@ -95,13 +86,11 @@ export async function clearSeasonCache(subjectId?: string): Promise<void> {
   }
 }
 
-/** Generate guest fingerprint: "<timestamp>,<MD5(reversed_timestamp)>" */
 function clientToken(): string {
   const ts = String(Math.floor(Date.now() / 1000));
   return `${ts},${MD5(ts.split('').reverse().join('')).toString()}`;
 }
 
-/** Build request headers with auto-generated X-Client-Token */
 function headers(opts?: {
   json?: boolean;
   proxy?: boolean;
@@ -126,7 +115,6 @@ function headers(opts?: {
   return h;
 }
 
-/** Decode JWT payload to check expiry */
 function getJwtExpiry(jwt: string): number {
   try {
     const parts = jwt.split('.');
@@ -138,14 +126,12 @@ function getJwtExpiry(jwt: string): number {
   }
 }
 
-/** Check if JWT is still valid (1 hour safety margin) */
 function isJwtValid(jwt: string | null): boolean {
   if (!jwt) return false;
   const exp = getJwtExpiry(jwt);
   return exp > 0 && Date.now() / 1000 < exp - 3600;
 }
 
-/** Load JWT from AsyncStorage on first use */
 async function loadJwtFromStorage(): Promise<void> {
   if (jwtLoadedFromStorage) return;
   jwtLoadedFromStorage = true;
@@ -155,7 +141,6 @@ async function loadJwtFromStorage(): Promise<void> {
   } catch {}
 }
 
-/** Save JWT to AsyncStorage for persistence across app restarts */
 async function saveJwt(jwt: string): Promise<void> {
   cachedJwt = jwt;
   try {
@@ -163,7 +148,6 @@ async function saveJwt(jwt: string): Promise<void> {
   } catch {}
 }
 
-/** Try to grab JWT from x-user response header and persist it */
 function grabJwt(res: Response): void {
   try {
     let xUser: string | null = null;
@@ -178,17 +162,12 @@ function grabJwt(res: Response): void {
   } catch {}
 }
 
-/** Try to extract JWT from x-user header value (handles string, object, URL-encoded, double-JSON) */
 function extractJwt(xUserVal: any): string | null {
   if (!xUserVal) return null;
   try {
-    // Already an object
     if (typeof xUserVal === 'object' && xUserVal.token) return xUserVal.token;
-    // String — might be plain JSON, URL-encoded, or double-encoded
     let s = String(xUserVal);
-    // URL-encoded: %22eyJ...%22
     if (s.includes('%22') || s.includes('%7B')) s = decodeURIComponent(s);
-    // Double-JSON: '"{\\\" token\\\"...}"'
     if (s.startsWith('"') && s.endsWith('"')) {
       try {
         s = JSON.parse(s);
@@ -202,16 +181,9 @@ function extractJwt(xUserVal: any): string | null {
   return null;
 }
 
-/** Ensure we have a valid JWT before making requests that require it.
- *  1. Check memory cache (with expiry validation)
- *  2. Load from AsyncStorage (persists across app restarts)
- *  3. Acquire from server via ReactNativeBlobUtil (x-user header + Set-Cookie)
- *  4. Fallback to standard fetch */
 async function ensureJwt(): Promise<void> {
-  // Already have a valid token in memory
   if (isJwtValid(cachedJwt)) return;
 
-  // Try loading from persistent storage
   await loadJwtFromStorage();
   if (isJwtValid(cachedJwt)) return;
 
@@ -229,13 +201,11 @@ async function ensureJwt(): Promise<void> {
     `${API_BASE}${API_PREFIX}/home?host=movie-box.co`,
   ];
 
-  // Strategy 1: ReactNativeBlobUtil — try x-user header AND Set-Cookie header
   for (const url of urls) {
     try {
       const resp = await ReactNativeBlobUtil.fetch('GET', url, commonHeaders);
       const hdrs = resp.respInfo.headers || {};
 
-      // Try x-user header (all casing variants)
       const raw =
         hdrs['x-user'] ||
         hdrs['X-User'] ||
@@ -249,7 +219,6 @@ async function ensureJwt(): Promise<void> {
         return;
       }
 
-      // Try Set-Cookie header (server sends: Set-Cookie: token=eyJ...)
       const setCookie = hdrs['set-cookie'] || hdrs['Set-Cookie'] || hdrs['Set-cookie'];
       if (setCookie) {
         const cookieStr = Array.isArray(setCookie) ? setCookie.join('; ') : String(setCookie);
@@ -262,7 +231,6 @@ async function ensureJwt(): Promise<void> {
     } catch {}
   }
 
-  // Strategy 2: Standard fetch fallback
   for (const url of urls) {
     try {
       const res = await fetch(url, { method: 'GET', headers: commonHeaders });
@@ -281,7 +249,6 @@ async function ensureJwt(): Promise<void> {
   }
 }
 
-// ─── API helpers ────────────────────────────────────────────────────────────
 
 async function api(
   path: string,
@@ -303,7 +270,6 @@ async function api(
 
   let json = await doFetch();
 
-  // Auto-retry on invalid/expired token: clear JWT, get fresh one, retry
   if (
     json.code !== 0 &&
     (json.reason === 'PARAMS_ERROR' || /invalid.?token|unauthorized|auth/i.test(json.message || ''))
@@ -315,7 +281,6 @@ async function api(
     } catch {}
     await ensureJwt();
     json = await doFetch();
-    // If still failing, try one more time with completely fresh state
     if (
       json.code !== 0 &&
       (json.reason === 'PARAMS_ERROR' || /invalid.?token|unauthorized|auth/i.test(json.message || ''))
@@ -331,15 +296,12 @@ async function api(
   return json.data;
 }
 
-// ─── Public API ─────────────────────────────────────────────────────────────
 
-/** Search for films/TV series */
 export async function searchMoviebox(
   keyword: string,
   page: number = 0,
   signal?: AbortSignal,
 ): Promise<{ items: MovieboxSearchItem[]; totalCount: number; hasMore: boolean }> {
-  // Search requires a JWT — ensure we have one first
   await ensureJwt();
   const data = await api('/subject/search', {
     body: { keyword, page, perPage: 18, subjectType: null },
@@ -352,7 +314,6 @@ export async function searchMoviebox(
   };
 }
 
-/** Get trending content */
 export async function getTrending(
   page: number = 0,
   signal?: AbortSignal,
@@ -361,13 +322,11 @@ export async function getTrending(
   return (data.subjectList || []) as MovieboxSearchItem[];
 }
 
-/** Get search suggestions */
 export async function searchSuggest(keyword: string, signal?: AbortSignal): Promise<string[]> {
   const data = await api('/subject/search-suggest', { body: { keyword }, signal });
   return (data.items || []).map((i: any) => i.word || '').filter(Boolean);
 }
 
-/** Get streaming URLs for a movie/episode (uses site proxy for direct MP4) */
 export async function getPlayStreams(
   subjectId: string,
   detailPath: string,
@@ -389,16 +348,6 @@ export async function getPlayStreams(
   return (data?.streams || []) as MovieboxStream[];
 }
 
-/**
- * Get season & episode info for a TV series.
- * Discovers available seasons and their max episodes from the play API.
- *
- * Strategy 1 : Call play endpoint without se/ep — API may return seasons/episodeList directly.
- * Strategy 1.5: Call the dedicated /subject/episode endpoint.
- * Strategy 2 : Sequential season discovery using raw fetch (no throw) so API
- *              "episode not found" errors (code≠0) are treated as "season absent".
- * Strategy 3 : Parallel max-episode binary search for all discovered seasons.
- */
 export async function getSeasonInfo(
   subjectId: string,
   detailPath: string,
@@ -406,12 +355,10 @@ export async function getSeasonInfo(
 ): Promise<MovieboxSeason[]> {
   const cacheKey = `${SEASON_CACHE_PREFIX}${subjectId}_${detailPath}`;
 
-  // ── Layer 1: session cache (instant, no I/O) ──────────────────────────────
   if (sessionSeasonCache.has(cacheKey)) {
     return sessionSeasonCache.get(cacheKey)!;
   }
 
-  // ── Layer 2: AsyncStorage cache with 6h TTL ───────────────────────────────
   try {
     const stored = await AsyncStorage.getItem(cacheKey);
     if (stored) {
@@ -423,12 +370,8 @@ export async function getSeasonInfo(
     }
   } catch {}
 
-  // Ensure we have a valid JWT before firing any requests.
-  // Without this, every request silently fails with an auth error and
-  // getSeasonInfo returns [] — which shows "Gagal memuat daftar episode".
   await ensureJwt();
 
-  /** Persist result to both caches and return it */
   const saveToCache = async (result: MovieboxSeason[]): Promise<MovieboxSeason[]> => {
     if (result.length === 0) return result; // don't cache empty results
     sessionSeasonCache.set(cacheKey, result);
@@ -437,17 +380,13 @@ export async function getSeasonInfo(
     } catch {}
     return result;
   };
-  // Helper: check if season data looks complete (not just 1-2 eps per season)
   const looksComplete = (seasons: MovieboxSeason[]): boolean => {
     if (seasons.length === 0) return false;
-    // If ANY season has more than 2 episodes, we trust the data
     return seasons.some(s => s.maxEp > 2);
   };
 
-  // We'll collect season hints from Strategy 1/1.5 for use in Strategy 2
   let seasonHints: number[] | null = null;
 
-  // ── Strategy 1: call play without se/ep ──────────────────────────────────
   try {
     const plain = new URLSearchParams({ subjectId, detailPath });
     const plainData = await api(`/subject/play?${plain}`, {
@@ -460,7 +399,6 @@ export async function getSeasonInfo(
       if (looksComplete(seasons)) {
         return saveToCache(seasons);
       }
-      // Save season numbers as hints even if episode counts are wrong
       seasonHints = seasons.map((s: MovieboxSeason) => s.se);
     }
     if (plainData?.episodeList?.length) {
@@ -475,12 +413,10 @@ export async function getSeasonInfo(
       if (looksComplete(result)) {
         return saveToCache(result);
       }
-      // Save season numbers as hints
       if (!seasonHints) seasonHints = result.map(s => s.se);
     }
   } catch {}
 
-  // ── Strategy 1.5: dedicated episode-list endpoint ────────────────────────
   try {
     const epParams = new URLSearchParams({ subjectId, detailPath });
     const epData = await api(`/subject/episode?${epParams}`, {
@@ -508,14 +444,6 @@ export async function getSeasonInfo(
     }
   } catch {}
 
-  // ── Strategy 2: sequential season discovery (raw fetch — no throw) ────────
-  //
-  // IMPORTANT: api() throws when code !== 0. When a season doesn't exist the
-  // server returns a non-zero code, which previously caused an exception that
-  // was caught and treated as "connection failure", rapidly filling emptyCount
-  // and aborting discovery before any season was confirmed.
-  //
-  // We now do a raw fetch so we can inspect the response ourselves.
   const rawPlay = async (params: URLSearchParams): Promise<any | null> => {
     const doRequest = async (): Promise<any | null> => {
       const url = `${SITE_BASE}${API_PREFIX}/subject/play?${params}`;
@@ -531,7 +459,6 @@ export async function getSeasonInfo(
     try {
       let json = await doRequest();
 
-      // If we get an auth error, refresh JWT and retry once
       if (
         json?.code !== 0 &&
         (json?.reason === 'PARAMS_ERROR' || /invalid.?token|unauthorized|auth/i.test(json?.message || ''))
@@ -546,19 +473,16 @@ export async function getSeasonInfo(
       if (json?.code === 0) return json.data ?? null;
       return null;
     } catch {
-      // Network-level failure — return null so this season is skipped
       return null;
     }
   };
 
   const findAvailableSeasons = async (): Promise<number[]> => {
-    // If Strategy 1/1.5 already told us which seasons exist, skip scanning
     if (seasonHints && seasonHints.length > 0) return seasonHints;
 
     const MAX_SEASONS = 8;
     const results: number[] = [];
 
-    // Probe in parallel batches of 4 for speed
     for (let start = 1; start <= MAX_SEASONS; start += 4) {
       const end = Math.min(start + 3, MAX_SEASONS);
       const batch: Promise<{ se: number; ok: boolean }>[] = [];
@@ -574,7 +498,6 @@ export async function getSeasonInfo(
       for (const r of batchResults) {
         if (r.ok) results.push(r.se);
       }
-      // Small delay between batches
       if (end < MAX_SEASONS) await new Promise(r => setTimeout(r, 250));
     }
     return results;
@@ -583,12 +506,7 @@ export async function getSeasonInfo(
   const seasonNumbers = await findAvailableSeasons();
   if (seasonNumbers.length === 0) return [];
 
-  // ── Strategy 3: exponential probe + binary search episode discovery ─────────
-  // Instead of linear scanning (1,2,3,4...) which takes O(n) requests per season,
-  // we use exponential probing (1,8,16,32) to find the upper bound, then binary
-  // search between last hit and first miss. This reduces requests from ~12 to ~6
   // for a 10-episode season, and from ~26 to ~8 for a 25-episode season.
-  // Seasons are scanned in parallel with concurrency limit of 2.
   const BASE_DELAY = 350; // ms between probes
   const JITTER = 150;     // random extra delay
 
@@ -602,12 +520,9 @@ export async function getSeasonInfo(
   };
 
   const findMaxEp = async (se: number): Promise<number> => {
-    // Phase 1: Confirm ep 1 exists
     const ep1 = await probeEp(se, 1);
     if (!ep1) return 1; // fallback
 
-    // Phase 2: Exponential probe to find upper bound
-    // Probe 8, 16, 32, 50 — find where episodes stop existing
     const PROBES = [8, 16, 32, 50];
     let lastHit = 1;
     let firstMiss = -1;
@@ -623,10 +538,8 @@ export async function getSeasonInfo(
       }
     }
 
-    // If all probes hit (even 50), cap at 50
     if (firstMiss === -1) return lastHit;
 
-    // Phase 3: Binary search between lastHit and firstMiss
     let lo = lastHit;
     let hi = firstMiss;
 
@@ -644,7 +557,6 @@ export async function getSeasonInfo(
     return Math.max(lo, 1);
   };
 
-  // Scan seasons in PARALLEL with concurrency limit of 2
   const CONCURRENCY = 2;
   const maxEpResults: number[] = new Array(seasonNumbers.length).fill(1);
 
@@ -666,7 +578,6 @@ export async function getSeasonInfo(
   return saveToCache(finalResult);
 }
 
-/** Get available subtitle/caption files for a stream */
 export async function getCaptions(
   streamId: string,
   subjectId: string,
@@ -678,9 +589,7 @@ export async function getCaptions(
   return (data?.captions || []) as MovieboxCaption[];
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
 
-/** Check if a search result has Indonesian language support */
 export function hasIndonesian(item: MovieboxSearchItem): boolean {
   if (item.subtitles && /indonesian/i.test(item.subtitles)) return true;
   if (item.dubs?.some(d => d.lanCode === 'id')) return true;
@@ -688,7 +597,6 @@ export function hasIndonesian(item: MovieboxSearchItem): boolean {
   return false;
 }
 
-/** Get the best detail path for Indonesian viewing */
 export function getIndonesianDetailPath(item: MovieboxSearchItem): string {
   const idDub = item.dubs?.find(d => d.lanCode === 'id' && d.type === 0);
   if (idDub) return idDub.detailPath;
@@ -697,7 +605,6 @@ export function getIndonesianDetailPath(item: MovieboxSearchItem): string {
   return item.detailPath;
 }
 
-/** Get available language options from dubs array */
 export function getLanguageOptions(
   item: MovieboxSearchItem,
 ): { label: string; detailPath: string; isIndonesian: boolean }[] {

@@ -43,12 +43,10 @@ const COOLDOWN_MS = 5000;
 const MAX_MESSAGES = 100;
 const LOAD_COUNT = 50;
 
-// Screens where chat FAB should be HIDDEN (immersive activities)
 const HIDDEN_SCREENS = new Set([
   'Video', 'FilmPlayer', 'ComicsReading', 'NovelReading', 'CbzReader',
 ]);
 
-// Simple emoji regex — detects most Unicode emoji
 const EMOJI_RE = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/u;
 
 function formatTime(iso: string): string {
@@ -62,7 +60,6 @@ function hasEmoji(text: string): boolean {
   return EMOJI_RE.test(text);
 }
 
-// ─── Chat Message Item (memoized for performance) ─────────────────────────
 
 const ChatItem = React.memo(function ChatItem({ msg, isMe }: { msg: ChatMessage; isMe: boolean }) {
   const colorScheme = useColorScheme();
@@ -72,7 +69,6 @@ const ChatItem = React.memo(function ChatItem({ msg, isMe }: { msg: ChatMessage;
     [msg.text],
   );
 
-  // Generate a consistent color from username for fallback avatar
   const fallbackColor = useMemo(() => {
     const colors = ['#e57373', '#64b5f6', '#81c784', '#ffb74d', '#ba68c8', '#4db6ac', '#f06292', '#7986cb'];
     let hash = 0;
@@ -157,7 +153,6 @@ const ChatItem = React.memo(function ChatItem({ msg, isMe }: { msg: ChatMessage;
   );
 });
 
-// ─── Main ChatForum Component ───────────────────────────────────────────────
 
 export default function ChatForum() {
   const colorScheme = useColorScheme();
@@ -194,13 +189,11 @@ export default function ChatForum() {
     ToastAndroid.show('Forum disembunyikan. Kamu bisa membukanya kembali di Pengaturan.', ToastAndroid.LONG);
   }, []);
 
-  // Panel animation
   const panelHeight = useSharedValue(0);
   const panelStyle = useAnimatedStyle(() => ({
     height: panelHeight.value,
   }));
 
-  // Open / close panel
   const togglePanel = useCallback(() => {
     setIsOpen(prev => {
       const next = !prev;
@@ -210,11 +203,9 @@ export default function ChatForum() {
     });
   }, [panelHeight]);
 
-  // Load initial messages + subscribe to realtime
   useEffect(() => {
     if (!user) return;
 
-    // Load recent messages
     supabase
       .from('chat_messages')
       .select('*, profiles(is_vip)')
@@ -224,7 +215,6 @@ export default function ChatForum() {
         if (data) setMessages(data.reverse() as ChatMessage[]);
       });
 
-    // Subscribe to new messages
     const channel = supabase
       .channel('chat_forum')
       .on(
@@ -236,18 +226,15 @@ export default function ChatForum() {
             newMsg.profiles = { is_vip: profile?.is_vip || false };
           }
           setMessages(prev => {
-            // Prevent duplicate if optimistic update already added it
             if (prev.some(m => m.id === newMsg.id)) return prev;
             
             const updated = [...prev, newMsg];
             if (updated.length > MAX_MESSAGES) updated.shift();
             return updated;
           });
-          // Increment unread if panel is closed and not own message
           if (!isOpen && newMsg.user_id !== user.id) {
             setUnreadCount(prev => prev + 1);
           }
-          // Auto-scroll
           setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
         },
       )
@@ -264,12 +251,10 @@ export default function ChatForum() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Clear unread when panel opens
   useEffect(() => {
     if (isOpen) setUnreadCount(0);
   }, [isOpen]);
 
-  // Cooldown timer
   const startCooldown = useCallback(() => {
     lastSendTime.current = Date.now();
     setCooldownLeft(COOLDOWN_MS / 1000);
@@ -285,7 +270,6 @@ export default function ChatForum() {
     }, 200);
   }, []);
 
-  // Send message
   const handleSend = useCallback(async () => {
     if (!user || !profile || !inputText.trim()) return;
     if (Date.now() - lastSendTime.current < COOLDOWN_MS) return;
@@ -318,7 +302,6 @@ export default function ChatForum() {
   const [currentScreen, setCurrentScreen] = useState('');
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
-  // Draggable FAB position
   const FAB_SIZE = 50;
   const fabX = useRef(new Animated.Value(screenWidth - FAB_SIZE - 16)).current;
   const fabY = useRef(new Animated.Value(screenHeight - insets.bottom - 120)).current;
@@ -344,16 +327,13 @@ export default function ChatForum() {
       fabY.flattenOffset();
 
       if (!didDragRef.current) {
-        // It was a tap, not a drag
         togglePanel();
         return;
       }
 
-      // Snap to nearest horizontal edge
       const currentX = (fabX as any)._value;
       const currentY = (fabY as any)._value;
       const targetX = currentX < screenWidth / 2 ? 8 : screenWidth - FAB_SIZE - 8;
-      // Clamp Y within screen bounds
       const clampedY = Math.max(insets.top + 40, Math.min(currentY, screenHeight - insets.bottom - FAB_SIZE - 16));
 
       Animated.parallel([
@@ -363,7 +343,6 @@ export default function ChatForum() {
     },
   }), [screenWidth, screenHeight, insets.top, insets.bottom, togglePanel, fabX, fabY]);
 
-  // Track current screen to hide FAB on immersive activities
   useEffect(() => {
     const unsubscribe = navigationRef.addListener?.('state', () => {
       const route = navigationRef.getCurrentRoute?.();
@@ -376,7 +355,6 @@ export default function ChatForum() {
 
   const isHiddenScreen = HIDDEN_SCREENS.has(currentScreen);
 
-  // Auto-close panel when navigating to immersive screen
   useEffect(() => {
     if (isHiddenScreen && isOpen) {
       setIsOpen(false);
@@ -384,7 +362,6 @@ export default function ChatForum() {
     }
   }, [isHiddenScreen, isOpen, panelHeight]);
 
-  // Don't render if not logged in or on immersive screen or disabled in settings
   if (!user || !profile || isHiddenScreen || !isForumEnabled) return null;
 
   return (
@@ -501,7 +478,6 @@ export default function ChatForum() {
   );
 }
 
-// ─── Styles ─────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   fab: {

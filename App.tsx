@@ -64,7 +64,6 @@ import { ONESIGNAL_APP_ID } from '@env';
 
 cleanCbzDir();
 
-// Initialize OneSignal
 try {
   OneSignal.initialize(ONESIGNAL_APP_ID);
   OneSignal.Notifications.requestPermission(false);
@@ -179,7 +178,6 @@ export const withSuspenseAndSafeArea = (
     );
 };
 
-// Handle JavaScript Error globally
 if (!__DEV__) {
   ErrorUtils.setGlobalHandler((error, isFatal) => {
     if (error instanceof Error && isFatal) {
@@ -337,7 +335,6 @@ function App() {
     SystemBars.setStyle(colorScheme === 'dark' ? 'light' : 'dark');
   }, [colorScheme]);
 
-  // Dialog related
   const [dialogVisible, setDialogVisible] = useState(false);
   const [dialogContent, setDialogContent] = useState({
     title: '',
@@ -348,7 +345,6 @@ function App() {
     DialogManager.setupDialog(setDialogVisible, setDialogContent);
   }, []);
 
-  // Auth gate
   if (authLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>

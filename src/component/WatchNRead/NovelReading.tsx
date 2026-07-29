@@ -112,7 +112,6 @@ export default function NovelReading(props: Props) {
     });
   }, [isFullscreen, props.navigation, props.route.params.data.chapter]);
 
-  // EXP reward
   useEffect(() => {
     const link = props.route.params.link;
     if (link && !awardedChaptersRef.current.has(link)) {
@@ -122,7 +121,6 @@ export default function NovelReading(props: Props) {
     }
   }, [props.route.params.link, addExp]);
 
-  // Save history
   useEffect(() => {
     setHistory(
       {

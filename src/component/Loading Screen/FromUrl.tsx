@@ -67,7 +67,6 @@ function FromUrl(props: Props) {
         link = props.route.params.link;
       } else {
         try {
-          // fix invalid url crash
           link = generateUrlWithLatestDomain(props.route.params.link);
         } catch {
           link = props.route.params.link;
@@ -82,16 +81,13 @@ function FromUrl(props: Props) {
         );
         return;
       }
-      // Handle film:// links from history/watch later (moviebox films)
       if (link.startsWith('film://')) {
         const filmRaw = link.replace('film://', '');
-        // Parse query params from film link (e.g., film://subjectId/path?se=1&ep=2)
         const [filmPath, filmQuery] = filmRaw.split('?');
         const filmParts = filmPath.split('/');
         const subjectId = filmParts[0];
         const detailPath = filmParts.slice(1).join('/');
 
-        // Extract season and episode from link query params first, then fallback to title
         let se: number | undefined = undefined;
         let ep: number | undefined = undefined;
         let type: 'movie' | 'tv' = 'movie';
@@ -104,7 +100,6 @@ function FromUrl(props: Props) {
           if (epParam) ep = parseInt(epParam);
           if (se != null && ep != null) type = 'tv';
         }
-        // Fallback: parse from title "Show S1E2"
         if (se == null || ep == null) {
           const titleMatch = props.route.params.title?.match(/ S(\d+)E(\d+)$/);
           if (titleMatch) {
@@ -175,7 +170,6 @@ function FromUrl(props: Props) {
                   }),
                 );
 
-                // History
                 setHistory(result, link, false, props.route.params.historyData);
 
                 const episodeIndex = result.title.toLowerCase().indexOf(' episode');

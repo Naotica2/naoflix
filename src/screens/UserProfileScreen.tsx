@@ -60,7 +60,6 @@ function UserProfileScreen() {
   const [msgLoading, setMsgLoading] = useState(false);
 
   useEffect(() => {
-    // If user opens their own profile from somewhere, redirect to AccountPage tab
     if (user && user.id === targetUserId) {
       navigation.navigate('Home', { screen: 'AccountPage' } as any);
       return;

@@ -1,6 +1,3 @@
-/*
-This code is from react-native-redash with small modification
-*/
 import { useLayoutEffect, useState } from 'react';
 import type { TextProps as RNTextProps } from 'react-native';
 import { StyleSheet, TextInput } from 'react-native';
@@ -28,7 +25,6 @@ const ReText = (props: TextProps) => {
   const animatedProps = useAnimatedProps(() => {
     return {
       text: text.get(),
-      // Here we use any because the text prop is not available in the type
     } as any;
   });
   return (

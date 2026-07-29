@@ -48,7 +48,6 @@ function MessagesPage() {
   const fetchChannels = useCallback(async () => {
     if (!user) return;
     try {
-      // Get all channels where user is sender or receiver
       const { data, error } = await supabase
         .from('dm_channels')
         .select(`
@@ -78,12 +77,9 @@ function MessagesPage() {
             
           if (msgData && msgData.length > 0) {
             last_message = msgData[0].text;
-            // Count unread in the last 50 messages
-            // If is_read column doesn't exist yet, this will just be undefined.
             unread_count = msgData.filter(m => m.user_id !== user.id && m.is_read === false).length;
           }
         } catch (e) {
-          // ignore if dm_messages fails or is_read column doesn't exist
         }
 
         return {
@@ -134,7 +130,6 @@ function MessagesPage() {
     setLoading(true);
     fetchChannels();
     
-    // Subscribe to changes in dm_channels
     if (!user) return;
     const channelSub = supabase
       .channel('public:dm_channels')
@@ -185,7 +180,6 @@ function MessagesPage() {
     if (activeTab === 'Messages') {
       return ch.status === 'accepted' || (ch.status === 'pending' && ch.is_sender);
     } else {
-      // Requests tab: pending and we are the receiver
       return ch.status === 'pending' && !ch.is_sender;
     }
   });

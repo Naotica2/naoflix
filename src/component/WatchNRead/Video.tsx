@@ -98,14 +98,12 @@ function Video(props: Props) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(props.route.params.data);
 
-  // Nobar Watch Party States
   const [roomId, setRoomId] = useState<string | null>(props.route.params.roomId || null);
   const [inviteVisible, setInviteVisible] = useState(false);
   const [showVIPModal, setShowVIPModal] = useState(false);
   const isDark = colorScheme === 'dark';
   const isHost = !props.route.params.roomId;
 
-  // Setup Discord-like Presence
   usePresenceActivity(data.title ? `Sedang menonton ${data.title}` : 'Memilih Anime');
 
   const { participants, remoteState, broadcastState, chatMessages, broadcastChat, broadcastMediaChange, mediaChangeLink, isActive, connectionStatus, isHostMissing } = useWatchParty(
@@ -114,7 +112,6 @@ function Video(props: Props) {
     { type: 'anime', title: data.title, link: props.route.params.link }
   );
 
-  // Handle Nobar Disconnects
   useEffect(() => {
     if (roomId) {
       if (connectionStatus === 'DISCONNECTED') {
@@ -129,11 +126,9 @@ function Video(props: Props) {
     }
   }, [roomId, connectionStatus, isHostMissing, isHost]);
 
-  // Sync data state when route params change (episode navigation via StackActions.replace)
   useEffect(() => {
     const newData = props.route.params.data;
     if (newData && newData !== data && newData.streamingLink !== data.streamingLink) {
-      // Reset player state for new episode
       abortController.current?.abort();
       abortController.current = new AbortController();
       setData(newData);
@@ -154,7 +149,6 @@ function Video(props: Props) {
   const webviewRef = useRef<WebView>(null);
   const dropdownResolutionRef = useRef<IDropdownRef>(null);
 
-  // Sync Watch Party Remote State
   useEffect(() => {
     if (roomId && remoteState && playerRef.current) {
       const timeDiff = Math.abs(remoteState.currentTime - playerRef.current.getCurrentTime());
@@ -179,9 +173,7 @@ function Video(props: Props) {
 
   const [animeDetail, setAnimeDetail] = useState<AniDetail | undefined>(undefined);
 
-  // Current episode index in the episode list (for highlighting in grid)
   const extractEpNum = useCallback((title: string): string | undefined => {
-    // Try "Episode X" first, then "Ep X", then last number
     const epMatch = title.match(/[Ee]pisode\s*(\d+)/);
     if (epMatch) return epMatch[1];
     const epShort = title.match(/[Ee][Pp]\s*(\d+)/);
@@ -193,11 +185,9 @@ function Video(props: Props) {
   const currentEpisodeIndex = useMemo(() => {
     if (!animeDetail?.episodeList) return -1;
 
-    // Exact link match (fixes Animelovers missing blue mark)
     const exactMatch = animeDetail.episodeList.findIndex(eps => eps.link === currentLink.current);
     if (exactMatch !== -1) return exactMatch;
 
-    // Fallback to title parsing for legacy links
     const currentNum = extractEpNum(data.title);
     if (!currentNum) return -1;
     return animeDetail.episodeList.findIndex(eps => {
@@ -205,7 +195,6 @@ function Video(props: Props) {
     });
   }, [animeDetail, data, extractEpNum]);
 
-  // Auto-scroll episode grid to current episode
   const episodeListRef = useRef<FlatList>(null);
   useEffect(() => {
     if (currentEpisodeIndex >= 0 && episodeListRef.current) {
@@ -330,7 +319,6 @@ function Video(props: Props) {
     SystemNavigationBar.navigationShow();
   }, []);
 
-  // didMount and willUnmount
   useFocusEffect(
     useCallback(() => {
       abortController.current = new AbortController();
@@ -344,7 +332,6 @@ function Video(props: Props) {
     }, [orientationDidChange, willUnmountHandler]),
   );
 
-  // set header title
   useLayoutEffect(() => {
     props.navigation.setOptions({
       headerTitle: data.title,
@@ -352,7 +339,6 @@ function Video(props: Props) {
     });
   }, [data, fullscreen, props.navigation]);
 
-  // Battery level
   useFocusEffect(
     useCallback(() => {
       let _batteryEvent: NodeJS.Timeout | null;
@@ -372,7 +358,6 @@ function Video(props: Props) {
     }, [enableBatteryTimeInfo]),
   );
 
-  // BackHandler event
   useBackHandler(
     useCallback(() => {
       if (!fullscreen) {
@@ -641,7 +626,6 @@ function Video(props: Props) {
 
   const lastMediaChangeLink = useRef<string | null>(null);
 
-  // Sync Watch Party Media Change
   useEffect(() => {
     if (mediaChangeLink && !isHost && mediaChangeLink !== lastMediaChangeLink.current) {
       lastMediaChangeLink.current = mediaChangeLink;
@@ -731,10 +715,7 @@ function Video(props: Props) {
     }
     ToastAndroid.show('Otomatis kembali ke durasi terakhir', ToastAndroid.SHORT);
 
-    // DialogManager.alert('Perhatian', `
     // Fitur "lanjut menonton dari durasi terakhir" memiliki bug atau masalah.
-    // Dan dinonaktifkan untuk sementara waktu, untuk melanjutkan menonton kamu bisa geser slider ke menit ${moment(historyData.current.lastDuration * 1000).format('mm:ss')}
-    // `)
   }, [addExp, data.streamingLink]);
 
   useEffect(() => {
@@ -764,7 +745,6 @@ function Video(props: Props) {
             initialInfoContainerHeight.current = height;
           });
         } else if (!hadSynopsisMeasured) {
-          // delay the measurement because if the layout is from fullscreen the width would be wrong
           return setTimeout(() => {
             synopsisTextRef.current?.measure((_x, _y, _width, height, _pageX, _pageY) => {
               setSynopsisTextLength(height / 20); // 20: lineheight
@@ -816,11 +796,6 @@ function Video(props: Props) {
     if (!isInfoPressed.current) {
       infoContainerHeight.set(initialInfoContainerHeight.current!);
 
-      /* 
-      wait for the next event loop,
-      make sure the infoContainerHeight is set to initialInfoContainerHeight before starting animation.
-      This is to prevent jumping animation in react-native-reanimated
-      */
       await new Promise(res => setTimeout(res, 0));
     }
     isInfoPressed.current = true;
@@ -896,7 +871,6 @@ function Video(props: Props) {
           }}
         />
         {
-          // mengecek apakah video tersedia
           !data.streamingLink ? (
             <View style={{ flex: 1, zIndex: 1, justifyContent: 'center', alignItems: 'center' }}>
               <Icon name="exclamation-circle" color="#ff5252" size={48} />
@@ -933,7 +907,6 @@ function Video(props: Props) {
               disableControls={!!roomId && !!props.route.params.roomId}
             />
           ) : data.streamingType === 'embed' ? (
-            // <>
             //   {/* TEMP|TODO|WORKAROUND: Temporary fix for webview layout not working properly when using native-stack */}
             //   <VideoPlayer title="" streamingURL="" style={{ display: 'none' }} />
             <WebView
@@ -953,7 +926,6 @@ function Video(props: Props) {
                   navigator.url.includes('.m3u8') ||
                   navigator.url.includes('.ts');
                 if (!res && navigator.isTopFrame) {
-                  // Only stop loading if it's a top-frame HTML redirect to unknown site
                   webviewRef.current?.stopLoading();
                 }
                 return true; // Return true to allow internal media fetches in WebViews
@@ -1219,7 +1191,6 @@ function Video(props: Props) {
                         return;
                       }
 
-                      // VIP Logic Check
                       const now = new Date();
                       const today = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
                       let currentCount = profile.nobar_count || 0;
@@ -1234,12 +1205,10 @@ function Video(props: Props) {
                           return; // Stop here, limit reached
                         }
 
-                        // Increment usage in background
                         supabase.from('profiles').update({
                           nobar_count: currentCount + 1,
                           last_nobar_date: today
                         }).eq('id', user.id).then();
-                        // Ideally we refresh profile, but doing this locally is fine for now
                         profile.nobar_count = currentCount + 1;
                         profile.last_nobar_date = today;
                       }
@@ -1312,7 +1281,6 @@ function Video(props: Props) {
                         length: 48, offset: (48 + 8) * index, index,
                       })}
                       onScrollToIndexFailed={(info) => {
-                        // Fallback: scroll to nearest available index
                         const wait = new Promise(resolve => setTimeout(resolve, 500));
                         wait.then(() => {
                           episodeListRef.current?.scrollToIndex({ index: info.highestMeasuredFrameIndex, animated: true });

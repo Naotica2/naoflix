@@ -9,12 +9,8 @@ export interface UploadResult {
   error?: string;
 }
 
-/**
- * Validates file size (handles arbitrary formats)
- */
 export async function validateFileSize(uri: string, maxMb: number): Promise<boolean> {
   try {
-    // Basic fetch to check size (on mobile this reads from local file)
     const response = await fetch(uri);
     const blob = await response.blob();
     const sizeInMB = blob.size / (1024 * 1024);
@@ -25,12 +21,8 @@ export async function validateFileSize(uri: string, maxMb: number): Promise<bool
   }
 }
 
-/**
- * Gets file extension and mime type from URI
- */
 function getFileInfo(uri: string): { ext: string, type: string } {
   let ext = uri.split('.').pop()?.toLowerCase() || 'jpg';
-  // Strip query params if any
   ext = ext.split('?')[0];
 
   let type = 'image/jpeg';
@@ -38,7 +30,6 @@ function getFileInfo(uri: string): { ext: string, type: string } {
   if (ext === 'gif') type = 'image/gif';
   if (ext === 'webp') type = 'image/webp';
   
-  // If it's a completely unknown extension, fallback to jpg
   if (!['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
     ext = 'jpg';
     type = 'image/jpeg';
@@ -47,9 +38,6 @@ function getFileInfo(uri: string): { ext: string, type: string } {
   return { ext, type };
 }
 
-/**
- * Uploads image to Supabase Storage and returns the public URL
- */
 async function uploadToSupabase(
   bucket: 'avatars' | 'banners',
   userId: string,
@@ -63,7 +51,6 @@ async function uploadToSupabase(
     }
 
     const { ext, type } = getFileInfo(uri);
-    // Use a timestamp to prevent caching issues when uploading same name
     const timestamp = new Date().getTime();
     const fileName = `${userId}/media_${timestamp}.${ext}`;
 
@@ -74,14 +61,12 @@ async function uploadToSupabase(
       type: type,
     } as any);
 
-    // Using fetch directly because Supabase JS client sometimes has issues with React Native FormData
     const { data: session } = await supabase.auth.getSession();
     const token = session?.session?.access_token;
 
     if (!token) return { error: 'Belum login' };
 
     const supabaseUrl = process.env.SUPABASE_URL || '';
-    // Format: https://[PROJECT_REF].supabase.co/storage/v1/object/[BUCKET]/[FILENAME]
     const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${fileName}`;
 
     const response = await fetch(uploadUrl, {
@@ -98,7 +83,6 @@ async function uploadToSupabase(
       return { error: 'Gagal mengunggah gambar' };
     }
 
-    // Get public URL
     const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(fileName);
     return { url: publicUrl };
 

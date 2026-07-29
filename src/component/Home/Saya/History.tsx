@@ -177,7 +177,6 @@ function History(props: Props) {
       <View style={styles.historyContainer}>
         <AnimatedFlashList
           data={filteredData}
-          // fix: weird flashlist crash (undefined) (might be related to concurrent render)
           key={searchKeywordDeferred}
           ref={flatListRef}
           keyExtractor={keyExtractor}
@@ -249,7 +248,6 @@ const RenderList = memo(function RenderList({
         HistoryDatabaseCache.set(keyItem, historyDb);
         // startTransition(() => {
         setItem(historyDb);
-        // });
       });
     }, [keyItem, setItem]),
   );

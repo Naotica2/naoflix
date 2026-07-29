@@ -97,11 +97,9 @@ export default function ComicsDetail(props: Props) {
     state => JSON.parse(state) as HistoryItemKey[],
   );
   const lastReaded = useMemo(() => {
-    // Try exact match first
     let historyKey = historyListsJson.find(
       z => z === `historyItem:${data.title.trim()}:true:false`,
     );
-    // Fallback: fuzzy match by title prefix (for cross-source compatibility)
     if (!historyKey) {
       const titlePrefix = `historyItem:${data.title.trim().slice(0, 20)}`;
       historyKey = historyListsJson.find(
@@ -113,14 +111,12 @@ export default function ComicsDetail(props: Props) {
     } else return undefined;
   }, [historyListsJson, data.title]);
 
-  // Extract last read chapter number for read indicator (works across all comic sources)
   const lastReadChapterNum = useMemo(() => {
     if (!lastReaded?.episode) return -1;
     const match = lastReaded.episode.match(/(\d+\.?\d*)/);
     return match ? parseFloat(match[1]) : -1;
   }, [lastReaded]);
 
-  // Helper to extract chapter number from a chapter string
   const getChapterNum = useCallback((chapterStr: string): number => {
     const match = chapterStr.match(/(\d+\.?\d*)/);
     return match ? parseFloat(match[1]) : -1;
@@ -134,7 +130,6 @@ export default function ComicsDetail(props: Props) {
       );
       const isSameScraper = currentScraper && props.route.params.link.includes(currentScraper);
       if (!isSameScraper && lastReaded?.episode) {
-        // Use number-based comparison for cross-source chapter matching
         const lastReadNum = getChapterNum(lastReaded.episode);
         const matchedChapter = lastReadNum >= 0
           ? data.chapters.find(item => getChapterNum(item.chapter) === lastReadNum)
@@ -184,11 +179,8 @@ export default function ComicsDetail(props: Props) {
         renderItem={({ item }) => {
           if (!item) return null;
           const currentChapterNum = getChapterNum(item.chapter);
-          // Number-based comparison for "currently reading" indicator (works across all sources)
           const isLastReaded = lastReadChapterNum >= 0 && currentChapterNum >= 0 && currentChapterNum === lastReadChapterNum;
-          // Also check by link as fallback
           const isLastReadedByLink = !isLastReaded && lastReaded?.link === item.chapterUrl;
-          // Check if chapter has been read (chapter number <= last read chapter number)
           const isRead = lastReadChapterNum >= 0 && currentChapterNum >= 0 && currentChapterNum <= lastReadChapterNum;
           return (
             <TouchableOpacity

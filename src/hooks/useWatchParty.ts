@@ -32,7 +32,6 @@ export function useWatchParty(roomId: string | null, isHost: boolean, metadata?:
   useEffect(() => {
     if (!roomId || !user) return;
 
-    // Create unique channel for this room
     const roomChannel = supabase.channel(`room_${roomId}`, {
       config: {
         presence: {
@@ -41,28 +40,24 @@ export function useWatchParty(roomId: string | null, isHost: boolean, metadata?:
       },
     });
 
-    // Handle incoming state from host
     roomChannel.on('broadcast', { event: 'player_state' }, (payload) => {
       if (!isHost && payload.payload) {
         setRemoteState(payload.payload as WatchPartyState);
       }
     });
 
-    // Handle incoming chat messages
     roomChannel.on('broadcast', { event: 'chat' }, (payload) => {
       if (payload.payload) {
         setChatMessages(prev => [...prev, payload.payload]);
       }
     });
 
-    // Handle incoming media changes (for next/prev episode sync)
     roomChannel.on('broadcast', { event: 'media_change' }, (payload) => {
       if (!isHost && payload.payload?.link) {
         setMediaChangeLink(payload.payload.link);
       }
     });
 
-    // Handle Presence (Users joining/leaving)
     roomChannel.on('presence', { event: 'sync' }, () => {
       const state = roomChannel.presenceState();
       const currentParticipants: WatchPartyParticipant[] = [];
@@ -124,7 +119,6 @@ export function useWatchParty(roomId: string | null, isHost: boolean, metadata?:
     };
   }, [roomId, user, profile, isHost]);
 
-  // Check for Host missing tolerance
   useEffect(() => {
     if (!roomId || isHost || participants.length === 0) return;
     const hostExists = participants.some(p => p.isHost);
@@ -136,7 +130,6 @@ export function useWatchParty(roomId: string | null, isHost: boolean, metadata?:
     }
   }, [participants, isHost, roomId]);
 
-  // Method for Host to broadcast their player state
   const broadcastState = useCallback((state: PlayerState, time: number) => {
     if (!channel || !isHost) return;
     
@@ -151,11 +144,9 @@ export function useWatchParty(roomId: string | null, isHost: boolean, metadata?:
     });
   }, [channel, isHost]);
 
-  // Method for sending chat messages
   const broadcastChat = useCallback((message: any) => {
     if (!channel) return;
     
-    // Optimistic UI (add to own state immediately)
     setChatMessages(prev => [...prev, message]);
     
     channel.send({
@@ -165,7 +156,6 @@ export function useWatchParty(roomId: string | null, isHost: boolean, metadata?:
     });
   }, [channel]);
 
-  // Method for changing media
   const broadcastMediaChange = useCallback((newLink: string) => {
     if (!channel || !isHost) return;
     

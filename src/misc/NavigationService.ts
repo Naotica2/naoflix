@@ -1,4 +1,3 @@
-// NavigationService.ts
 import {
   CommonActions,
   createNavigationContainerRef,

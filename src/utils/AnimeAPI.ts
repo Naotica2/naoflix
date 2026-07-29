@@ -29,44 +29,26 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
   ]);
 }
 
-/** Ordered list of all 7 days in Indonesian */
 const WEEKDAYS_ID = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
-/**
- * Normalize day names from various formats (English, Indonesian, abbreviations)
- * to standard Indonesian full day names (Senin, Selasa, ..., Minggu).
- */
 function normalizeDay(day: string): string {
   const d = day.trim().toLowerCase();
-  // Monday / Senin / Mon / Sen
   if (d === 'monday' || d === 'senin' || d === 'mon' || d === 'sen') return 'Senin';
-  // Tuesday / Selasa / Tue / Sel
   if (d === 'tuesday' || d === 'selasa' || d === 'tue' || d === 'sel') return 'Selasa';
-  // Wednesday / Rabu / Wed / Rab
   if (d === 'wednesday' || d === 'rabu' || d === 'wed' || d === 'rab') return 'Rabu';
-  // Thursday / Kamis / Thu / Kam
   if (d === 'thursday' || d === 'kamis' || d === 'thu' || d === 'kam') return 'Kamis';
-  // Friday / Jumat / Fri / Jum
   if (d === 'friday' || d === 'jumat' || d === 'fri' || d === 'jum' || d === "jum'at") return 'Jumat';
-  // Saturday / Sabtu / Sat / Sab
   if (d === 'saturday' || d === 'sabtu' || d === 'sat' || d === 'sab') return 'Sabtu';
-  // Sunday / Minggu / Sun / Min
   if (d === 'sunday' || d === 'minggu' || d === 'sun' || d === 'min') return 'Minggu';
-  // Fallback: return original
   return day;
 }
 
-/**
- * Merge a raw jadwal dict into a normalized one (all day keys standardized to Indonesian),
- * and ensure all 7 weekdays are present (empty array if no data).
- */
 function mergeJadwal(raw: Record<string, any[]>, target: Record<string, any[]>) {
   for (const day in raw) {
     const normalized = normalizeDay(day);
     if (!target[normalized]) target[normalized] = [];
     target[normalized].push(...raw[day]);
   }
-  // Ensure all 7 days exist
   for (const day of WEEKDAYS_ID) {
     if (!target[day]) target[day] = [];
   }
@@ -121,7 +103,6 @@ class AnimeAPI {
     const promises: Promise<NewAnimeList[]>[] = [];
 
     if (isSourceActive(prefs, 'animelovers')) {
-      // Animelovers tak ada by genre, biarkan kosong atau tambah manual di masa depan
     } else {
       if (isSourceActive(prefs, 'otakudesu')) promises.push(withTimeout(animeindo.getAnimeByGenre(genre, page, signal).catch(() => []), 8000, []));
     }
@@ -150,7 +131,6 @@ class AnimeAPI {
     const promises: Promise<SearchAnime>[] = [];
 
     if (isSourceActive(prefs, 'animelovers')) {
-      // Animelovers tak ada fitur searchMovies (hanya query string)
     } else {
       if (isSourceActive(prefs, 'otakudesu')) promises.push(withTimeout(animeindo.searchMovies(page, signal).catch(() => ({ result: [] })), 8000, { result: [] }));
     }
@@ -167,24 +147,20 @@ class AnimeAPI {
     detailOnly?: boolean,
     signal?: AbortSignal,
   ): Promise<fromUrlJSON | 'Unsupported'> {
-    // Otakudesu detail page: /anime/slug/
     if ((link.includes('otakudesu') || link.includes('anime-indo')) && link.includes('/anime/') && !link.includes('/episode/')) {
       return await animeindo.detail(link, signal);
     }
 
-    // Otakudesu episode page: /episode/slug-episode-N/
     if ((link.includes('otakudesu') || link.includes('anime-indo')) && link.includes('/episode/')) {
       return await animeindo.streaming(link, signal);
     }
 
-    // Legacy AnimeIndo episode page: /slug-episode-N/ (no /episode/ prefix)
     if (link.includes('anime-indo') && link.includes('-episode-')) {
       return await animeindo.streaming(link, signal);
     }
 
 
 
-    // Animelovers links
     if (link.startsWith('al-detail-')) {
       return await animelovers.detail(link, signal);
     }
@@ -192,7 +168,6 @@ class AnimeAPI {
       return await animelovers.streaming(link, signal);
     }
 
-    // Sanka legacy links (from old watch later / history)
     if (link.startsWith('sanka://detail/')) {
       const id = link.split('/').pop()!;
       const slug = decodeURIComponent(id).split('|').pop()!;
@@ -204,7 +179,6 @@ class AnimeAPI {
       return await animeindo.streaming(`https://${animeindo.DOMAIN}/${slug}/`, signal);
     }
 
-    // OtakuDesu links (legacy fallback)
     try {
       const statusCode = await fetch(link, {
         headers: {
@@ -247,7 +221,6 @@ class AnimeAPI {
     const promises: Promise<listAnimeTypeList[]>[] = [];
 
     if (isSourceActive(prefs, 'animelovers')) {
-      // Tidak didukung di animelovers
     } else {
       if (isSourceActive(prefs, 'otakudesu')) promises.push(withTimeout(animeindo.animeList(signal, streamingCallback).catch(() => []), 8000, []));
     }
@@ -262,7 +235,6 @@ class AnimeAPI {
     reqResolutionWithNonceAction: string,
     signal?: AbortSignal,
   ): Promise<string | undefined> {
-    // Direct URL return (Nimegami and other embedded sources)
     if (requestData.startsWith('direct_url::')) {
       return requestData.replace('direct_url::', '');
     }
@@ -270,17 +242,14 @@ class AnimeAPI {
       return requestData.replace('embed_url::', '');
     }
 
-    // Otakudesu resolution switching
     if (requestData.startsWith('otakudesu::')) {
       return await animeindo.getResolution(requestData, signal);
     }
 
-    // Legacy AnimeIndo resolution switching
     if (requestData.startsWith('animeindo::')) {
       return await animeindo.getResolution(requestData, signal);
     }
 
-    // Legacy Sanka resolution switching
     if (requestData.startsWith('sanka-server:')) {
       const parts = requestData.replace('sanka-server:', '').split('::');
       const serverPageUrl = parts.slice(1).join('::');
@@ -310,7 +279,6 @@ class AnimeAPI {
     }
 
     const resultsList = await Promise.all(promises);
-    // Merge jadwals with normalized day names and all 7 days present
     const mergedDict: Record<string, any[]> = {};
     for (const jadwal of resultsList) {
       mergeJadwal(jadwal, mergedDict);

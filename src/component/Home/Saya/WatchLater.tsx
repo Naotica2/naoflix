@@ -38,7 +38,6 @@ function WatchLater(props: Props) {
           // layout={LinearTransition}
           style={styles.listContainer}
           onPress={() => {
-            // Film watch later: navigate to FilmDetail instead of playing
             if (item.link?.startsWith('film://')) {
               const filmRaw = item.link.replace('film://', '');
               const [filmPath] = filmRaw.split('?');

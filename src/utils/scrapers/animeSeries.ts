@@ -143,7 +143,6 @@ const fromUrl = async (
   signal?: AbortSignal,
 ): Promise<AniStreaming | AniDetail | undefined> => {
   const withoutDomain = new URL(url);
-  // to make sure only request with latest domain available
   url = withoutDomain.protocol + '//' + BASE.domain + withoutDomain.pathname;
   let err = false;
   let errorObj: Error | null = null;
@@ -324,10 +323,7 @@ const fromUrl = async (
       downloadLink,
       resolution,
       resolutionRaw,
-      // synopsis: synopsis,
       thumbnailUrl,
-      // releaseYear: aniStats.find('span.item').eq(1).text().trim(),
-      // status: aniStats.find('span.item').eq(0).text().trim(),
       episodeData,
       reqNonceAction,
       reqResolutionWithNonceAction,
@@ -369,7 +365,6 @@ const getStreamLink = async (
     }
     const data = response!.data;
 
-    // desudrive patch ~19-dec-2024
     if (data.includes(`otakudesu('{"file":"`)) {
       return data.split(`otakudesu('{"file":"`)[1].split('"')[0];
     }
@@ -377,7 +372,6 @@ const getStreamLink = async (
     const ondesuORupdesu = data.split("sources: [{'file':'")[1];
     if (ondesuORupdesu === undefined) {
       if (data.includes('{id:"playerjs", file:"')) {
-        //odstream
         return data.split('{id:"playerjs", file:"')[1].split('"')[0];
       } else if (data.includes('blogger.com/video.g') && data.includes('iframe')) {
         return await getBloggerVideo(cheerio.load(data)('iframe').attr('src') ?? '', signal);
@@ -547,13 +541,11 @@ const listAnime = async (
         return str.replace(/<[^>]*>?/gm, '');
       }
       const listAnimeData: listAnimeTypeList[] = [];
-      // Match the opening div tag with class "jdlbar" and capture until the closing div tag
       const divRegex = /<div class="jdlbar">(.*?)<\/div>/g;
 
       let divMatch: RegExpExecArray | null;
       while ((divMatch = divRegex.exec(data)) !== null) {
         const divContent = divMatch[1];
-        // Match the anchor tag, capturing the text and href separately
         const anchorRegex = /<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/;
 
         const anchorMatch = anchorRegex.exec(divContent);
@@ -566,7 +558,6 @@ const listAnime = async (
             streamingLink: href,
           });
           if (streamingCallback !== undefined && listAnimeData.length % 150 === 0) {
-            // call every 150
             runOnJS(streamingCallback)?.(listAnimeData);
           }
           // if (listAnimeData.length % 150 === 0)
@@ -594,7 +585,6 @@ async function fetchStreamingResolution(
       'X-Requested-With': 'XMLHttpRequest',
       // 'User-Agent': deviceUserAgent
     },
-    // body: new URLSearchParams({ ...requestData, action: reqResolutionWithNonceAction, nonce }).toString(),
     timeout: 40_000,
     signal,
   };

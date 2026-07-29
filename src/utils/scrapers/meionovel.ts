@@ -74,7 +74,6 @@ async function fetchPagePost(url: string, signal?: AbortSignal): Promise<string>
   }
 }
 
-// ========== INTERFACES ==========
 
 export interface LatestNovel {
   title: string;
@@ -118,7 +117,6 @@ export interface NovelSearch {
   rating: string;
 }
 
-// ========== FUNCTIONS ==========
 
 export async function getLatestNovels(
   page: number = 1,
@@ -220,11 +218,9 @@ export async function getNovelDetail(
 
   const rating = $('.post-total-rating .score').text().trim();
 
-  // Fetch chapters via AJAX POST
   const chaptersUrl = url.endsWith('/') ? `${url}ajax/chapters/` : `${url}/ajax/chapters/`;
   const chaptersHtml = await fetchPagePost(chaptersUrl, signal);
 
-  // Use cheerio instead of regex to avoid catastrophic backtracking on 700+ chapters
   const $ch = cheerio.load(chaptersHtml);
   const chapters: NovelDetail['chapters'] = [];
   $ch('li.wp-manga-chapter').each((_i, el) => {

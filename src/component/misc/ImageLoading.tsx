@@ -51,7 +51,6 @@ const ImageLoading = (
     if (typeof baseSourceObj.uri === 'string') {
       if (typeof source === 'object' && !Array.isArray(source)) {
         try {
-          // fix invalid url crash
           baseSourceObj.uri = generateUrlWithLatestDomain(baseSourceObj.uri);
         } catch {}
       }
@@ -59,10 +58,8 @@ const ImageLoading = (
 
     let computedHeaders: Record<string, string> = { ...baseSourceObj.headers };
 
-    // Inject Referer to bypass hotlink protection
     if (baseSourceObj.uri && typeof baseSourceObj.uri === 'string' && !computedHeaders['Referer']) {
       const uri = baseSourceObj.uri.toLowerCase();
-      // 1. Specific CDNs that require a specific site's Referer
       if (uri.includes('.hdslb.com') || uri.includes('bilibili')) {
         computedHeaders['Referer'] = 'https://www.bilibili.tv/';
       } else if (uri.includes('komiku')) {

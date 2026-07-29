@@ -122,10 +122,8 @@ export interface ManhwaIndoSearch {
 
 function extractThumbnailUrl($el: any): string {
   const img = $el.find('img');
-  // Handle lazy loading attributes gracefully
   const src = img.attr('data-src') || img.attr('data-lazy-src') || img.attr('src') || '';
   if (src.includes('data:image')) {
-    // If it's a placeholder base64, try to find another attribute
     return img.attr('data-src') || img.attr('src') || '';
   }
   return src;
@@ -145,7 +143,6 @@ export async function getLatestManhwaIndoReleases(
     const title = $el.find('.tt').text().trim() || $el.find('h2').text().trim() || $el.find('h3').text().trim() || $el.attr('title') || '';
     const detailUrl = $el.find('a').attr('href') || '';
     
-    // Very important to prevent thumbnail error: 
     const thumbnailUrl = extractThumbnailUrl($el);
     
     const typeText = $el.find('span.type').text().trim().toLowerCase() || $el.find('.type').text().trim().toLowerCase();
@@ -320,6 +317,5 @@ export async function manhwaIndoSearch(query: string, signal?: AbortSignal): Pro
     }
   });
 
-  // Search can naturally return empty if not found, but if we need it:
   return results;
 }

@@ -46,7 +46,6 @@ export default function NobarChatSection({ roomId, isHost, isFullscreen, isDark,
   const roomHost = participants.find(p => p.isHost);
   const isRoomVip = isHost ? profile?.is_vip : roomHost?.is_vip;
 
-  // chatMessages now contains both user chats and chronological system messages.
   const sendMessage = () => {
     if (!inputText.trim()) return;
 
@@ -70,7 +69,6 @@ export default function NobarChatSection({ roomId, isHost, isFullscreen, isDark,
 
 
   if (isFullscreen) {
-    // Overlay transparan untuk Landscape
     return (
       <View style={styles.overlayContainer} pointerEvents="box-none">
         <FlatList
@@ -108,10 +106,8 @@ export default function NobarChatSection({ roomId, isHost, isFullscreen, isDark,
     const isMe = item.senderId === user?.id;
     const emojiOnly = isEmojiOnly(item.text);
 
-    // Find participant for avatar
     const participant = participants.find(p => p.id === item.senderId);
 
-    // Only show avatar if it's not me, and it's the first message in a group from this sender
     const prevMsg = index > 0 ? chatMessages[index - 1] : null;
     const showAvatar = !isMe && (!prevMsg || prevMsg.senderId !== item.senderId || prevMsg.isSystem);
 
@@ -218,7 +214,6 @@ export default function NobarChatSection({ roomId, isHost, isFullscreen, isDark,
     );
   };
 
-  // Tampilan Potret (Berdiri)
   return (
     <View
       style={[styles.container, { backgroundColor: isDark ? '#0f0f0f' : '#fafafa' }]}
@@ -427,7 +422,6 @@ const styles = StyleSheet.create({
   },
   sendBtnActive: { backgroundColor: '#3b82f6' },
 
-  // Overlay styles
   overlayContainer: {
     position: 'absolute',
     bottom: 60, // Di atas progress bar

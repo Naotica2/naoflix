@@ -46,7 +46,6 @@ import { TouchableOpacity } from '../misc/TouchableOpacityRNGH';
 import { ShowSkeletonLoading, RenderScrollComponent } from './AnimePage';
 import { LegendList } from '@legendapp/list';
 
-// ============ HERO CAROUSEL ============
 const HERO_ITEM_COUNT = 5;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -168,7 +167,6 @@ const heroStyles = StyleSheet.create({
   dot: { height: 6, borderRadius: 3 },
 });
 
-// ============ CONTINUE WATCHING ROW ============
 function ContinueWatchingRow({ navigation }: { navigation: any }) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -185,21 +183,17 @@ function ContinueWatchingRow({ navigation }: { navigation: any }) {
   useEffect(() => {
     const loadItems = async () => {
       const items: (HistoryJSON & { contentType: string })[] = [];
-      // History keys are ordered most-recent-first
-      // Key format: historyItem:title:isComics:isMovie
       for (const key of historyKeys.slice(0, 20)) {
         try {
           const parts = key.split(':');
           const isComics = parts[parts.length - 2] === 'true';
           const isMovie = parts[parts.length - 1] === 'true';
-          // Only show video content (anime + film), exclude comics and novels
           if (isComics) continue;
           const raw = await DatabaseManager.get(key);
           if (raw) {
             const parsed: HistoryJSON = JSON.parse(raw);
             if (parsed.link?.includes('meionovel')) continue; // Exclude novels
             if (parsed.title && parsed.link) {
-              // Determine content type for correct navigation
               let contentType = 'anime';
               if (parsed.link.startsWith('film://')) {
                 contentType = 'movie';
@@ -280,7 +274,6 @@ function ContinueWatchingRow({ navigation }: { navigation: any }) {
   );
 }
 
-// ============ SECTION ROW STYLES (shared) ============
 const sectionStyles = StyleSheet.create({
   container: { paddingVertical: 4, marginBottom: 8 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 10 },
@@ -289,7 +282,6 @@ const sectionStyles = StyleSheet.create({
   seeMoreText: { fontSize: 13, fontWeight: '600', color: '#3b82f6' },
 });
 
-// ============ MEMOIZED FILM CARD ============
 const filmCardStyles = StyleSheet.create({
   container: { width: 120 },
   poster: { width: 120, height: 170, borderRadius: 8 },
@@ -326,7 +318,6 @@ const FilmCard = memo(({ item, navigation }: { item: MovieboxSearchItem; navigat
   );
 });
 
-// ============ SECTION ROW WRAPPER ============
 function SectionRow<T>({
   title, data, renderItem, navigation, seeMoreType, seeMoreLabel,
 }: {
@@ -385,13 +376,10 @@ function SectionRow<T>({
   );
 }
 
-// ============ JADWAL RILIS SECTION ============
 const WEEKDAYS_ORDER = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
 function getTodayIndonesian(): string {
-  // JS getDay(): 0=Sunday, 1=Monday, ..., 6=Saturday
   const jsDay = new Date().getDay();
-  // Map to Indonesian: Monday=0 → Senin, ..., Sunday=6 → Minggu
   return WEEKDAYS_ORDER[jsDay === 0 ? 6 : jsDay - 1];
 }
 
@@ -408,7 +396,6 @@ function JadwalRilisSection({ navigation }: { navigation: any }) {
       .then(res => {
         setJadwalData(res);
         if (res && Object.keys(res).length > 0) {
-          // Auto-select today
           const today = getTodayIndonesian();
           setSelectedDay(res[today] ? today : Object.keys(res)[0]);
         }
@@ -427,7 +414,6 @@ function JadwalRilisSection({ navigation }: { navigation: any }) {
 
   if (!jadwalData || Object.keys(jadwalData).length === 0) return null;
 
-  // Sort days in weekday order (Senin → Minggu)
   const days = WEEKDAYS_ORDER.filter(d => jadwalData[d] !== undefined);
   const currentDayData = selectedDay ? jadwalData[selectedDay] || [] : [];
 
@@ -483,48 +469,40 @@ function JadwalRilisSection({ navigation }: { navigation: any }) {
   );
 }
 
-// ============ MAIN HOME PAGE ============
 function HomePage({ navigation }: { navigation: any }) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
 
-  // ---- Contexts ----
   const { paramsState: animeData, setParamsState: setAnimeData } = useContext(EpisodeBaruHomeContext);
   const { paramsState: comicsData, setParamsState: setComicsData } = useContext(ComicsListContext);
   const { paramsState: novelData, setParamsState: setNovelData } = useContext(NovelListContext);
 
-  // ---- Additional data states ----
 
   const [refresh, setRefresh] = useState(false);
   const [filmData, setFilmData] = useState<MovieboxSearchItem[] | null>(null);
   
-  // Nobar Dialog State
   const [joinDialogVisible, setJoinDialogVisible] = useState(false);
   const [roomIdInput, setRoomIdInput] = useState('');
 
-  // Helper: create AbortSignal with timeout
   const withTimeout = useCallback((ms: number): AbortSignal => {
     const controller = new AbortController();
     setTimeout(() => controller.abort(), ms);
     return controller.signal;
   }, []);
 
-  // Load comics data (with 20s timeout)
   useEffect(() => {
     if (comicsData !== undefined) return;
     const signal = withTimeout(20000);
     getLatestComicsReleases(1, signal).then(z => setComicsData?.(z)).catch(() => setComicsData?.([]));
   }, [setComicsData, comicsData, withTimeout]);
 
-  // Load novel data (with 20s timeout)
   useEffect(() => {
     if (novelData !== undefined) return;
     const signal = withTimeout(20000);
     getLatestNovels(1, signal).then(z => setNovelData?.(z)).catch(() => setNovelData?.([]));
   }, [setNovelData, novelData, withTimeout]);
 
-  // Load film trending data (with 20s timeout)
   useEffect(() => {
     if (filmData !== null) return;
     const signal = withTimeout(20000);
@@ -540,13 +518,11 @@ function HomePage({ navigation }: { navigation: any }) {
     AnimeAPI.home()
       .then(data => { setAnimeData?.(data); setRefresh(false); })
       .catch(() => { ToastAndroid.show('Gagal terhubung ke server.', ToastAndroid.SHORT); setRefresh(false); });
-    // Reload other data
     getLatestComicsReleases().then(z => setComicsData?.(z)).catch(() => setComicsData?.([]));
     getLatestNovels().then(z => setNovelData?.(z)).catch(() => setNovelData?.([]));
     getTrending().then(z => setFilmData(z)).catch(() => setFilmData([]));
   }, [setAnimeData, setComicsData, setNovelData]);
 
-  // ---- Render item helpers ----
   const renderAnimeItem = useCallback(
     ({ item }: ListRenderItemInfo<NewAnimeList>) => (
       <ListAnimeComponent newAnimeData={item} key={'ep' + item.title + item.episode} navigationProp={navigation} />

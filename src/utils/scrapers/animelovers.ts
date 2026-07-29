@@ -103,10 +103,8 @@ async function getRomajiTitle(query: string, signal?: AbortSignal): Promise<stri
 export async function search(query: string, signal?: AbortSignal): Promise<SearchAnime> {
   let result = await apiPost('animelovers-search', { query }, signal).catch(() => null);
   
-  // Extract data from the server format: { data: [{ result: [...] }] }
   let searchData = result && result.data && Array.isArray(result.data) && result.data.length > 0 ? result.data[0].result : null;
 
-  // If no results, try to translate query to romaji using AniList
   if (!searchData || !Array.isArray(searchData) || searchData.length === 0) {
     const romajiTitle = await getRomajiTitle(query, signal);
     if (romajiTitle && romajiTitle.toLowerCase() !== query.toLowerCase()) {
@@ -114,7 +112,6 @@ export async function search(query: string, signal?: AbortSignal): Promise<Searc
       if (romajiResult && romajiResult.data && Array.isArray(romajiResult.data) && romajiResult.data.length > 0) {
         searchData = romajiResult.data[0].result;
       } else {
-        // Coba cari dengan 2 kata pertama saja (karena kadang judul di database terpotong atau beda format)
         const partialRomaji = romajiTitle.split(' ').slice(0, 2).join(' ');
         const partialResult = await apiPost('animelovers-search', { query: partialRomaji }, signal).catch(() => null);
         if (partialResult && partialResult.data && Array.isArray(partialResult.data) && partialResult.data.length > 0) {
@@ -177,7 +174,6 @@ export async function streaming(streamId: string, signal?: AbortSignal): Promise
 
   const result = await apiPost('animelovers-stream', { postId, slug }, signal);
   
-  // result is { "360p": [ {link: "..."} ], "480p": ... }
   const resolutions = Object.keys(result);
   if (resolutions.length === 0) throw new Error('No streaming data found');
 
@@ -185,7 +181,6 @@ export async function streaming(streamId: string, signal?: AbortSignal): Promise
   for (const reso of resolutions) {
     const arr = result[reso];
     if (Array.isArray(arr) && arr.length > 0) {
-      // Taking the first provider link for each resolution
       const url = arr[0].link;
       const type = 'direct_url';
       resolutionRaw.push({
@@ -195,7 +190,6 @@ export async function streaming(streamId: string, signal?: AbortSignal): Promise
     }
   }
 
-  // Fallback to lowest available (e.g., 360p) as default
   const defaultResObj = resolutionRaw.length > 0 ? resolutionRaw[0] : null;
   const defaultLink = defaultResObj ? defaultResObj.dataContent.replace(/^(direct_url|embed_url)::/, '') : '';
 

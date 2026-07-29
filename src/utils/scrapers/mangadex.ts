@@ -138,7 +138,6 @@ export async function getMangadexReading(
 
   if (!result || !result.pages) throw new Error('Data halaman tidak tersedia');
 
-  // To get next and prev chapter, we parse the chaptersResult
   let nextChapterUrl: string | undefined;
   let prevChapterUrl: string | undefined;
   let currentChapterName = 'Chapter ?';
@@ -152,7 +151,6 @@ export async function getMangadexReading(
       const currentLang = currentChapter.language;
       const currentNum = parseFloat(currentChapter.chapter || '0');
 
-      // Find Next Chapter (same lang, greater number)
       for (let i = idx - 1; i >= 0; i--) {
         const c = chaptersResult[i];
         if (c.language === currentLang && parseFloat(c.chapter || '0') > currentNum) {
@@ -161,7 +159,6 @@ export async function getMangadexReading(
         }
       }
 
-      // Fallback: If no same language next chapter, find any language greater number
       if (!nextChapterUrl) {
         for (let i = idx - 1; i >= 0; i--) {
           const c = chaptersResult[i];
@@ -172,7 +169,6 @@ export async function getMangadexReading(
         }
       }
 
-      // Find Prev Chapter (same lang, smaller number)
       for (let i = idx + 1; i < chaptersResult.length; i++) {
         const c = chaptersResult[i];
         if (c.language === currentLang && parseFloat(c.chapter || '0') < currentNum) {
@@ -181,7 +177,6 @@ export async function getMangadexReading(
         }
       }
 
-      // Fallback: If no same language prev chapter, find any language smaller number
       if (!prevChapterUrl) {
         for (let i = idx + 1; i < chaptersResult.length; i++) {
           const c = chaptersResult[i];

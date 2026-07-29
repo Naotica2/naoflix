@@ -11,12 +11,10 @@ import {
 import deviceUserAgent from '../deviceUserAgent';
 import { setWebViewOpen } from '../CFBypass';
 
-// ─── Domain Management ────────────────────────────────────────────────────────
 export const __ALIAS = 'otakudesu';
 export let DOMAIN = 'otakudesu.blog';
 const BASE = () => `https://${DOMAIN}`;
 
-// Legacy domain for history fallback
 const LEGACY_DOMAINS = ['anime-indo.lol', 'anime-indo.org'];
 
 export async function fetchLatestAnimeIndoDomain(signal?: AbortSignal) {
@@ -32,11 +30,9 @@ export async function fetchLatestAnimeIndoDomain(signal?: AbortSignal) {
       DOMAIN = domain;
     }
   } catch {
-    // Use fallback domain
   }
 }
 
-// ─── Fetch Helpers ────────────────────────────────────────────────────────────
 async function fetchPage(url: string, signal?: AbortSignal, customTimeout: number = 10000): Promise<string> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), customTimeout);
@@ -69,7 +65,6 @@ async function fetchPage(url: string, signal?: AbortSignal, customTimeout: numbe
   }
 }
 
-// ─── URL Normalization (Legacy History Fallback) ──────────────────────────────
 function normalizeUrl(inputUrl: string): string {
   for (const legacy of LEGACY_DOMAINS) {
     if (inputUrl.includes(legacy)) {
@@ -88,7 +83,6 @@ function normalizeUrl(inputUrl: string): string {
   return inputUrl;
 }
 
-// ─── Nonce Management ─────────────────────────────────────────────────────────
 let cachedNonce: string | null = null;
 let nonceTimestamp = 0;
 const NONCE_TTL = 300000; // 5 minutes
@@ -170,9 +164,7 @@ async function getIframeFromMirror(
   }
 }
 
-// ─── Video Extraction ─────────────────────────────────────────────────────────
 
-// Unpack eval(function(p,a,c,k,e,d){...}) packed JavaScript
 function unpackJS(packed: string): string | null {
   const match = packed.match(
     /eval\(function\(p,a,c,k,e,[dr]\)\{.*?\}\('((?:[^'\\]|\\.)*)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'([^']*)'/s,
@@ -206,7 +198,6 @@ function unpackJS(packed: string): string | null {
   return unpacked;
 }
 
-// Extract direct video URL from various embed servers
 async function extractVideoFromEmbed(
   embedUrl: string,
   signal?: AbortSignal,
@@ -214,20 +205,15 @@ async function extractVideoFromEmbed(
   try {
     const html = await fetchPage(embedUrl, signal, 8000);
 
-    // === VIDHIDE: Packed JS with HLS links ===
     if (embedUrl.includes('vidhide') || embedUrl.includes('odvidhide')) {
       const unpacked = unpackJS(html);
       if (unpacked) {
-        // Extract HLS URLs from unpacked JS
-        // Priority: hls4 (relative/internal) > hls2 (CDN with token) > hls3
         const linksMatch = unpacked.match(/var\s+links\s*=\s*(\{[^}]+\})/);
         if (linksMatch) {
           try {
-            // Clean up escaped quotes
             const linksStr = linksMatch[1].replace(/\\'/g, "'");
             const m3u8Urls = linksStr.match(/https?:\/\/[^\s'"\\}]+\.m3u8[^\s'"\\}]*/g);
             if (m3u8Urls && m3u8Urls.length > 0) {
-              // Prefer the CDN URL (hls2 with acek-cdn or similar)
               const cdnUrl = m3u8Urls.find(u => u.includes('cdn') || u.includes('hls2'));
               const finalUrl = cdnUrl || m3u8Urls[0];
               const appendedUrl = finalUrl.includes('?')
@@ -238,7 +224,6 @@ async function extractVideoFromEmbed(
           } catch {}
         }
 
-        // Fallback: any m3u8 in unpacked
         const m3u8Match = unpacked.match(/https?:\/\/[^\s'"\\]+\.m3u8[^\s'"\\]*/);
         if (m3u8Match) {
           const url = m3u8Match[0];
@@ -247,9 +232,7 @@ async function extractVideoFromEmbed(
       }
     }
 
-    // === ONDESU / BLOGGER: Follow iframe to blogger video, extract MP4 ===
     if (embedUrl.includes('desustream') || embedUrl.includes('ondesu')) {
-      // Ondesu wraps a blogger.com/video.g iframe
       const bloggerMatch = html.match(/src="(https?:\/\/www\.blogger\.com\/video\.g[^"]+)"/i);
       if (bloggerMatch?.[1]) {
         const bloggerResult = await getBloggerVideo(bloggerMatch[1], '720', signal);
@@ -257,7 +240,6 @@ async function extractVideoFromEmbed(
           return { url: bloggerResult.url, type: 'mp4', resolutions: bloggerResult.resolutions };
         }
       }
-      // Also check for direct iframe src to blogger
       const iframeMatch = html.match(/<iframe[^>]+src="([^"]*blogger[^"]*)"/i);
       if (iframeMatch?.[1]) {
         const bloggerResult = await getBloggerVideo(iframeMatch[1], '720', signal);
@@ -267,9 +249,7 @@ async function extractVideoFromEmbed(
       }
     }
 
-    // === FILEDON: Check for direct video link ===
     if (embedUrl.includes('filedon')) {
-      // Filedon is a file hosting service, check data-page for video info
       const dataPageMatch = html.match(/data-page="([^"]+)"/);
       if (dataPageMatch) {
         try {
@@ -281,7 +261,6 @@ async function extractVideoFromEmbed(
       }
     }
 
-    // === GENERIC: <source src="..."> ===
     const sourceMatch = html.match(/<source\s+src="([^"]+)"/i);
     if (sourceMatch?.[1]) {
       const videoUrl = sourceMatch[1];
@@ -290,7 +269,6 @@ async function extractVideoFromEmbed(
       }
     }
 
-    // === GENERIC: JWPlayer "file" key ===
     const jwFileMatch = html.match(/"file"\s*:\s*"([^"]+)"/);
     if (jwFileMatch?.[1]) {
       const fileUrl = jwFileMatch[1];
@@ -308,7 +286,6 @@ async function extractVideoFromEmbed(
   }
 }
 
-// ─── Blogger Video Extraction ─────────────────────────────────────────────────
 let requestCounter = 0;
 function getReqId() {
   const now = new Date();
@@ -406,14 +383,12 @@ async function getBloggerVideo(
   return null;
 }
 
-// ─── Home (Latest + Popular) ─────────────────────────────────────────────────
 export async function home(signal?: AbortSignal): Promise<EpisodeBaruHome> {
   const html = await fetchPage(BASE(), signal);
   const $ = cheerio.load(html);
 
   const newAnime: NewAnimeList[] = [];
 
-  // Otakudesu homepage: .venz ul li .detpost
   $('.venz ul li').each((_, el) => {
     const $li = $(el);
     const detpost = $li.find('.detpost');
@@ -449,7 +424,6 @@ export async function home(signal?: AbortSignal): Promise<EpisodeBaruHome> {
   };
 }
 
-// ─── Latest (paginated) ──────────────────────────────────────────────────────
 export async function getAnimeByGenre(
   genre: string,
   page: number = 1,
@@ -526,9 +500,7 @@ export async function latestAnime(
   return results;
 }
 
-// ─── Search ──────────────────────────────────────────────────────────────────
 
-// Helper: translate English title to Romaji using Anilist GraphQL
 async function translateToRomaji(query: string): Promise<string | null> {
   try {
     const controller = new AbortController();
@@ -562,7 +534,6 @@ function parseSearchResults(html: string): SearchAnime['result'] {
   const $ = cheerio.load(html);
   const results: SearchAnime['result'] = [];
 
-  // Otakudesu search: li with img + h2 a[href*="/anime/"]
   $('ul.chi_anime li, .page li').each((_, el) => {
     const $li = $(el);
     const a = $li.find('a[href*="/anime/"]').first();
@@ -612,7 +583,6 @@ export async function search(query: string, signal?: AbortSignal): Promise<Searc
     }
   };
 
-  // Run main search + Anilist translation in parallel
   const [mainHtml, romajiTitle] = await Promise.all([
     fetchPage(`${BASE()}/?s=${encodeURIComponent(query)}&post_type=anime`, signal).catch(() => ''),
     translateToRomaji(query),
@@ -621,7 +591,6 @@ export async function search(query: string, signal?: AbortSignal): Promise<Searc
   const mainResults = parseSearchResults(mainHtml);
   addResults(mainResults);
 
-  // If Anilist returned a different (Romaji) title, search with that too
   if (romajiTitle && romajiTitle.toLowerCase() !== query.toLowerCase()) {
     try {
       const romajiHtml = await fetchPage(
@@ -643,13 +612,11 @@ export async function searchMovies(page: number = 1, signal?: AbortSignal): Prom
     signal,
   ).catch(() => '');
   
-  // Try to parse using both parsers since layout might match either search or home
   const searchResults = parseSearchResults(html);
   if (searchResults.length > 0) {
     return { result: searchResults };
   }
 
-  // Fallback to parseLatestAnime
   const cheerio = require('cheerio');
   const $ = cheerio.load(html);
   const result: SearchAnime['result'] = [];
@@ -675,7 +642,6 @@ export async function searchMovies(page: number = 1, signal?: AbortSignal): Prom
   return { result };
 }
 
-// ─── Detail ──────────────────────────────────────────────────────────────────
 export async function detail(animeUrl: string, signal?: AbortSignal): Promise<AniDetail> {
   animeUrl = normalizeUrl(animeUrl);
 
@@ -692,7 +658,6 @@ export async function detail(animeUrl: string, signal?: AbortSignal): Promise<An
       .replace(/Subtitle Indonesia/i, '')
       .trim();
 
-  // Parse info from .infozingle spans
   let synopsis = '';
   let rating = '';
   let releaseYear = '';
@@ -713,7 +678,6 @@ export async function detail(animeUrl: string, signal?: AbortSignal): Promise<An
     else if (text.startsWith('Tanggal Rilis:')) releaseYear = text.replace('Tanggal Rilis:', '').trim();
   });
 
-  // Synopsis
   const sinopsisSelectors = ['.sinopc', '.sino498', '.sino'];
   for (const selector of sinopsisSelectors) {
     const el = $(selector);
@@ -730,20 +694,17 @@ export async function detail(animeUrl: string, signal?: AbortSignal): Promise<An
       '';
   }
 
-  // Genres
   const genres: string[] = [];
   $('a[href*="/genres/"]').each((_, el) => {
     const genre = $(el).text().trim();
     if (genre) genres.push(genre);
   });
 
-  // Thumbnail
   let thumbnailUrl =
     $('meta[property="og:image"]').attr('content') ||
     $('.fotoanime img').attr('src') ||
     '';
 
-  // Episode list
   const episodeList: AniDetailEpsList[] = [];
   const seenEpLinks = new Set<string>();
   $('.episodelist ul li').each((_, el) => {
@@ -773,7 +734,6 @@ export async function detail(animeUrl: string, signal?: AbortSignal): Promise<An
     }
   });
 
-  // Reverse to show oldest first
   episodeList.reverse();
 
   return {
@@ -795,7 +755,6 @@ export async function detail(animeUrl: string, signal?: AbortSignal): Promise<An
   };
 }
 
-// ─── Streaming ───────────────────────────────────────────────────────────────
 export async function streaming(episodeUrl: string, signal?: AbortSignal): Promise<AniStreaming> {
   episodeUrl = normalizeUrl(episodeUrl);
 
@@ -808,7 +767,6 @@ export async function streaming(episodeUrl: string, signal?: AbortSignal): Promi
     .replace(/Subtitle Indonesia/i, '')
     .trim();
 
-  // Parse mirror buttons: .mirrorstream a[data-content]
   interface MirrorButton {
     serverName: string;
     quality: string;
@@ -833,15 +791,9 @@ export async function streaming(episodeUrl: string, signal?: AbortSignal): Promi
     }
   });
 
-  // Get nonce
   const nonce = await getNonce(signal);
 
-  // Strategy: prioritize native-playable servers
-  // 1. ondesu/ondesuhd → Blogger MP4 (native, multi-resolution)
-  // 2. vidhide → HLS m3u8 (native HLS)
-  // 3. filedon/mega → embed fallback
 
-  // Sort mirrors by preference
   const serverPriority: Record<string, number> = {
     ondesuhd: 1,
     ondesu: 2,
@@ -860,7 +812,6 @@ export async function streaming(episodeUrl: string, signal?: AbortSignal): Promi
   let streamIsHls = false;
   let streamResolutions: { resolution: string; dataContent: string }[] = [];
 
-  // Try to extract native video from best server
   for (const mirror of sortedMirrors) {
     if (signal?.aborted) break;
 
@@ -873,7 +824,6 @@ export async function streaming(episodeUrl: string, signal?: AbortSignal): Promi
       streamIsHls = extracted.type === 'hls';
 
       if (extracted.resolutions && extracted.resolutions.length > 0) {
-        // Got multi-resolution (blogger) → use as resolution list
         streamResolutions = extracted.resolutions.map(r => ({
           resolution: r.resolution,
           dataContent: `direct_url::${r.url}`,
@@ -883,9 +833,7 @@ export async function streaming(episodeUrl: string, signal?: AbortSignal): Promi
     }
   }
 
-  // If no native extraction worked, build resolution list from mirrors for embed mode
   if (!primaryStreamUrl) {
-    // Use first available mirror as embed
     for (const mirror of sortedMirrors) {
       const iframeSrc = await getIframeFromMirror(mirror.decoded, nonce, episodeUrl, signal);
       if (iframeSrc) {
@@ -895,9 +843,7 @@ export async function streaming(episodeUrl: string, signal?: AbortSignal): Promi
     }
   }
 
-  // Build server resolution list if we don't have direct resolutions
   if (streamResolutions.length === 0) {
-    // Group mirrors by quality
     const qualityMap = new Map<string, MirrorButton>();
     for (const mirror of sortedMirrors) {
       const key = mirror.quality;
@@ -913,11 +859,9 @@ export async function streaming(episodeUrl: string, signal?: AbortSignal): Promi
     }
   }
 
-  // Sort resolutions
   const resOrder: Record<string, number> = { '360p': 1, '480p': 2, '720p': 3, '1080p': 4 };
   streamResolutions.sort((a, b) => (resOrder[a.resolution] || 99) - (resOrder[b.resolution] || 99));
 
-  // Navigation: prev/next episode
   const episodeData: { previous?: string; animeDetail: string; next?: string } = {
     animeDetail: '',
   };
@@ -939,7 +883,6 @@ export async function streaming(episodeUrl: string, signal?: AbortSignal): Promi
     }
   });
 
-  // Fallback: derive anime detail from episode URL
   if (!episodeData.animeDetail) {
     const detailLink = $('a[href*="/anime/"]')
       .filter((_, el) => !$(el).attr('href')?.includes('anime-list'))
@@ -958,7 +901,6 @@ export async function streaming(episodeUrl: string, signal?: AbortSignal): Promi
     primaryStreamUrl.includes('.m3u8') ||
     streamIsHls;
 
-  // Download link
   let downloadLink = '';
   if (primaryStreamUrl.includes('.mp4') && !primaryStreamUrl.includes('.php?')) {
     downloadLink = primaryStreamUrl;
@@ -980,7 +922,6 @@ export async function streaming(episodeUrl: string, signal?: AbortSignal): Promi
   };
 }
 
-// ─── Resolution Switcher ─────────────────────────────────────────────────────
 export async function getResolution(
   resId: string,
   signal?: AbortSignal,
@@ -990,12 +931,10 @@ export async function getResolution(
   const prefix = parts[0];
   const data = parts.slice(1).join('::');
 
-  // Direct URL (already extracted)
   if (prefix === 'direct_url') {
     return data;
   }
 
-  // Otakudesu mirror switch: data is JSON of {id, i, q}
   if (prefix === 'otakudesu') {
     try {
       const mirrorData = JSON.parse(data);
@@ -1003,12 +942,10 @@ export async function getResolution(
       const iframeSrc = await getIframeFromMirror(mirrorData, nonce, `${BASE()}/`, signal);
 
       if (iframeSrc) {
-        // Try to extract native video
         const extracted = await extractVideoFromEmbed(iframeSrc, signal);
         if (extracted) {
           return extracted.url;
         }
-        // Fallback: return iframe as embed
         return iframeSrc;
       }
     } catch {}
@@ -1017,7 +954,6 @@ export async function getResolution(
   return data;
 }
 
-// ─── Anime List ──────────────────────────────────────────────────────────────
 export async function animeList(
   signal?: AbortSignal,
   streamingCallback?: (data: listAnimeTypeList[]) => void,

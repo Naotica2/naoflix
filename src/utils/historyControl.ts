@@ -50,7 +50,6 @@ async function setHistory(
     }
   }
 
-  // Normalize comic episode to always have "Chapter " prefix for cross-source consistency
   if (isComics && episode && !episode.toLowerCase().startsWith('chapter')) {
     const numMatch = episode.match(/(\d+\.?\d*)/);
     if (numMatch) {
@@ -58,20 +57,15 @@ async function setHistory(
     }
   }
 
-  // Allow explicit episode override from additionalData (used by FilmPlayer for TV episodes)
   const additionalEpisode = (additionalData as any).episode;
   if (additionalEpisode !== undefined) {
     episode = additionalEpisode;
   }
 
-  // Use explicit series title if provided (fixes cross-source history key collision)
-  // Some scrapers return chapter title instead of series name in targetData.title,
-  // causing all comics to share the same history key. seriesTitle overrides this.
   if (seriesTitle && seriesTitle.trim()) {
     title = seriesTitle.trim();
   }
   
-  // Clean up title to match AniDetail.tsx matching logic
   if (title) {
     title = title.replace(/Subtitle Indonesia|Sub Indo/i, '').split('(Episode')[0].trim();
   }
@@ -95,13 +89,10 @@ async function setHistory(
 
   let finalThumbnailUrl = historyData.thumbnailUrl || '';
   if ((targetData as any).type === 'animeDetail') {
-    // Detail page always has the high quality poster
     finalThumbnailUrl = (targetData as any).thumbnailUrl || finalThumbnailUrl;
   } else if ((targetData as any).coverImage) {
-    // Some scrapers provide coverImage directly
     finalThumbnailUrl = (targetData as any).coverImage;
   } else if (!finalThumbnailUrl) {
-    // Fallback if we have absolutely nothing
     finalThumbnailUrl = (targetData as any).thumbnailUrl || ((targetData as any).comicImages?.[0]) || '';
   }
 
@@ -122,7 +113,6 @@ async function setHistory(
     JSON.stringify(fullPayload),
   );
 
-  // Cloud Sync
   supabase.auth.getSession().then(({ data: { session } }) => {
     if (session?.user) {
       syncHistoryToCloud(session.user.id, fullPayload);

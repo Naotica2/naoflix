@@ -93,13 +93,11 @@ function ExtensionManager() {
   const theme = useTheme();
   const [sources, setSources] = useState<SourceConfig[]>(INITIAL_SOURCES);
 
-  // Load saved preferences from database
   useEffect(() => {
     DatabaseManager.get('extensionPreferences').then((savedStr) => {
       if (savedStr) {
         try {
           const savedPrefs: Partial<SourceConfig>[] = JSON.parse(savedStr);
-          // Merge with initial so new sources appear automatically
           const merged = INITIAL_SOURCES.map(initial => {
             const saved = savedPrefs.find(s => s.id === initial.id);
             if (saved) {
@@ -129,7 +127,6 @@ function ExtensionManager() {
     const newActive = !targetSource.isActive;
 
     if (!newActive) {
-      // Trying to deactivate - ensure at least one source of this type stays active
       const sameTypeActive = sources.filter(s => s.type === targetSource.type && s.id !== id && s.isActive);
       if (sameTypeActive.length === 0) {
         ToastAndroid.show(`Minimal 1 sumber ${targetSource.type} harus aktif!`, ToastAndroid.SHORT);
@@ -139,10 +136,8 @@ function ExtensionManager() {
 
     const updatedSources = sources.map(s => {
       if (s.id === id) {
-        // Toggle the clicked source
         return { ...s, isActive: newActive };
       }
-      // If activating a source, deactivate all others of the same type
       if (newActive && s.type === targetSource.type) {
         return { ...s, isActive: false };
       }

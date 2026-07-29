@@ -63,7 +63,6 @@ function ComicPageComponent(props: ComicPageProps) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp<RootStackNavigator>>();
 
-  // ============ SEARCH STATE ============
   const [searchText, setSearchText] = useState('');
   const [comicsSearchData, setComicsSearchData] = useState<null | ComicsComboSearch[]>(null);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -87,7 +86,6 @@ function ComicPageComponent(props: ComicPageProps) {
     setSearchText('');
   }, []);
 
-  // Search only triggers on submit (Enter key or search icon press)
 
   const submitSearch = useCallback(() => {
     if (searchText === '') return;
@@ -348,7 +346,6 @@ function ComicPageComponent(props: ComicPageProps) {
   );
 }
 
-// ============ SUB-COMPONENTS ============
 
 const ComicLatestList = memo(ComicLatestListComponent);
 function ComicLatestListComponent() {
@@ -530,7 +527,6 @@ function HistoryItem({ item, index, onSelect }: { item: string; index: number; o
   );
 }
 
-// ============ STYLES ============
 const comicStyles = StyleSheet.create({
   closeSearchResult: {
     position: 'absolute',

@@ -37,7 +37,6 @@ function LoginScreen() {
           navigation.replace('connectToServer');
         }
       }
-      // If profileStatus is 'loading' or 'error', don't navigate — wait for resolution
     }
   }, [user, hasProfile, confirmedNoProfile, navigation]);
 

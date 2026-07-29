@@ -39,7 +39,6 @@ import ImageLoading from '../misc/ImageLoading';
 import watchLaterJSON from '../../types/watchLaterJSON';
 import controlWatchLater from '../../utils/watchLaterControl';
 
-// ============ SHARED SEGMENT TAB ============
 type TabKey = 'history' | 'watchlater';
 
 function SegmentTabs({
@@ -80,11 +79,9 @@ function SegmentTabs({
   );
 }
 
-// ============ HISTORY DATABASE CACHE ============
 const HistoryDatabaseCache = new Map<HistoryItemKey, HistoryJSON>();
 const AnimatedFlashList = Animated.createAnimatedComponent(FlashList as typeof FlashList<HistoryItemKey>);
 
-// ============ HISTORY TAB ============
 function HistoryTab() {
   const styles = useHistoryStyles();
   const globalStyles = useGlobalStyles();
@@ -365,7 +362,6 @@ function useHistoryStyles() {
   }), [globalStyles.text.color, theme, isDark]);
 }
 
-// ============ WATCH LATER TAB ============
 function WatchLaterTab() {
   const styles = useWatchLaterStyles();
   const globalStyles = useGlobalStyles();
@@ -381,7 +377,6 @@ function WatchLaterTab() {
     <TouchableOpacity
       style={styles.listContainer}
       onPress={() => {
-        // Film watch later: navigate to FilmDetail instead of playing
         if (item.link?.startsWith('film://')) {
           const filmRaw = item.link.replace('film://', '');
           const [filmPath] = filmRaw.split('?');
@@ -510,7 +505,6 @@ function useWatchLaterStyles() {
   }), [theme, isDark]);
 }
 
-// ============ MAIN MY LISTS PAGE ============
 function MyListsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('history');
   const insets = useSafeAreaInsets();

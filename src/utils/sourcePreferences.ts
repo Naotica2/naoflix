@@ -25,7 +25,6 @@ export async function getSourcePreferences(): Promise<SourcePreference[]> {
   if (saved) {
     try {
       const parsed: SourcePreference[] = JSON.parse(saved);
-      // Merge with defaults so new sources auto-appear
       cachedPrefs = DEFAULT_PREFS.map(def => {
         const found = parsed.find(p => p.id === def.id);
         return found ? { ...def, isActive: found.isActive } : def;

@@ -32,13 +32,11 @@ async function extractDirectVideoUrl(
     const jwFileMatch = html.match(/"file"\s*:\s*"([^"]+)"/);
     if (jwFileMatch && jwFileMatch[1]) {
       let fileUrl = jwFileMatch[1];
-      // Resolve relative URL
       if (fileUrl.startsWith('/')) {
         const baseUrl = new URL(pageUrl);
         fileUrl = `${baseUrl.protocol}//${baseUrl.host}${fileUrl}`;
       }
 
-      // Detect type by file extension or content-type declaration in HTML
       const typeMatch = html.match(/"type"\s*:\s*"([^"]+)"/);
       const declaredType = typeMatch ? typeMatch[1] : '';
 
@@ -53,11 +51,9 @@ async function extractDirectVideoUrl(
       if (fileUrl.endsWith('.mp4') || declaredType.includes('mp4')) {
         return { url: fileUrl, type: 'mp4' };
       }
-      // Default assume mp4 for unknown types
       return { url: fileUrl, type: 'mp4' };
     }
 
-    // Strategy 3: Blogger video pages (blogger.com/video.g)
     if (pageUrl.includes('blogger.com') || pageUrl.includes('video.g')) {
       const bloggerMp4 = await getBloggerVideo(pageUrl, quality, signal);
       if (bloggerMp4) {
@@ -65,7 +61,6 @@ async function extractDirectVideoUrl(
       }
     }
 
-    // Strategy 4: Direct video URL embedded in HTML via other patterns
     const videoSrcMatch = html.match(/(?:src|source|file|url)\s*[:=]\s*['"]?(https?:\/\/[^'">\s]+\.(?:mp4|m3u8)[^'">\s]*)/i);
     if (videoSrcMatch && videoSrcMatch[1]) {
       const url = videoSrcMatch[1];
@@ -73,9 +68,7 @@ async function extractDirectVideoUrl(
       return { url: isHlsCheck ? (url.includes('?') ? `${url}&is_hls=1` : `${url}?is_hls=1`) : url, type: isHlsCheck ? 'hls' : 'mp4' };
     }
 
-    // Strategy 5: YouRUpload / vidcache.net extraction
     if (pageUrl.includes('yourupload.com') || pageUrl.includes('yup.php')) {
-      // Follow the page to YouRUpload embed
       let yupHtml = html;
       const iframeSrc = html.match(/<iframe[^>]+src=["']([^"']*yourupload[^"']*)["']/i);
       if (iframeSrc && iframeSrc[1]) {
@@ -97,7 +90,6 @@ async function extractDirectVideoUrl(
   }
 }
 
-// --- Legacy Blogger MP4 Extraction (fallback) ---
 let requestCounter = 0;
 function getReqId() {
   const now = new Date();
@@ -165,7 +157,6 @@ async function getBloggerVideo(url: string, quality: string = '720', signal?: Ab
   }
 }
 
-// --- In-memory cache ---
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const apiCache = new Map<string, { data: any; timestamp: number }>();
 
@@ -314,7 +305,6 @@ const sankaAnimeApi = {
         else result.push(entry);
       };
 
-      // Helper: translate English title to Romaji using Jikan/MyAnimeList API (with its own 6s timeout)
       const translateToRomaji = async (): Promise<string | null> => {
         try {
           const controller = new AbortController();
@@ -327,7 +317,6 @@ const sankaAnimeApi = {
           clearTimeout(timeout);
           const jikanJson = await jikanRes.json();
           if (jikanJson?.data && Array.isArray(jikanJson.data) && jikanJson.data.length > 0) {
-            // Jikan 'title' field is already in Romaji format
             return jikanJson.data[0].title || null;
           }
           return null;
@@ -336,7 +325,6 @@ const sankaAnimeApi = {
         }
       };
 
-      // Run the main Sanka search, Jikan/MAL translation, AND first 3 latest pages ALL in parallel
       const [mainRes, romajiTitle, lat1, lat2, lat3] = await Promise.all([
         this.fetchSanka(`/search/${encodeURIComponent(query)}`, signal).catch(() => ({ data: [] })),
         translateToRomaji(),
@@ -345,27 +333,23 @@ const sankaAnimeApi = {
         this.fetchSanka('/latest/3', signal).catch(() => null),
       ]);
 
-      // If Jikan gave us a different romaji title, search Sanka with that too
       let romajiRes: any = null;
       if (romajiTitle && romajiTitle.toLowerCase() !== query.toLowerCase()) {
         romajiRes = await this.fetchSanka(`/search/${encodeURIComponent(romajiTitle)}`, signal).catch(() => ({ data: [] }));
       }
 
-      // 1. First: Add Jikan-translated search results (these are the most relevant)
       if (romajiRes?.data) {
         for (const item of romajiRes.data) {
           pushItem(item, true);
         }
       }
 
-      // 2. Then: Add main Sanka search results
       if (mainRes?.data) {
         for (const item of mainRes.data) {
           pushItem(item);
         }
       }
 
-      // 3. Always check latest 3 pages for matches (catches new seasons of existing anime)
       const scanLatestPages = (pages: any[]) => {
         const lowerQuery = query.toLowerCase();
         const lowerRomaji = romajiTitle ? romajiTitle.toLowerCase() : '';
@@ -388,7 +372,6 @@ const sankaAnimeApi = {
 
       try { scanLatestPages([lat1, lat2, lat3]); } catch {}
 
-      // 4. If STILL no results, expand scan to 8 more pages (for very new/rare anime)
       if (result.length === 0) {
         try {
           const morePages = await Promise.all([
@@ -400,7 +383,6 @@ const sankaAnimeApi = {
           ]);
           scanLatestPages(morePages);
         } catch {
-          // Silently ignore
         }
       }
 
@@ -430,10 +412,8 @@ const sankaAnimeApi = {
         data.episodes.forEach((ep: any) => {
           let epTitle = String(ep.eps_title || '').trim();
           
-          // Fix double spaces like "Episode  1" -> "Episode 1"
           epTitle = epTitle.replace(/^Episode\s+/i, 'Episode ');
           
-          // If it just starts with a number (e.g., "01" or "1"), prepend "Episode "
           if (/^\d/.test(epTitle)) {
              epTitle = `Episode ${epTitle}`;
           }
@@ -492,7 +472,6 @@ const sankaAnimeApi = {
       let streamIsHls = false;
       let serverResolutions: { resolution: string; dataContent: string }[] = [];
 
-      // Build resolution list from all servers
       if (Array.isArray(data.stream_links)) {
         const availableLinks = data.stream_links.filter((link: any) => 
           link.server && !link.server.toUpperCase().includes('GDRIVE')
@@ -519,7 +498,6 @@ const sankaAnimeApi = {
         });
         serverResolutions = newServerResolutions;
 
-        // Priority: B-TUBE first (gives direct MP4), then CEPAT (HLS), then MP4, then YUP, then others
         const btube = availableLinks.find((s: any) =>
           s.server && s.server.toUpperCase() === 'B-TUBE'
         );
@@ -539,25 +517,21 @@ const sankaAnimeApi = {
         }
       }
 
-      // Extract direct video URL from the server page for native playback
       if (primaryStreamUrl) {
         const originalUrl = primaryStreamUrl;
         const extracted = await extractDirectVideoUrl(primaryStreamUrl, '360', signal);
         if (extracted) {
-          // Only overwrite primaryStreamUrl if it's HLS or a truly native-playable host (not mp4upload/vidcache)
           const isDirectHostNativePlayable = !extracted.url.includes('mp4upload') && !extracted.url.includes('vidcache');
           if (isDirectHostNativePlayable || extracted.type === 'hls') {
             primaryStreamUrl = extracted.url;
           }
           streamIsHls = extracted.type === 'hls';
-          // Use the resolved direct MP4 as download link (much better than gdplayer)
           if (extracted.type === 'mp4') {
             downloadLink = extracted.url;
           }
         }
       }
 
-      // Fallback download link from API if we don't have a direct MP4
       if (!downloadLink && Array.isArray(data.download_links) && data.download_links.length > 0) {
         const bestDl = data.download_links.find((d: any) => d.server && d.server.toLowerCase().includes('gdrive')) || data.download_links[0];
         downloadLink = bestDl.url;
@@ -575,14 +549,12 @@ const sankaAnimeApi = {
         primaryStreamUrl.includes('.m3u8') ||
         streamIsHls;
 
-      // Extract episode number from slug if not in title
       let finalTitle = data.title || slug;
       const epMatch = slug.match(/-episode-(\d+(-\d+)?)/i);
       if (epMatch && !finalTitle.toLowerCase().includes('episode')) {
         finalTitle = `${finalTitle} - Episode ${epMatch[1]}`;
       }
 
-      // Reverse map the anime slug for navigation
       const animeSlugRaw = slug.replace(/-episode-\d+.*$/, '');
       const animeDetailUrl = `sanka://detail/${encodeURIComponent(animeSlugRaw)}`;
 
@@ -629,13 +601,11 @@ const sankaAnimeApi = {
        quality = serverPrefix.split('|')[1];
     }
 
-    // Try to extract direct video URL from the server page
     const extracted = await extractDirectVideoUrl(serverPageUrl, quality, signal);
     if (extracted) {
       return extracted.url;
     }
 
-    // Fallback: legacy blogger extraction
     if (serverPageUrl.includes('blogger.com') || serverPageUrl.includes('video.g')) {
       try {
         const decoded = decodeURIComponent(serverPageUrl);
@@ -646,7 +616,6 @@ const sankaAnimeApi = {
       }
     }
 
-    // Last resort: return the page URL as-is (will be embed)
     return serverPageUrl;
   },
 

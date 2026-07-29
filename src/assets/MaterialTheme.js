@@ -1,5 +1,3 @@
-// NaoFlix Blue Theme
-// Accent: Blue (#3b82f6) on clean backgrounds
 const MDLight = {
   colors: {
     primary: 'rgb(59, 130, 246)',

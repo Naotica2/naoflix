@@ -43,7 +43,6 @@ export default function UserStatsDash() {
     return formatDaysAndHours(ms);
   };
 
-  // Get data for the active tab
   const getTabData = () => {
     switch (activeTab) {
       case 'Anime':

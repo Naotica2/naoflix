@@ -59,14 +59,12 @@ import { LegendList, LegendListRef } from '@legendapp/list';
 export const MIN_IMAGE_HEIGHT = 200;
 export const MIN_IMAGE_WIDTH = 100;
 
-// removed header utils
 
 type AnimePageProps = BottomTabScreenProps<HomeNavigator, 'HomePage'>;
 
 const AnimePage = memo(AnimePageComponent);
 export default AnimePage;
 
-// ============ SEARCH TYPES ============
 type SearchAnimeResult = SearchAnime['result'][number];
 type AnySearchItem = SearchAnimeResult;
 type SearchRowItem = AnySearchItem;
@@ -84,9 +82,7 @@ function AnimePageComponent(props: AnimePageProps) {
   const [isRateLimit, setIsRateLimit] = useState(false);
   const [refreshingKey, setRefreshingKey] = useState(0);
 
-// header info states delegated to HeaderInfo
 
-  // ============ SEARCH STATE ============
   const [searchText, setSearchText] = useState('');
   const [searchData, setSearchData] = useState<null | SearchAnime>(null);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -108,7 +104,6 @@ function AnimePageComponent(props: AnimePageProps) {
     setSearchText('');
   }, []);
 
-  // Search only triggers on submit (Enter key or search icon press)
 
   const submitSearch = useCallback(() => {
     if (searchText === '') return;
@@ -186,7 +181,6 @@ function AnimePageComponent(props: AnimePageProps) {
     setShowSearchHistory(true);
   }, []);
 
-  // ============ REFRESH ============
   const refreshing = useCallback(() => {
     setRefresh(true);
     setIsRateLimit(false);
@@ -211,7 +205,6 @@ function AnimePageComponent(props: AnimePageProps) {
   }, [setData]);
 
 
-  // ============ SEARCH RESULTS ============
   const hasSearchResults = (searchData?.result?.length ?? 0) > 0;
   const isSearchEmpty = !hasSearchResults && searchData !== null;
   const flashListData: AnySearchItem[] = searchData?.result ?? [];
@@ -422,7 +415,6 @@ function AnimePageComponent(props: AnimePageProps) {
   );
 }
 
-// ============ SUB-COMPONENTS ============
 
 const EpisodeBaru = memo(EpisodeBaruComponent);
 function EpisodeBaruComponent({
@@ -749,7 +741,6 @@ function AnimeCarouselComponent({ data, navigation }: { data: CarouselItem[] | u
   );
 }
 
-// ============ STYLES ============
 const searchStyles = StyleSheet.create({
   closeSearchResult: {
     position: 'absolute',

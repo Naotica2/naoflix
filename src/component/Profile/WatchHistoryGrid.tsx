@@ -65,7 +65,6 @@ function WatchHistoryGrid({ userId, refreshTrigger }: Props) {
   const filmHistory = history.filter(h => h.content_type === 'film').slice(0, 4);
 
   const handlePress = (item: WatchHistoryItem) => {
-    // If we have the original link in content_id, use FromUrl. Otherwise fallback to Browse search.
     if (item.content_id && (item.content_id.startsWith('http') || item.content_id.startsWith('film://') || item.content_id.startsWith('al-'))) {
       navigation.navigate('FromUrl', {
         link: item.content_id,

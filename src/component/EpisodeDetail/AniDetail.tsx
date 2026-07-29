@@ -36,7 +36,6 @@ import EpisodeBox from '../misc/EpisodeBox';
 
 const AnimatedFlatList = Reanimated.createAnimatedComponent(FlatList as typeof FlatList<AniDetailEpsList>);
 
-// Memoized wrapper to prevent EpisodeBox re-renders from inline onPress changes
 const EpisodeItem = memo(({ ep, epNum, isLastEp, onPress, width }: {
   ep: AniDetailEpsList; epNum: number; isLastEp: boolean;
   onPress: (ep: AniDetailEpsList, epNum: number) => void; width: number;
@@ -94,11 +93,9 @@ function AniDetail(props: Props) {
     historyTitle = replaceLast(historyTitle, 'BD', '').trim();
   }
   const lastWatched = useMemo(() => {
-    // Try exact match first
     let isLastWatched = historyListsJson.find(
       z => z === `historyItem:${historyTitle}:false:false`,
     );
-    // Fallback: fuzzy match by title prefix (for cross-source compatibility)
     if (!isLastWatched) {
       const titlePrefix = `historyItem:${historyTitle.slice(0, 20)}`;
       isLastWatched = historyListsJson.find(
@@ -132,7 +129,6 @@ function AniDetail(props: Props) {
   const [showFullSynopsis, setShowFullSynopsis] = useState(false);
   const { width: screenWidth } = useWindowDimensions();
 
-  // Calculate responsive box width: ~5 cols on small phones, ~7 on larger
   const cols = screenWidth < 400 ? 5 : screenWidth < 600 ? 6 : 7;
   const gap = 8;
   const padding = 32; // 16px each side
@@ -141,24 +137,18 @@ function AniDetail(props: Props) {
     [screenWidth, cols],
   );
 
-  // Extract episode numbers from titles - smart extraction
   const episodeNumbers = useMemo(() => {
     return data.episodeList.map((eps, idx) => {
-      // Try "Episode X" pattern first (most reliable)
       const epMatch = eps.title.match(/[Ee]pisode\s*(\d+)/);
       if (epMatch) return parseInt(epMatch[1], 10);
-      // Try "Ep X" pattern
       const epShort = eps.title.match(/[Ee][Pp]\s*(\d+)/);
       if (epShort) return parseInt(epShort[1], 10);
-      // Try last number in string (handles "Title 2 Sub Indo Episode 5" → 5)
       const allNums = eps.title.match(/\d+/g);
       if (allNums && allNums.length > 0) return parseInt(allNums[allNums.length - 1], 10);
-      // Fallback to index
       return idx + 1;
     });
   }, [data.episodeList]);
 
-  // Last watched episode number
   const lastWatchedEpNum = useMemo(() => {
     if (!lastWatched?.episode) return -1;
     const match = lastWatched.episode.match(/(\d+)/);
@@ -174,7 +164,6 @@ function AniDetail(props: Props) {
     });
   }, [data.episodeList, searchQuery, episodeNumbers]);
 
-  // Header content (expensive, memoized without searchQuery)
   const headerContent = useMemo(() => {
     return (
       <View style={styles.mainContainer}>
@@ -458,7 +447,6 @@ function AniDetail(props: Props) {
     showFullSynopsis,
   ]);
 
-  // Compose header + searchbar: headerContent is stable, only Searchbar re-renders on typing
   const ListHeaderComponent = (
     <View>
       {headerContent}

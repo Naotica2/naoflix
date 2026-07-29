@@ -61,12 +61,10 @@ function VIPOfferModal({ visible, onDismiss }: Props) {
         setIsInMaintenance(false);
       }
     } else {
-      // Reset state if modal closed
       setPendingRef(null);
     }
   }, [visible]);
 
-  // Cek pending transaction saat modal dibuka
   useEffect(() => {
     if (visible && user && !qrImageUrl && !isSuccess) {
       supabase
@@ -83,7 +81,6 @@ function VIPOfferModal({ visible, onDismiss }: Props) {
             const now = new Date();
             const diffMinutes = (now.getTime() - txDate.getTime()) / 1000 / 60;
             
-            // Hams PG QRIS expires in 15 minutes, only show resume option if it's still valid
             if (diffMinutes < 15) {
               setPendingRef(txs[0].ref);
               setPendingAmount(txs[0].amount);
@@ -93,7 +90,6 @@ function VIPOfferModal({ visible, onDismiss }: Props) {
     }
   }, [visible, user, qrImageUrl, isSuccess]);
 
-  // Polling ke Vercel untuk cek status (Pengganti Webhook yang rusak di Hams PG)
   useEffect(() => {
     if (!transactionRef || isSuccess) return;
 
@@ -141,7 +137,6 @@ function VIPOfferModal({ visible, onDismiss }: Props) {
     if (!user) return;
     setLoading(true);
     try {
-      // Kita tembak ke backend Vercel yang baru dibuat (Bukan langsung ke Hams PG)
       const VERCEL_API_URL = 'https://naoflix-backend.vercel.app/api/deposit';
 
       const response = await fetch(VERCEL_API_URL, {
@@ -167,10 +162,7 @@ function VIPOfferModal({ visible, onDismiss }: Props) {
         setTransactionRef(data.ref);
         setPaymentAmount(data.total || data.amount_unique || data.amount || finalPrice);
         
-        // Catatan: Insert ke tabel 'transactions' dipindahkan ke Vercel (api/deposit.js) 
-        // untuk menghindari error RLS (Row Level Security) dari sisi klien.
         
-        // Temporary console log to see exactly what Hams PG returns
         console.log("HAMS_PG_RESPONSE:", JSON.stringify(data));
       } else {
         throw new Error('Gagal mendapatkan QRIS');

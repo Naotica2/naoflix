@@ -37,34 +37,26 @@ export function LevelProvider({ children }: { children: React.ReactNode }) {
   const [levelData, setLevelData] = useState<LevelData>(DEFAULT_LEVEL_DATA);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Use a ref to always hold the latest levelData for use inside callbacks,
-  // preventing stale closure issues with useCallback dependencies.
   const levelDataRef = useRef<LevelData>(DEFAULT_LEVEL_DATA);
   levelDataRef.current = levelData;
 
-  // Track the highest EXP ever seen in this session to prevent any race condition
   // from overwriting with a lower value
   const highestExpRef = useRef<number>(0);
 
-  // Fetch level data when user changes
   useEffect(() => {
     let cancelled = false;
     const fetchLevel = async () => {
-      // Always read local EXP first as baseline
       let localTotalExp = 0;
       try {
         const localExpRaw = await DatabaseManager.get('local_exp');
         localTotalExp = localExpRaw ? parseInt(localExpRaw, 10) : 0;
         if (isNaN(localTotalExp)) localTotalExp = 0;
       } catch {
-        // ignore local read failure
       }
 
-      // Update highest seen EXP
       highestExpRef.current = Math.max(highestExpRef.current, localTotalExp);
 
       if (!user) {
-        // Guest mode: use local EXP only
         const computed = getLevelFromExp(localTotalExp);
         if (!cancelled) {
           setLevelData({ ...computed, totalExp: localTotalExp });
@@ -74,7 +66,6 @@ export function LevelProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        // Fetch from Supabase with retry
         let data: any = null;
         let error: any = null;
         let retries = 3;
@@ -94,7 +85,6 @@ export function LevelProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
 
         if (error || !data) {
-          // Supabase failed after retries — fall back to local
           const computed = getLevelFromExp(localTotalExp);
           setLevelData({ ...computed, totalExp: localTotalExp });
           setIsLoading(false);
@@ -103,15 +93,12 @@ export function LevelProvider({ children }: { children: React.ReactNode }) {
 
         const remoteTotalExp = data.total_exp ?? 0;
 
-        // Take whichever is highest: local, remote, or session high.
-        // This prevents ANY race condition or stale fetch from resetting progress.
         const bestTotalExp = Math.max(localTotalExp, remoteTotalExp, highestExpRef.current);
         highestExpRef.current = bestTotalExp;
 
         const computed = getLevelFromExp(bestTotalExp);
         setLevelData({ ...computed, totalExp: bestTotalExp });
 
-        // Sync the best value back to both stores
         await DatabaseManager.set('local_exp', bestTotalExp.toString());
         if (bestTotalExp > remoteTotalExp) {
           let syncRetries = 3;
@@ -126,7 +113,6 @@ export function LevelProvider({ children }: { children: React.ReactNode }) {
           }
         }
       } catch {
-        // On any exception, use local
         if (!cancelled) {
           const computed = getLevelFromExp(localTotalExp);
           setLevelData({ ...computed, totalExp: localTotalExp });
@@ -142,19 +128,16 @@ export function LevelProvider({ children }: { children: React.ReactNode }) {
 
   const syncingPromiseRef = useRef<Promise<void>>(Promise.resolve());
 
-  // addExp has NO dependency on levelData (uses ref instead) so it never goes stale.
   const addExp = useCallback((amount: number) => {
     if (levelDataRef.current.level >= MAX_LEVEL) return Promise.resolve();
 
     syncingPromiseRef.current = syncingPromiseRef.current.then(async () => {
       try {
-        // Always read the absolute latest EXP from local DB to prevent stale state
         const localExpRaw = await DatabaseManager.get('local_exp');
         const localExp = localExpRaw ? parseInt(localExpRaw, 10) : levelDataRef.current.totalExp;
 
         let currentExp = localExp;
 
-        // For logged-in users, also check Supabase and take the max
         if (user) {
           const { data: profile, error: fetchErr } = await supabase
             .from('profiles')
@@ -171,13 +154,10 @@ export function LevelProvider({ children }: { children: React.ReactNode }) {
         highestExpRef.current = newTotalExp;
         const computed = getLevelFromExp(newTotalExp);
 
-        // Update UI immediately
         setLevelData({ ...computed, totalExp: newTotalExp });
 
-        // Always persist locally (this survives app restarts)
         await DatabaseManager.set('local_exp', newTotalExp.toString());
 
-        // Also sync to Supabase for logged-in users (with retry)
         if (user) {
           const updatePayload = { id: user.id, total_exp: newTotalExp, level: computed.level } as any;
           let retries = 3;

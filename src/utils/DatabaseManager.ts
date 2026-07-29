@@ -109,7 +109,6 @@ export function useModifiedKeyValueIfFocused<T>(
         if (value == null) return;
         setModifiedValue(modifyFuncRef.current(value));
       } catch {
-        // Ignore parse errors for null/undefined values
       }
     }, [value]),
   );

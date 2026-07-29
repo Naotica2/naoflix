@@ -6,13 +6,11 @@ import * as shinigami from './shinigami';
 import * as komikcast from './komikcast';
 import { getSourcePreferences, isSourceActive } from '../sourcePreferences';
 
-// Re-export types (komiku types are the canonical interface)
 export type LatestComicsRelease = comics2.LatestKomikuRelease;
 export type ComicsDetail = comics2.KomikuDetail;
 export type ComicsReading = comics2.KomikuReading;
 export type ComicsSearch = comics2.KomikuSearch & { source: string };
 
-// Helper: determine which comic source is active
 async function getActiveComicSource(): Promise<'komiku' | 'mynimeku' | 'bacakomik' | 'mangadex' | 'shinigami' | 'komikcast'> {
   const prefs = await getSourcePreferences();
   if (isSourceActive(prefs, 'komiku')) return 'komiku';
@@ -73,7 +71,6 @@ export async function getPopularComicsReleases(
 ): Promise<LatestComicsRelease[]> {
   const source = await getActiveComicSource();
   if (source === 'mynimeku') {
-    // MyNimeku doesn't have a separate "popular" endpoint, use page 2 of latest
     const res = await mynimeku.getLatestMynimekuReleases(page + 1, signal);
     return res.map(r => ({
       title: r.title,
@@ -131,18 +128,15 @@ export async function getComicsByGenre(
     }));
   }
   if (source === 'mangadex') {
-    // MangaDex search by genre not directly supported in wrapper, returning latest
     return await mangadex.getMangadexLatest(page, signal);
   }
   if (source === 'bacakomik') {
     return await bacakomik.getBacakomikByGenre(genre, page, signal);
   }
   if (source === 'shinigami') {
-    // Use the dedicated genre API with pagination
     return await shinigami.getComicsByGenre(genre, page, signal);
   }
   if (source === 'komikcast') {
-    // Komikcast uses search as genre filter with pagination support
     const data = await komikcast.getComicsSearchWithGenre(genre, page, signal);
     return data.map(r => ({
       title: r.title,
@@ -162,7 +156,6 @@ export async function getComicsDetailFromUrl(
   url: string,
   signal?: AbortSignal,
 ): Promise<ComicsDetail> {
-  // Route by URL protocol first (for history items from other sources)
   if (url.startsWith('shinigami://')) {
     return await shinigami.getComicsDetail(url, signal);
   }
@@ -219,7 +212,6 @@ export async function getComicsDetailFromUrl(
 }
 
 export async function getComicsReading(url: string, signal?: AbortSignal): Promise<ComicsReading> {
-  // Route by URL protocol first (for history items from other sources)
   if (url.startsWith('shinigami://')) {
     const res = await shinigami.getComicsReading(url, signal);
     return {

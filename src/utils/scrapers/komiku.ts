@@ -246,7 +246,6 @@ export async function getKomikuReading(url: string, signal?: AbortSignal): Promi
       return $(el).attr('src');
     })
     .toArray();
-  // New selectors: aria-label, fallback to old SVG data-icon
   const nextChapter = normalizeUrl(
     $('a[aria-label="Next"]').attr('href')
     ?? $('svg[data-icon="caret-right"]').parent().attr('href')

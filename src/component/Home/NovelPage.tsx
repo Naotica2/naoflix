@@ -62,7 +62,6 @@ function NovelPageComponent(_props: NovelPageProps) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp<RootStackNavigator>>();
 
-  // ============ SEARCH STATE ============
   const [searchText, setSearchText] = useState('');
   const [novelSearchData, setNovelSearchData] = useState<null | NovelSearch[]>(null);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -86,7 +85,6 @@ function NovelPageComponent(_props: NovelPageProps) {
     setSearchText('');
   }, []);
 
-  // Search only triggers on submit (Enter key or search icon press)
 
   const submitSearch = useCallback(() => {
     if (searchText === '') return;
@@ -295,7 +293,6 @@ function NovelPageComponent(_props: NovelPageProps) {
   );
 }
 
-// ============ SUB-COMPONENTS ============
 
 const NovelLatestList = memo(NovelLatestListComponent);
 function NovelLatestListComponent() {
@@ -562,7 +559,6 @@ function HistoryItem({ item, index, onSelect }: { item: string; index: number; o
   );
 }
 
-// ============ STYLES ============
 const novelStyles = StyleSheet.create({
   closeSearchResult: {
     position: 'absolute',

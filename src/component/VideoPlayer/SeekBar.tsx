@@ -104,12 +104,7 @@ export default function SeekBar({
   // const { width } = useWindowDimensions();
 
   // useLayoutEffect(() => {
-  //   viewRef.current?.measure((_x, _y, measuredWidth) => {
   //     if (measuredWidth > 1) {
-  //       parentWidth.set(width);
-  //     }
-  //   });
-  // }, [parentWidth, width]);
 
   return (
     <View style={[style, styles.container]} onLayout={onLayout}>

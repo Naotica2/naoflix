@@ -21,7 +21,6 @@ import DialogManager from '../../utils/dialogManager';
 import setHistory from '../../utils/historyControl';
 import { getComicsReading } from '../../utils/scrapers/comicsv2';
 import { getKomikuReading } from '../../utils/scrapers/komiku';
-// Source-aware routing: use getComicsReading for komikindo/softkomik/mynimeku, getKomikuReading for komiku
 import { useLevel } from '../../misc/LevelContext';
 import { EXP_REWARDS } from '../../utils/LevelSystem';
 import { useTimeTracker } from '../../utils/UserTracker';
@@ -61,7 +60,6 @@ export default function ComicsReading(props: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [currentlyVisibleImageId, setCurrentlyVisibleImageId] = useState(0);
 
-  // --- Layout & Handlers ---
 
   useFocusEffect(
     useCallback(() => {
@@ -267,7 +265,6 @@ export default function ComicsReading(props: Props) {
     }
   }, [props.route.params.link, addExp]);
 
-  // --- HTML Generation ---
 
   const bgColor = theme.dark ? '#121212' : '#ffffff';
   const shimmerBase = theme.dark ? '#333333' : '#e0e0e0';
@@ -338,7 +335,6 @@ export default function ComicsReading(props: Props) {
         display: none;
       }
 
-      /* Error Styles */
       .img-wrapper.is-error {
         min-height: 250px;
         background-color: ${theme.dark ? '#2a2a2a' : '#ffebee'};
@@ -395,12 +391,10 @@ export default function ComicsReading(props: Props) {
   const html = `<head><meta name="viewport" content="width=device-width, initial-scale=1.0" />${referrerMeta}${styles}</head><body>${body}</body>`;
 
   const injectedJavaScript = `
-    // --- Communication ---
     function sendToRN(data) {
         window.ReactNativeWebView.postMessage(JSON.stringify(data));
     }
 
-    // --- Auto Scroll ---
     const PIXELS_PER_SECOND = 60;
     window.autoScrollFrame = null;
     window.scrollSpeed = PIXELS_PER_SECOND;
@@ -439,7 +433,6 @@ export default function ComicsReading(props: Props) {
       window.autoScrollFrame = null;
     };
 
-    // --- Restore History ---
     ${
       props.route.params.historyData
         ? `
@@ -457,7 +450,6 @@ export default function ComicsReading(props: Props) {
         : ''
     }
 
-    // --- OBSERVERS ---
     const sendScrollUpdate = (id) => {
         sendToRN({ type: 'SCROLL_UPDATE', id: id });
     }
@@ -475,7 +467,6 @@ export default function ComicsReading(props: Props) {
       }
     }, historyOptions);
 
-    // 2. Fetch Observer (Direct Load)
     const fetchOptions = {
       root: null,
       rootMargin: '250% 0px 250% 0px',
@@ -503,7 +494,6 @@ export default function ComicsReading(props: Props) {
       });
     }, fetchOptions);
 
-    // Retry Listener & Fullscreen Toggle
     document.addEventListener('click', (e) => {
       const wrapper = e.target.closest('.img-wrapper.is-error');
       if (wrapper) {
@@ -519,7 +509,6 @@ export default function ComicsReading(props: Props) {
       }
     });
 
-    // Init Observers
     const allImages = document.querySelectorAll('img');
     allImages.forEach(img => {
       historyObserver.observe(img);

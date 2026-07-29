@@ -35,7 +35,6 @@ function SearchUsersScreen() {
   const [results, setResults] = useState<UserSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   
-  // Debounce search
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);

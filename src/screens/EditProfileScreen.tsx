@@ -84,21 +84,18 @@ function EditProfileScreen() {
       let finalAvatarUrl = profile?.avatar_url;
       let finalBannerUrl = profile?.banner_url;
 
-      // Upload avatar if changed
       if (avatarChanged && avatarUri) {
         const { url, error } = await uploadAvatar(user.id, avatarUri);
         if (error) throw new Error(error);
         if (url) finalAvatarUrl = url;
       }
 
-      // Upload banner if changed
       if (bannerChanged && bannerUri) {
         const { url, error } = await uploadBanner(user.id, bannerUri);
         if (error) throw new Error(error);
         if (url) finalBannerUrl = url;
       }
 
-      // Update database
       const { error } = await supabase.from('profiles').update({
         display_name: displayName.trim() || null,
         bio: bio.trim() || '',

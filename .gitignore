@@ -104,6 +104,7 @@ desktop/src-tauri/target/
 
 #keystore
 android/gradle.properties
+android/app/gradle.properties
 
 # Test & scratch files
 tes-webhook.js
@@ -124,6 +125,9 @@ tsc_*.log
 # Vercel
 .vercel/
 pg-backend/.vercel/
+
+# Payment Gateway Backend
+pg-backend/
 
 # Supabase temp
 supabase/.temp/

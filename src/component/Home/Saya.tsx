@@ -109,7 +109,6 @@ function ProfileDrawerContent(props: DrawerContentComponentProps) {
   const activeIndex = props.state.index;
 
   const handleAvatarPress = () => {
-    // Profil avatar press placeholder, you could navigate to Profile screen if desired
   };
 
   return (

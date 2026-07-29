@@ -44,7 +44,6 @@ export default function Announcement() {
           setModalVisible(true);
         }
       })
-      // silent error
       .catch(() => {});
   }, []);
 

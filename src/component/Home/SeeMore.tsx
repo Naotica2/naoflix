@@ -29,7 +29,6 @@ import { ListAnimeComponent } from '../misc/ListAnimeComponent';
 import ImageLoading from '../misc/ImageLoading';
 import { MIN_IMAGE_WIDTH, RenderScrollComponent } from './AnimePage';
 
-// ─── Memoized Film Grid Item ──────────────────────────────────────────────
 const filmItemStyles = StyleSheet.create({
   container: { margin: 4 },
   title: { fontSize: 12, fontWeight: '600', marginTop: 4 },
@@ -214,7 +213,6 @@ const AnimeContainer = ({ navigation }: { navigation: Props['navigation'] }) => 
     const newData = await AnimeAPI.newAnime(pageRef.current);
 
     if (newData.length === 0) {
-      // No more data, revert page counter
       pageRef.current -= 1;
       return;
     }
@@ -222,7 +220,6 @@ const AnimeContainer = ({ navigation }: { navigation: Props['navigation'] }) => 
     if (setParamsState) {
       setParamsState(prev => {
         const combined = [...prev.newAnime, ...newData];
-        // Filter unique
         const unique = combined.filter(
           (item, index, self) => index === self.findIndex(a => a.title === item.title),
         );

@@ -106,7 +106,6 @@ export async function getComicsDetail(
   const mangaId = mangaIdRaw.replace('shinigami://detail/', '');
   if (!mangaId) throw new Error('Invalid shinigami detail URL');
 
-  // Fetch detail + chapters in parallel
   const [detailData, chaptersData] = await Promise.all([
     apiGet(`/v1/manga/detail/${mangaId}`, signal),
     fetchAllChapters(mangaId, signal),
@@ -166,7 +165,6 @@ export async function getComicsByGenre(
   page: number = 1,
   signal?: AbortSignal,
 ): Promise<LatestComicsRelease[]> {
-  // Map genre name to Shinigami genre slug for the API
   const genreSlug = genre.toLowerCase().replace(/\s+/g, '-');
   const data = await apiGet(
     `/v1/manga/list?page=${page}&page_size=24&genre=${encodeURIComponent(genreSlug)}&sort=latest&sort_order=desc`,
@@ -202,7 +200,6 @@ export async function getComicsReading(
 
   const comicImages = imageFiles.map((file: string) => `${baseUrl}${chapterPath}${file}`);
 
-  // Fetch chapter list from the manga to determine next/prev chapter
   let nextChapter: string | undefined;
   let prevChapter: string | undefined;
   const mangaId = data.manga_id;
@@ -213,7 +210,6 @@ export async function getComicsReading(
         ch => ch.chapterUrl === `shinigami://chapter/${chapterId}`,
       );
       if (currentIdx >= 0) {
-        // chapters are sorted descending (3, 2, 1)
         if (currentIdx > 0) {
           nextChapter = chapters[currentIdx - 1].chapterUrl;
         }
@@ -222,7 +218,6 @@ export async function getComicsReading(
         }
       }
     } catch (e) {
-      // Non-critical, continue without nav buttons
     }
   }
 

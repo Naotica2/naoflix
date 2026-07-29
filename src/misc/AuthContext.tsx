@@ -55,7 +55,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchProfile = useCallback(async (userId: string): Promise<'loaded' | 'error'> => {
     setProfileStatus('loading');
     try {
-      // 5 second fallback for profile fetch to prevent infinite hanging
       const fetchPromise = supabase
         .from('profiles')
         .select('username, avatar_url, display_name, bio, banner_url, total_exp, level, is_vip, nobar_count, last_nobar_date, vip_until')
@@ -70,7 +69,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // Genuinely missing profile
           setProfile(null);
           setProfileStatus('loaded');
           return 'loaded';
@@ -87,17 +85,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       let finalData = data;
-      // VIP Expiration Check
       if (finalData.is_vip && finalData.vip_until) {
         const now = new Date().toISOString();
         if (finalData.vip_until < now) {
-          // Expired, revoke VIP
           supabase.from('profiles').update({ is_vip: false, vip_until: null }).eq('id', userId).then();
           finalData = { ...finalData, is_vip: false, vip_until: null };
         }
       }
 
-      // Auto-Recovery Transaksi: Jika belum VIP, cek transaksi pending barangkali mereka habis restart aplikasi pas bayar
       if (!finalData.is_vip) {
         supabase.from('transactions').select('ref').eq('user_id', userId).eq('status', 'pending')
           .then(({ data: txs }) => {
@@ -107,7 +102,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   .then(r => r.json())
                   .then(rData => {
                     if (rData && rData.status === 'success') {
-                      // Sukses! Refresh profile agar VIP aktif
                       fetchProfile(userId);
                     }
                   }).catch(() => {});
@@ -154,7 +148,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isMounted = true;
 
-    // BULLETPROOF: 5 second hard-stop if Supabase network initialization dies
     const safetyTimeout = setTimeout(() => {
       if (isMounted) {
         console.warn('Supabase Auth Initialization Timeout - Forcing app unlock');
@@ -162,7 +155,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }, 5000);
 
-    // Standard Supabase initialization logic
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!isMounted) return;
       setSession(session);
@@ -214,7 +206,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [fetchProfile, scheduleRetry]);
 
-  // Handle explicit signout cleanly
   const signOut = useCallback(async () => {
     if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
     retryCountRef.current = 0;

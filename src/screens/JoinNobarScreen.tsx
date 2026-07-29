@@ -20,7 +20,6 @@ export default function JoinNobarScreen({ route, navigation }: Props) {
       return;
     }
     
-    // Listen for Host's presence to get movie metadata without needing a database table!
     const roomChannel = supabase.channel(`room_${roomId}`);
 
     roomChannel.on('presence', { event: 'sync' }, () => {
@@ -29,7 +28,6 @@ export default function JoinNobarScreen({ route, navigation }: Props) {
       let isHostVip = false;
       let participantCount = 0;
 
-      // Cari Host di dalam room dan hitung participant aktif
       Object.keys(state).forEach(key => {
         const presences = state[key] as any[];
         if (presences.length > 0) {
@@ -53,7 +51,6 @@ export default function JoinNobarScreen({ route, navigation }: Props) {
 
         roomChannel.unsubscribe();
         if (hostMetadata.type === 'anime') {
-          // Fetch Anime Streaming data first
           AnimeAPI.fromUrl(hostMetadata.link)
             .then(data => {
               navigation.replace('Video', { data: data as any, link: hostMetadata.link, roomId });
@@ -69,7 +66,6 @@ export default function JoinNobarScreen({ route, navigation }: Props) {
 
     roomChannel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
-        // Track as waiting guest
         roomChannel.track({
           username: user.user_metadata?.username || 'Guest',
           isHost: false,

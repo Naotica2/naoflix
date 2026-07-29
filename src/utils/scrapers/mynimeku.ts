@@ -25,7 +25,6 @@ async function fetchPage(url: string, signal?: AbortSignal): Promise<string> {
   return await response.text();
 }
 
-// ============ LATEST RELEASES ============
 export interface MynimekuRelease {
   title: string;
   thumbnailUrl: string;
@@ -57,7 +56,6 @@ export async function getLatestMynimekuReleases(
     const thumbnailUrl = normalizeUrl(imgEl.attr('data-lazy-src') || imgEl.attr('data-src') || imgEl.attr('src') || '');
     const title = $el.find('a.mynimeku-update-feed__series-title').text().trim();
 
-    // Type badge is the first badge, status is the second
     const badges = $el.find('span.mynimeku-update-feed__badge');
     const typeRaw = badges.eq(0).text().trim().toUpperCase();
     const status = badges.eq(1).text().trim();
@@ -65,7 +63,6 @@ export async function getLatestMynimekuReleases(
       : typeRaw.includes('MANHUA') ? 'Manhua'
         : 'Manga') as MynimekuRelease['type'];
 
-    // Chapter from the latest pill
     const latestChapter = $el.find('span.mynimeku-update-feed__latest-pill').attr('title')?.replace(/Chapter\s*/i, '') || '';
 
     if (title && detailUrl) {
@@ -85,7 +82,6 @@ export async function getLatestMynimekuReleases(
   return items;
 }
 
-// ============ DETAIL PAGE ============
 export interface MynimekuDetail {
   title: string;
   indonesianTitle: string;
@@ -114,11 +110,9 @@ export async function getMynimekuDetailFromUrl(
   const html = await fetchPage(detailUrl, signal);
   const $ = cheerio.load(html);
 
-  // Title
   const title = $('h1.komik-series-hero__title').first().text().trim();
   const indonesianTitle = title;
 
-  // Thumbnail
   const coverImg = $('div.komik-series-hero__cover img').first();
   const thumbnailUrl = normalizeUrl(
     coverImg.attr('data-lazy-src')
@@ -129,7 +123,6 @@ export async function getMynimekuDetailFromUrl(
   );
   const headerImageUrl = thumbnailUrl;
 
-  // Info table
   const infoRows: Record<string, string> = {};
   $('table.komik-series-table tr').each((_i, el) => {
     const th = $(el).find('th').text().trim().replace(/:$/, '').toLowerCase();
@@ -155,17 +148,14 @@ export async function getMynimekuDetailFromUrl(
   const concept = '';
   const readingDirection = type === 'Manhwa' || type === 'Manhua' ? 'Kiri ke Kanan' : 'Kanan ke Kiri';
 
-  // Genres
   const genres: string[] = [];
   $('span.komik-series-taxonomy__terms a[href*="/genre/"]').each((_i, el) => {
     const g = $(el).text().trim();
     if (g) genres.push(g);
   });
 
-  // Synopsis
   const synopsis = $('div.komik-series-hero__synopsis div.komik-series-entry').text().trim();
 
-  // Chapters
   const chapters: MynimekuDetail['chapters'] = [];
   $('div.komik-series-chapter-row').each((_i, el) => {
     const $row = $(el);
@@ -201,7 +191,6 @@ export async function getMynimekuDetailFromUrl(
   };
 }
 
-// ============ READING PAGE ============
 export interface MynimekuReading {
   title: string;
   chapter: string;
@@ -219,7 +208,6 @@ export async function getMynimekuReading(
   const html = await fetchPage(chapterUrl, signal);
   const $ = cheerio.load(html);
 
-  // Title
   const fullTitle = $('h1.post-title.entry-title, div.entry-hero h1').first().text().trim();
   const title = fullTitle
     .replace(/ Chapter \d+.*/i, '')
@@ -228,13 +216,10 @@ export async function getMynimekuReading(
   const chapMatch = fullTitle.match(/Chapter\s*\d+(\.\d+)?/i);
   const chapter = chapMatch ? chapMatch[0] : fullTitle;
 
-  // Thumbnail
   const thumbnailUrl = normalizeUrl($('meta[property="og:image"]').attr('content') || '');
 
-  // Release date - not directly available, use empty string
   const releaseDate = '';
 
-  // Comic images from reader content
   const comicImages: string[] = [];
   $('div.komik-reader-content img').each((_i, el) => {
     const src = $(el).attr('data-lazy-src') || $(el).attr('data-src') || $(el).attr('src') || '';
@@ -243,7 +228,6 @@ export async function getMynimekuReading(
     }
   });
 
-  // Navigation
   const prevLink = $('a.komik-chapter-nav__control--prev').first().attr('href') || '';
   const nextLink = $('a.komik-chapter-nav__control--next').first().attr('href') || '';
 
@@ -258,7 +242,6 @@ export async function getMynimekuReading(
   };
 }
 
-// ============ SEARCH ============
 export interface MynimekuSearch {
   title: string;
   thumbnailUrl: string;
@@ -273,7 +256,6 @@ export async function mynimekuSearch(
   query: string,
   signal?: AbortSignal,
 ): Promise<MynimekuSearch[]> {
-  // Use ?s= parameter format (site redirects to /search/slug/)
   const searchUrl = `${BASE_URL}/?s=${encodeURIComponent(query)}&post_type=komik`;
 
   const html = await fetchPage(searchUrl, signal);
@@ -288,7 +270,6 @@ export async function mynimekuSearch(
     const thumbnailUrl = normalizeUrl(imgEl.attr('data-lazy-src') || imgEl.attr('data-src') || imgEl.attr('src') || '');
     const title = $el.find('a.mynimeku-search-feed__series-title').text().trim();
 
-    // Only include komik results (URL contains /komik/)
     if (!detailUrl.includes('/komik/')) return;
 
     const typeRaw = $el.find('span.mynimeku-search-feed__type').text().trim().toUpperCase();
@@ -314,7 +295,6 @@ export async function mynimekuSearch(
   return results;
 }
 
-// ============ GENRE ============
 export async function getMynimekuByGenre(
   genre: string,
   page: number = 1,
@@ -328,13 +308,11 @@ export async function getMynimekuByGenre(
   const $ = cheerio.load(html);
   const items: MynimekuRelease[] = [];
 
-  // Genre pages use mynimeku-taxmix-feed selectors
   $('article.mynimeku-taxmix-feed__item').each((_i, el) => {
     const $el = $(el);
     const coverLink = $el.find('a.mynimeku-taxmix-feed__cover');
     const detailUrl = coverLink.attr('href') || '';
 
-    // Only include komik items (URL contains /komik/)
     if (!detailUrl.includes('/komik/')) return;
 
     const imgEl = coverLink.find('img');

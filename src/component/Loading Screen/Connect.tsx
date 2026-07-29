@@ -37,7 +37,6 @@ import { RootStackNavigator } from '../../types/navigation';
 import AnimeAPI from '../../utils/AnimeAPI';
 import { DANGER_MIGRATE_OLD_HISTORY, DatabaseManager } from '../../utils/DatabaseManager';
 import deviceUserAgent from '../../utils/deviceUserAgent';
-// Removed AnimeMovieWebView import
 import { fetchLatestDomain } from '../../utils/scrapers/animeSeries';
 import { fetchLatestAnimeIndoDomain } from '../../utils/scrapers/animeindo';
 import { useAuth } from '../../misc/AuthContext';
@@ -111,7 +110,6 @@ function Loading(props: Props) {
 
   const fetchAnimeData = useCallback(async (signal: AbortSignal) => {
     const jsondata: EpisodeBaruHome | void = await AnimeAPI.home(signal).catch(() => {
-      // props.navigation.dispatch(StackActions.replace('FailedToConnect'));
       ToastAndroid.show('Gagal menghubungkan ke server anime', ToastAndroid.SHORT);
     });
     setLoadStatus(old => ({
@@ -137,7 +135,6 @@ function Loading(props: Props) {
         continue;
       }
     }
-    // History migration to individual key per item
     // @ts-expect-error
     const history = await DatabaseManager.get('history');
     if (history) {
@@ -207,10 +204,8 @@ function Loading(props: Props) {
       ToastAndroid.show('Error saat mengecek versi', ToastAndroid.SHORT);
       return true;
     } else if (data.message && data.message.includes('Not Found')) {
-      // Repository doesn't exist yet, ignore update
       return true;
     } else if (data[0] === undefined) {
-      // Rate limit or no releases yet
       return true;
     }
     
@@ -218,7 +213,6 @@ function Loading(props: Props) {
     const cleanRemote = remoteVersion.replace(/[^0-9.]/g, '');
     const cleanCurrent = appVersion.replace(/[^0-9.]/g, '');
     
-    // Check if remote version is strictly greater than current version
     const isNewer = cleanRemote.localeCompare(cleanCurrent, undefined, { numeric: true, sensitivity: 'base' }) > 0;
 
     if (!isNewer) {
@@ -229,19 +223,11 @@ function Loading(props: Props) {
   }, []);
 
   // const [comics1Promise] = useState(
-  //   () => new Promise(res => (comics1PromiseResolve.current = res)),
-  // );
   // const onComics1Ready = useCallback(() => {
   //   setLoadStatus(old => ({
-  //     ...old,
   //     'Mempersiapkan data anime movie': !isAnimeMovieWebViewOpen && !isComics1WebViewOpen,
-  //   }));
   //   setIsComics1WebViewOpen(false);
-  //   comics1PromiseResolve.current?.();
-  // }, [isAnimeMovieWebViewOpen, isComics1WebViewOpen]);
 
-  // Use refs for auth values so connectToServers doesn't restart the entire
-  // loading flow when auth state changes (e.g. profile retry succeeds in background)
   const authRef = useRef({ user, confirmedNoProfile });
   useEffect(() => {
     authRef.current = { user, confirmedNoProfile };
@@ -257,10 +243,8 @@ function Loading(props: Props) {
       }
       
       const anime = animeData;
-        // Read latest auth state at navigation time via ref
         const { user: currentUser, confirmedNoProfile: noProfile } = authRef.current;
 
-        // Daily login EXP reward
         if (currentUser) {
           AsyncStorage.getItem('last_login_reward_date').then(lastDate => {
             const today = new Date().toDateString();

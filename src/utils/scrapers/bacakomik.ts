@@ -56,7 +56,6 @@ export async function getBacakomikByGenre(
   page: number = 1,
   signal?: AbortSignal,
 ): Promise<LatestKomikuRelease[]> {
-  // Use search endpoint with the genre name, as bacakomik api doesn't have a direct genre endpoint
   const result = await apiCall('/api/manga/bacakomik-search', { keyword: genre, page }, signal);
   if (!result || !result.data) return [];
   
