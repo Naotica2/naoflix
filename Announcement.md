@@ -1,1 +1,1 @@
-## naoflix v2.1.0 telah rilis coy, jangan lupaa untuk membeli naoflix VIP yaa
+## naoflix otw update
