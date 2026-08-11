@@ -6600,13 +6600,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo-media-library@npm:~18.2.1":
-  version: 18.2.1
-  resolution: "expo-media-library@npm:18.2.1"
+"expo-media-library@npm:~57.0.3":
+  version: 57.0.3
+  resolution: "expo-media-library@npm:57.0.3"
   peerDependencies:
     expo: "*"
     react-native: "*"
-  checksum: f6c709c054d0a25a1c5f1a3cf4f7bab460f079b70e88cf8aa6bcf55c775bf162ed1c2deebb9720e1955835ee2cb2163ecc3012b0764794e030986e331c46f461
+  checksum: a2e0d6a7bd0ee46c307da38bb343b4ceb3469de27aee2950899ef6724cf5cc2f3b3b5e3df2081bf88bf0ae249200dd07f02c19eedd839dcaa10a67d29df63cb1
   languageName: node
   linkType: hard
 
@@ -9795,7 +9795,7 @@ __metadata:
     expo-clipboard: ~8.0.8
     expo-document-picker: ~14.0.8
     expo-linear-gradient: ~15.0.8
-    expo-media-library: ~18.2.1
+    expo-media-library: ~57.0.3
     expo-splash-screen: ~31.0.13
     expo-sqlite: ~16.0.10
     expo-updates: ~29.0.16
