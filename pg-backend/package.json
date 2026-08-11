@@ -1,8 +1,0 @@
-{
-  "name": "naoflix-pg-backend",
-  "version": "1.0.0",
-  "description": "Vercel Serverless API for Hams PG",
-  "scripts": {
-    "start": "node api/deposit.js"
-  }
-}
