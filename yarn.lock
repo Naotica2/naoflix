@@ -3499,14 +3499,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@shopify/flash-list@npm:2.3.0":
-  version: 2.3.0
-  resolution: "@shopify/flash-list@npm:2.3.0"
+"@shopify/flash-list@npm:2.3.2":
+  version: 2.3.2
+  resolution: "@shopify/flash-list@npm:2.3.2"
   peerDependencies:
     "@babel/runtime": "*"
     react: "*"
     react-native: "*"
-  checksum: 94b7234534dcc6b944489d12320c34b5cc6d8a048a2a61457a7414f526d57d53720a7da0206166e6c5badcbe79d57eb21ded87c950d386d2598d38208d766e3b
+  checksum: d6a3ea586c6024372e7e42283db05f2ca6173ba3015e96a9e469a41f94fcd064a92059875d1cc9d14c704580d6a42791f2956d50e992203c2656489736dc6f4b
   languageName: node
   linkType: hard
 
@@ -9771,7 +9771,7 @@ __metadata:
     "@react-navigation/native": ^7.1.33
     "@react-navigation/native-stack": ^7.14.5
     "@rnx-kit/align-deps": ^3.2.1
-    "@shopify/flash-list": 2.3.0
+    "@shopify/flash-list": 2.3.2
     "@supabase/supabase-js": ^2.100.1
     "@types/crypto-js": ^4.2.2
     "@types/he": ^1.2.3
