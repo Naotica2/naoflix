@@ -144,7 +144,7 @@ export async function getUserStats(): Promise<UserStats> {
               stats.comicCount += 1;
               stats.comicChapters += epNum;
             }
-          } else if (item.isMovie || hostname.includes('movie-box') || hostname.includes('moviebox')) {
+          } else if (item.isMovie || hostname.includes('movie-box') || hostname.includes('moviebox') || hostname.includes('lk21') || hostname.includes('nontondrama')) {
             stats.movieCount += 1;
           } else if (item.link?.includes('se=') || (typeof item.episode === 'string' && /S\d+E\d+/i.test(item.episode))) {
             stats.seriesCount += 1;

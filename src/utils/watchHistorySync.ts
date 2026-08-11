@@ -23,13 +23,13 @@ export async function syncHistoryToCloud(
 
   let source = 'unknown';
   const hostname = URL.parse(historyData.link ?? '').hostname || '';
-  if (historyData.link?.startsWith('film://')) source = 'moviebox';
+  if (historyData.link?.startsWith('film://')) source = 'lk21';
   else if (hostname.includes('otakudesu')) source = 'otakudesu';
   else if (hostname.includes('samehadaku')) source = 'samehadaku';
   else if (hostname.includes('komiku')) source = 'komiku';
   else if (hostname.includes('komikcast')) source = 'komikcast';
   else if (hostname.includes('meionovel')) source = 'meionovel';
-  else if (hostname.includes('idlix') || hostname.includes('lk21')) source = 'idlix';
+  else if (hostname.includes('idlix') || hostname.includes('lk21') || hostname.includes('nontondrama')) source = 'lk21';
 
   let contentId = historyData.seriesLink || historyData.link || historyData.title.toLowerCase().replace(/[^a-z0-9]/g, '-');
   
