@@ -5,29 +5,31 @@ import { Alert, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 
 import { DeviceInfoModule } from 'react-native-nitro-device-info';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import useGlobalStyles from '../../assets/style';
+import { tSync, useLanguage } from '../../misc/LanguageContext';
 
 export type Props = { error: Error };
 
 const FallbackComponent = (props: Props) => {
   const globalStyles = useGlobalStyles();
+  const { t } = useLanguage();
   const styles = useStyles();
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={[styles.title, globalStyles.text]}>Ups!</Text>
-        <Text style={[styles.subtitle, globalStyles.text]}>Telah terjadi crash</Text>
+        <Text style={[styles.title, globalStyles.text]}>{t('utils.crashTitle')}</Text>
+        <Text style={[styles.subtitle, globalStyles.text]}>{t('utils.crashSubtitle')}</Text>
         <Text style={[styles.error, globalStyles.text]}>{props.error.toString()}</Text>
         <TouchableOpacity
           style={styles.button}
           onPress={() => {
             reloadAppAsync();
           }}>
-          <Text style={[styles.buttonText, globalStyles.text]}>Reload aplikasi</Text>
+          <Text style={[styles.buttonText, globalStyles.text]}>{t('utils.reloadApp')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.button, { backgroundColor: 'red' }]}
           onPress={() => reportToDev(props.error)}>
-          <Text style={[styles.buttonText, globalStyles.text]}>Laporkan error ke developer</Text>
+          <Text style={[styles.buttonText, globalStyles.text]}>{t('utils.reportErrorDev')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -113,9 +115,9 @@ function reportToDev(error: Error) {
     }),
   })
     .then(() => {
-      Alert.alert('Sukses', 'Laporan berhasil dikirim!');
+      Alert.alert(tSync('common.success'), tSync('utils.reportSentSuccess'));
     })
     .catch(() => {
-      Alert.alert('Gagal', 'Laporan gagal dikirim!');
+      Alert.alert(tSync('common.error'), tSync('utils.reportSentFailed'));
     });
 }

@@ -10,5 +10,14 @@
     "extensionPreferences": "[]",
     "local_exp": "0",
     "enableForumChat": "true",
-    "last_announcement_hash": ""
+    "last_announcement_hash": "",
+    "remoteConfig": "",
+    "homeShowAnime": "true",
+    "homeShowComics": "true",
+    "homeShowNovels": "false",
+    "homeShowFilms": "true",
+    "homeShowDonghua": "false",
+    "offlineAnimeList": "[]",
+    "pausedDownloads": "[]",
+    "language": "id"
 }

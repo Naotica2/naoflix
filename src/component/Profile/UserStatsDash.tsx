@@ -1,17 +1,25 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, useColorScheme, TouchableOpacity, Dimensions } from 'react-native';
+import React, { memo, useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  useColorScheme,
+  TouchableOpacity,
+  useWindowDimensions,
+} from 'react-native';
 import MaterialIcons from '@react-native-vector-icons/material-icons';
 import { getUserStats, UserStats } from '../../utils/UserTracker';
 import moment from 'moment';
-import 'moment/locale/id';
+import { useLanguage } from '../../misc/LanguageContext';
 
-const { width } = Dimensions.get('window');
+type TabCategory = 'Anime' | 'Film' | 'Komik';
+const TABS: TabCategory[] = ['Anime', 'Film', 'Komik'];
 
-type TabCategory = 'Anime' | 'Film' | 'TV Series' | 'Komik' | 'Novel';
-const TABS: TabCategory[] = ['Anime', 'Film', 'TV Series', 'Komik', 'Novel'];
-
-export default function UserStatsDash() {
+function UserStatsDash() {
   const isDark = useColorScheme() === 'dark';
+  const { t } = useLanguage();
+  const { width } = useWindowDimensions();
+  const isCompact = width < 360;
   const [stats, setStats] = useState<UserStats | null>(null);
   const [activeTab, setActiveTab] = useState<TabCategory>('Anime');
 
@@ -22,7 +30,7 @@ export default function UserStatsDash() {
   if (!stats) {
     return (
       <View style={{ padding: 20, alignItems: 'center' }}>
-        <Text style={{ color: isDark ? '#fff' : '#000' }}>Memuat statistik...</Text>
+        <Text style={{ color: isDark ? '#fff' : '#000' }}>{t('profile.loadingStats')}</Text>
       </View>
     );
   }
@@ -32,14 +40,14 @@ export default function UserStatsDash() {
     const days = Math.floor(duration.asDays());
     const hours = duration.hours();
     const minutes = duration.minutes();
-    
-    if (days > 0) return `${days} Hari ${hours} Jam`;
-    if (hours > 0) return `${hours} Jam ${minutes} Mnt`;
-    return `${minutes} Menit`;
+
+    if (days > 0) return t('profile.daysHours', { days, hours });
+    if (hours > 0) return t('profile.hoursMinutesShort', { hours, minutes });
+    return t('profile.minutesFull', { minutes });
   };
 
   const formatMsToText = (ms: number) => {
-    if (ms < 60000) return '< 1 Menit';
+    if (ms < 60000) return t('profile.lessThanMinute');
     return formatDaysAndHours(ms);
   };
 
@@ -47,96 +55,111 @@ export default function UserStatsDash() {
     switch (activeTab) {
       case 'Anime':
         return {
-          title: 'Total Anime',
+          title: t('profile.totalAnime'),
           count: stats.animeCount,
-          subCount: `${stats.animeEpisodes} Eps`,
+          subCount: t('profile.episodesWatched', { count: stats.animeEpisodes }),
           timeMs: stats.animeTimeMs,
-          timeLabel: 'Waktu Nonton',
-          icon: 'live-tv',
+          timeLabel: t('profile.watchTime'),
           color: '#6366f1',
           bgLight: isDark ? '#2e3163' : '#e0e7ff',
         };
       case 'Film':
         return {
-          title: 'Total Film',
+          title: t('profile.totalFilm'),
           count: stats.movieCount,
           subCount: '-',
           timeMs: stats.movieTimeMs,
-          timeLabel: 'Waktu Nonton',
-          icon: 'movie',
+          timeLabel: t('profile.watchTime'),
           color: '#ec4899',
           bgLight: isDark ? '#5c2242' : '#fce7f3',
         };
-      case 'TV Series':
-        return {
-          title: 'Total Series',
-          count: stats.seriesCount,
-          subCount: `${stats.seriesEpisodes} Eps`,
-          timeMs: stats.seriesTimeMs,
-          timeLabel: 'Waktu Nonton',
-          icon: 'subscriptions',
-          color: '#8b5cf6',
-          bgLight: isDark ? '#3d266e' : '#ede9fe',
-        };
       case 'Komik':
         return {
-          title: 'Total Komik',
+          title: t('profile.totalComics'),
           count: stats.comicCount,
-          subCount: `${stats.comicChapters} Ch`,
+          subCount: t('profile.chaptersRead', { count: stats.comicChapters }),
           timeMs: stats.comicTimeMs,
-          timeLabel: 'Waktu Baca',
-          icon: 'library-books',
+          timeLabel: t('profile.readTime'),
           color: '#f59e0b',
           bgLight: isDark ? '#6b4505' : '#fef3c7',
-        };
-      case 'Novel':
-        return {
-          title: 'Total Novel',
-          count: stats.novelCount,
-          subCount: `${stats.novelChapters} Ch`,
-          timeMs: stats.novelTimeMs,
-          timeLabel: 'Waktu Baca',
-          icon: 'menu-book',
-          color: '#10b981',
-          bgLight: isDark ? '#054e36' : '#d1fae5',
         };
     }
   };
 
+  const getTabLabel = (tab: TabCategory) => {
+    switch (tab) {
+      case 'Anime':
+        return t('profile.animeStats');
+      case 'Film':
+        return t('profile.filmStats');
+      case 'Komik':
+        return t('profile.comicsStats');
+    }
+  };
+
   const activeData = getTabData();
+  const hPad = isCompact ? 14 : 20;
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#111' }]}>NaoFlix Statistics</Text>
-      
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
+      <Text style={[styles.headerTitle, { marginLeft: hPad, color: isDark ? '#fff' : '#111' }]}>
+        {t('profile.statsTitle')}
+      </Text>
+
+      <View style={[styles.tabsRow, { paddingHorizontal: hPad }]}>
         {TABS.map(tab => {
           const isActive = activeTab === tab;
           return (
-            <TouchableOpacity 
-              key={tab} 
+            <TouchableOpacity
+              key={tab}
               activeOpacity={0.8}
               onPress={() => setActiveTab(tab)}
               style={[
-                styles.tabPill, 
-                { 
-                  backgroundColor: isActive ? (isDark ? '#fff' : '#111') : (isDark ? '#222' : '#f0f0f0'),
-                  borderColor: isActive ? 'transparent' : (isDark ? '#333' : '#ddd'),
+                styles.tabPill,
+                {
+                  backgroundColor: isActive
+                    ? isDark
+                      ? '#fff'
+                      : '#111'
+                    : isDark
+                      ? '#222'
+                      : '#f0f0f0',
+                  borderColor: isActive ? 'transparent' : isDark ? '#333' : '#ddd',
                   borderWidth: 1,
-                }
+                },
               ]}>
-              <Text style={[styles.tabPillText, { color: isActive ? (isDark ? '#000' : '#fff') : (isDark ? '#aaa' : '#666'), fontWeight: isActive ? 'bold' : '500' }]}>
-                {tab}
+              <Text
+                style={[
+                  styles.tabPillText,
+                  {
+                    color: isActive ? (isDark ? '#000' : '#fff') : isDark ? '#aaa' : '#666',
+                    fontWeight: isActive ? 'bold' : '500',
+                  },
+                ]}>
+                {getTabLabel(tab)}
               </Text>
             </TouchableOpacity>
           );
         })}
-      </ScrollView>
+      </View>
 
-      <View style={[styles.statCard, { backgroundColor: activeData.bgLight }]}>
+      <View
+        style={[
+          styles.statCard,
+          {
+            marginHorizontal: hPad,
+            padding: isCompact ? 18 : 24,
+            backgroundColor: activeData.bgLight,
+          },
+        ]}>
         <View style={styles.cardHeaderRow}>
           <View>
-            <Text style={[styles.mainCountText, { color: isDark ? '#fff' : activeData.color }]}>
+            <Text
+              style={[
+                styles.mainCountText,
+                { fontSize: isCompact ? 40 : 48, lineHeight: isCompact ? 48 : 56 },
+                { color: isDark ? '#fff' : activeData.color },
+              ]}>
               {activeData.count}
             </Text>
             <Text style={[styles.mainTitleText, { color: isDark ? '#cbd5e1' : '#64748b' }]}>
@@ -145,13 +168,25 @@ export default function UserStatsDash() {
           </View>
           {activeData.subCount !== '-' && (
             <View style={styles.subCountBadge}>
-              <MaterialIcons name="play-arrow" size={12} color={activeData.color} style={{ marginRight: 2 }} />
-              <Text style={[styles.subCountText, { color: activeData.color }]}>{activeData.subCount}</Text>
+              <MaterialIcons
+                name="play-arrow"
+                size={12}
+                color={activeData.color}
+                style={{ marginRight: 2 }}
+              />
+              <Text style={[styles.subCountText, { color: activeData.color }]}>
+                {activeData.subCount}
+              </Text>
             </View>
           )}
         </View>
 
-        <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]} />
+        <View
+          style={[
+            styles.divider,
+            { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' },
+          ]}
+        />
 
         <View style={styles.bottomStatsRow}>
           <View style={styles.bottomStatItem}>
@@ -181,29 +216,26 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    marginBottom: 16,
-    marginLeft: 20,
+    marginBottom: 14,
     letterSpacing: 0.5,
   },
-  tabsScroll: {
-    paddingHorizontal: 20,
+  tabsRow: {
+    flexDirection: 'row',
     gap: 8,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   tabPill: {
-    paddingHorizontal: 18,
+    flex: 1,
     paddingVertical: 8,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
   tabPillText: {
-    fontSize: 14,
+    fontSize: 13,
   },
   statCard: {
-    marginHorizontal: 20,
     borderRadius: 24,
-    padding: 24,
     elevation: 0,
   },
   cardHeaderRow: {
@@ -212,9 +244,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   mainCountText: {
-    fontSize: 48,
     fontWeight: '900',
-    lineHeight: 56,
   },
   mainTitleText: {
     fontSize: 14,
@@ -241,7 +271,7 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     width: '100%',
-    marginVertical: 24,
+    marginVertical: 20,
   },
   bottomStatsRow: {
     flexDirection: 'row',
@@ -270,3 +300,5 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 });
+
+export default memo(UserStatsDash);

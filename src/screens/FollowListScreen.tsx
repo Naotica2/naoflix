@@ -5,8 +5,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
-  Image,
   ActivityIndicator,
+  InteractionManager,
   useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +16,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackNavigator } from '../types/navigation';
 import { supabase } from '../config/supabaseClient';
 import { getLevelColor } from '../utils/LevelSystem';
+import { useLanguage } from '../misc/LanguageContext';
+import ForumImage from '../component/Forum/ForumImage';
 
 type FollowListRouteProp = RouteProp<RootStackNavigator, 'FollowList'>;
 
@@ -27,46 +29,79 @@ interface FollowListItem {
   level: number;
 }
 
+const FOLLOW_LIST_CACHE_MS = 30_000;
+const followListCache = new Map<string, { items: FollowListItem[]; fetchedAt: number }>();
+
 function FollowListScreen() {
   const isDark = useColorScheme() === 'dark';
+  const { t } = useLanguage();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackNavigator>>();
   const route = useRoute<FollowListRouteProp>();
   const { userId, initialTab } = route.params;
 
   const [activeTab, setActiveTab] = useState<'Followers' | 'Following'>(initialTab);
-  const [users, setUsers] = useState<FollowListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialCached] = useState<FollowListItem[] | null>(() => {
+    const cached = followListCache.get(`${userId}:${initialTab}`);
+    return cached && Date.now() - cached.fetchedAt < FOLLOW_LIST_CACHE_MS ? cached.items : null;
+  });
+  const [users, setUsers] = useState<FollowListItem[]>(() => initialCached ?? []);
+  const [loading, setLoading] = useState(() => initialCached === null);
 
-  useEffect(() => {
-    fetchUsers();
-  }, [activeTab, userId]);
+  const fetchUsers = useCallback(async () => {
+    const cacheKey = `${userId}:${activeTab}`;
+    const cached = followListCache.get(cacheKey);
+    if (cached && Date.now() - cached.fetchedAt < FOLLOW_LIST_CACHE_MS) {
+      setUsers(prev => (prev === cached.items ? prev : cached.items));
+      setLoading(false);
+      return;
+    }
 
-  const fetchUsers = async () => {
     setLoading(true);
     try {
       if (activeTab === 'Followers') {
         const { data, error } = await supabase
           .from('follows')
           .select('profiles!follows_follower_id_fkey(id, username, display_name, avatar_url, level)')
-          .eq('following_id', userId);
+          .eq('following_id', userId)
+          .limit(100);
           
         if (error) throw error;
-        setUsers(data?.map((d: any) => d.profiles).filter(Boolean) || []);
+        const items = data?.map((d: any) => d.profiles).filter(Boolean) || [];
+        followListCache.set(cacheKey, { items, fetchedAt: Date.now() });
+        setUsers(items);
       } else {
         const { data, error } = await supabase
           .from('follows')
           .select('profiles!follows_following_id_fkey(id, username, display_name, avatar_url, level)')
-          .eq('follower_id', userId);
+          .eq('follower_id', userId)
+          .limit(100);
           
         if (error) throw error;
-        setUsers(data?.map((d: any) => d.profiles).filter(Boolean) || []);
+        const items = data?.map((d: any) => d.profiles).filter(Boolean) || [];
+        followListCache.set(cacheKey, { items, fetchedAt: Date.now() });
+        setUsers(items);
       }
     } catch (e) {
       console.warn(`Failed to fetch ${activeTab}:`, e);
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, userId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const task = InteractionManager.runAfterInteractions(() => {
+      if (!cancelled) {
+        fetchUsers();
+      }
+    });
+    return () => {
+      cancelled = true;
+      task.cancel();
+    };
+  }, [fetchUsers]);
+
+  const keyExtractor = useCallback((item: FollowListItem) => item.id, []);
 
   const renderItem = useCallback(({ item }: { item: FollowListItem }) => {
     const levelColor = getLevelColor(item.level);
@@ -79,7 +114,7 @@ function FollowListScreen() {
         
         <View style={[styles.avatar, { backgroundColor: isDark ? '#1a1a1a' : '#ddd' }]}>
           {item.avatar_url ? (
-            <Image source={{ uri: item.avatar_url }} style={styles.avatarImg} />
+            <ForumImage uri={item.avatar_url} recyclingKey={item.avatar_url} style={styles.avatarImg} />
           ) : (
             <Text style={[styles.avatarText, { color: isDark ? '#fff' : '#333' }]}>
               {(item.display_name || item.username || '?').charAt(0).toUpperCase()}
@@ -110,7 +145,7 @@ function FollowListScreen() {
           <MaterialIcons name="arrow-back" size={24} color={isDark ? '#fff' : '#111'} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#111' }]}>
-          {activeTab === 'Followers' ? 'Pengikut' : 'Mengikuti'}
+          {activeTab === 'Followers' ? t('profile.followersTitle') : t('profile.followingTitle')}
         </Text>
       </View>
 
@@ -122,7 +157,7 @@ function FollowListScreen() {
             styles.tabText, 
             { color: isDark ? '#888' : '#666' },
             activeTab === 'Followers' && { color: isDark ? '#fff' : '#111', fontWeight: '700' }
-          ]}>Pengikut</Text>
+          ]}>{t('profile.followersTitle')}</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.tabBtn, activeTab === 'Following' && { borderBottomColor: isDark ? '#fff' : '#111' }]} 
@@ -131,7 +166,7 @@ function FollowListScreen() {
             styles.tabText, 
             { color: isDark ? '#888' : '#666' },
             activeTab === 'Following' && { color: isDark ? '#fff' : '#111', fontWeight: '700' }
-          ]}>Mengikuti</Text>
+          ]}>{t('profile.followingTitle')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -142,13 +177,19 @@ function FollowListScreen() {
       ) : (
         <FlatList
           data={users}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           renderItem={renderItem}
+          removeClippedSubviews
+          initialNumToRender={12}
+          maxToRenderPerBatch={10}
+          windowSize={5}
           contentContainerStyle={{ paddingBottom: 20 }}
           ListEmptyComponent={
             <View style={styles.centerContainer}>
               <Text style={[styles.emptyText, { color: isDark ? '#555' : '#999' }]}>
-                Tidak ada {activeTab === 'Followers' ? 'pengikut' : 'yang diikuti'}.
+                {t('profile.noUsersMatchTab', {
+                  tab: activeTab === 'Followers' ? t('profile.followersTab') : t('profile.followingTab'),
+                })}
               </Text>
             </View>
           }

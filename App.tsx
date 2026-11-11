@@ -40,6 +40,7 @@ import {
   NovelListContext,
 } from './src/misc/context';
 import { AuthProvider, useAuth } from './src/misc/AuthContext';
+import { LanguageProvider } from './src/misc/LanguageContext';
 import { LevelProvider } from './src/misc/LevelContext';
 import { navigationRef, replaceAllWith } from './src/misc/NavigationService';
 import { EpisodeBaruHome, NewAnimeList } from './src/types/anime';
@@ -59,6 +60,9 @@ import UserProfileScreen from './src/screens/UserProfileScreen';
 import SearchUsersScreen from './src/screens/SearchUsersScreen';
 import FollowListScreen from './src/screens/FollowListScreen';
 import DMChatScreen from './src/screens/DMChatScreen';
+import ForumComposerScreen from './src/screens/ForumComposerScreen';
+import ForumPostDetailScreen from './src/screens/ForumPostDetailScreen';
+import ForumUserFeedScreen from './src/screens/ForumUserFeedScreen';
 import { OneSignal } from 'react-native-onesignal';
 import { ONESIGNAL_APP_ID } from '@env';
 
@@ -96,6 +100,7 @@ const CbzReader = lazy(() => import('./src/component/WatchNRead/CbzReader.tsx'))
 const AniDetail = lazy(() => import('./src/component/EpisodeDetail/AniDetail'));
 const Home = lazy(() => import('./src/component/Home/Home'));
 const Video = lazy(() => import('./src/component/WatchNRead/Video'));
+const OfflineVideoPlayer = lazy(() => import('./src/component/WatchNRead/OfflineVideoPlayer'));
 const FailedToConnect = lazy(() => import('./src/component/NeedAttention/FailedToConnect'));
 const NeedUpdate = lazy(() => import('./src/component/NeedAttention/NeedUpdate'));
 
@@ -110,6 +115,7 @@ const NovelDetail = lazy(() => import('./src/component/EpisodeDetail/NovelDetail
 const NovelReading = lazy(() => import('./src/component/WatchNRead/NovelReading'));
 const FilmDetail = lazy(() => import('./src/component/EpisodeDetail/FilmDetail'));
 const FilmPlayer = lazy(() => import('./src/component/WatchNRead/FilmPlayer'));
+const AnimeSchedulePage = lazy(() => import('./src/component/Home/AnimeSchedulePage'));
 const Utils = lazy(() => import('./src/component/Home/Utils'));
 const JoinNobarScreen = lazy(() => import('./src/screens/JoinNobarScreen'));
 
@@ -123,32 +129,45 @@ const linking: LinkingOptions<RootStackNavigator> = {
     initialRouteName: 'connectToServer',
     screens: {
       CbzReader: 'cbzReader',
-      JoinNobar: 'nobar',
+      JoinNobar: {
+        path: 'nobar/:roomId?',
+      },
     },
   },
 
   async getInitialURL() {
     const url = await Linking.getInitialURL();
-    if (
-      url &&
-      (url.startsWith('file://') || url.startsWith('content://')) &&
-      (await ReactNativeBlobUtil.fs.stat(url)).filename.endsWith('.cbz')
-    ) {
-      const encodedUrl = encodeURIComponent(url);
-      return `aniflix://cbzReader?fileUrl=${encodedUrl}`;
+    if (!url) return null;
+    if (url.startsWith('naoflix://') || url.startsWith('aniflix://')) {
+      return url;
+    }
+    if (url.startsWith('file://') || url.startsWith('content://')) {
+      try {
+        const stat = await ReactNativeBlobUtil.fs.stat(url);
+        if ((stat?.filename || '').toLowerCase().endsWith('.cbz')) {
+          const encodedUrl = encodeURIComponent(url);
+          return `aniflix://cbzReader?fileUrl=${encodedUrl}`;
+        }
+      } catch {}
     }
     return null;
   },
 
   subscribe(listener) {
     const onReceiveURL = async ({ url }: { url: string }) => {
-      if (
-        url &&
-        (url.startsWith('file://') || url.startsWith('content://')) &&
-        (await ReactNativeBlobUtil.fs.stat(url)).filename.endsWith('.cbz')
-      ) {
-        const encodedUrl = encodeURIComponent(url);
-        listener(`aniflix://cbzReader?fileUrl=${encodedUrl}`);
+      if (!url) return;
+      if (url.startsWith('naoflix://') || url.startsWith('aniflix://')) {
+        listener(url);
+        return;
+      }
+      if (url.startsWith('file://') || url.startsWith('content://')) {
+        try {
+          const stat = await ReactNativeBlobUtil.fs.stat(url);
+          if ((stat?.filename || '').toLowerCase().endsWith('.cbz')) {
+            const encodedUrl = encodeURIComponent(url);
+            listener(`aniflix://cbzReader?fileUrl=${encodedUrl}`);
+          }
+        } catch {}
       }
     };
 
@@ -162,20 +181,26 @@ export const withSuspenseAndSafeArea = (
   safeArea = true,
   ignoreTop = false,
   ignoreBottom = false,
-) => {
-  const SuspenseComponent = (props: any) => (
-    <SuspenseLoading>
-      <Component {...props} />
-    </SuspenseLoading>
+  useSuspense = true,
+): React.ComponentType<any> => {
+  if (!safeArea && !useSuspense) {
+    return Component;
+  }
+  const InnerComponent = useSuspense
+    ? (props: any) => (
+        <SuspenseLoading>
+          <Component {...props} />
+        </SuspenseLoading>
+      )
+    : Component;
+  if (!safeArea) {
+    return InnerComponent;
+  }
+  return (props: any) => (
+    <SafeAreaWrapper ignoreTop={ignoreTop} ignoreBottom={ignoreBottom}>
+      <InnerComponent {...props} />
+    </SafeAreaWrapper>
   );
-  return (props: any) =>
-    safeArea ? (
-      <SafeAreaWrapper ignoreTop={ignoreTop} ignoreBottom={ignoreBottom}>
-        {<SuspenseComponent {...props} />}
-      </SafeAreaWrapper>
-    ) : (
-      <SuspenseComponent {...props} />
-    );
 };
 
 if (!__DEV__) {
@@ -188,7 +213,7 @@ if (!__DEV__) {
 
 type Screens = {
   name: keyof RootStackNavigator;
-  component: (props: any) => React.JSX.Element;
+  component: React.ComponentType<any>;
   options?: NativeStackNavigationOptions;
 }[];
 
@@ -208,8 +233,8 @@ const screens: Screens = [
     options: undefined,
   },
   { name: 'FromUrl', component: withSuspenseAndSafeArea(FromUrl), options: { headerShown: true } },
-  { name: 'Video', component: withSuspenseAndSafeArea(Video, false), options: undefined },
-  { name: 'connectToServer', component: withSuspenseAndSafeArea(Connecting), options: undefined },
+  { name: 'Video', component: withSuspenseAndSafeArea(Video, false), options: { headerShown: false } },
+  { name: 'connectToServer', component: withSuspenseAndSafeArea(Connecting, false), options: undefined },
   { name: 'NeedUpdate', component: withSuspenseAndSafeArea(NeedUpdate), options: undefined },
   {
     name: 'FailedToConnect',
@@ -235,7 +260,7 @@ const screens: Screens = [
   {
     name: 'FilmPlayer',
     component: withSuspenseAndSafeArea(FilmPlayer, false),
-    options: { headerShown: true },
+    options: { headerShown: false },
   },
   {
     name: 'SeeMore',
@@ -254,48 +279,74 @@ const screens: Screens = [
   },
   {
     name: 'LoginScreen',
-    component: withSuspenseAndSafeArea(LoginScreen),
+    component: withSuspenseAndSafeArea(LoginScreen, false, false, false, false),
     options: undefined,
   },
   {
     name: 'UsernameSetupScreen',
-    component: withSuspenseAndSafeArea(UsernameSetupScreen),
+    component: withSuspenseAndSafeArea(UsernameSetupScreen, true, false, false, false),
     options: { headerShown: false, navigationBarColor: '#000' },
   },
   {
     name: 'EditProfile',
-    component: withSuspenseAndSafeArea(EditProfileScreen),
+    component: withSuspenseAndSafeArea(EditProfileScreen, true, false, false, false),
     options: { headerShown: false },
   },
   {
     name: 'UserProfile',
-    component: withSuspenseAndSafeArea(UserProfileScreen),
+    component: withSuspenseAndSafeArea(UserProfileScreen, true, false, false, false),
     options: { headerShown: false },
   },
   {
     name: 'SearchUsers',
-    component: withSuspenseAndSafeArea(SearchUsersScreen),
+    component: withSuspenseAndSafeArea(SearchUsersScreen, true, false, false, false),
     options: { headerShown: false },
   },
   {
     name: 'FollowList',
-    component: withSuspenseAndSafeArea(FollowListScreen),
+    component: withSuspenseAndSafeArea(FollowListScreen, true, false, false, false),
     options: { headerShown: false },
   },
   {
     name: 'DMChat',
-    component: withSuspenseAndSafeArea(DMChatScreen, true, true),
+    component: withSuspenseAndSafeArea(DMChatScreen, true, true, false, false),
     options: { headerShown: false },
   },
   {
     name: 'ErrorScreen',
     component: ErrorScreen,
   },
+  {
+    name: 'OfflineVideoPlayer',
+    component: withSuspenseAndSafeArea(OfflineVideoPlayer, false),
+    options: { headerShown: false },
+  },
+  {
+    name: 'AnimeSchedule',
+    component: withSuspenseAndSafeArea(AnimeSchedulePage, false),
+    options: { headerShown: false },
+  },
+  {
+    name: 'ForumComposer',
+    component: ForumComposerScreen,
+    options: { headerShown: false },
+  },
+  {
+    name: 'ForumPostDetail',
+    component: ForumPostDetailScreen,
+    options: { headerShown: false },
+  },
+  {
+    name: 'ForumUserFeed',
+    component: ForumUserFeedScreen,
+    options: { headerShown: false },
+  },
 ];
 
 function App() {
   const [isOpen, setIsOpen] = useState(false);
   const [cfUrl, setCfUrl] = useState('');
+  const [isLogin, setIsLogin] = useState(false);
 
   const { isLoading: authLoading } = useAuth();
 
@@ -311,9 +362,10 @@ function App() {
   const globalStyles = useGlobalStyles();
 
   useEffect(() => {
-    setWebViewOpen.openWebViewCF = (isOpenCF: boolean, url: string) => {
+    setWebViewOpen.openWebViewCF = (isOpenCF: boolean, url: string, _isLogin: boolean = false) => {
       setIsOpen(isOpenCF);
       setCfUrl(url);
+      setIsLogin(_isLogin);
     };
   }, []);
 
@@ -345,6 +397,56 @@ function App() {
     DialogManager.setupDialog(setDialogVisible, setDialogContent);
   }, []);
 
+  const episodeContextValue = useMemo(() => ({ paramsState, setParamsState }), [paramsState]);
+  const movieContextValue = useMemo(
+    () => ({
+      paramsState: movieParamsState,
+      setParamsState: setMovieParamsState,
+    }),
+    [movieParamsState],
+  );
+  const comicsContextValue = useMemo(
+    () => ({
+      paramsState: comicsData,
+      setParamsState: setComicsData,
+    }),
+    [comicsData],
+  );
+  const novelContextValue = useMemo(
+    () => ({
+      paramsState: novelData,
+      setParamsState: setNovelData,
+    }),
+    [novelData],
+  );
+  const cfBypassContextValue = useMemo(
+    () => ({ isOpen, url: cfUrl, isLogin, setIsOpen }),
+    [isOpen, cfUrl, isLogin],
+  );
+  const stackScreenOptions = useMemo<NativeStackNavigationOptions>(
+    () => ({
+      headerShown: false,
+      header: props => (
+        <Appbar.Header>
+          {props.back && (
+            <Appbar.BackAction
+              onPress={() => {
+                props.navigation.goBack();
+              }}
+            />
+          )}
+          <Appbar.Content
+            titleStyle={{ fontWeight: 'bold' }}
+            title={
+              typeof props.options.headerTitle === 'string' ? props.options.headerTitle : ''
+            }
+          />
+        </Appbar.Header>
+      ),
+    }),
+    [],
+  );
+
   if (authLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
@@ -358,33 +460,11 @@ function App() {
       <KeyboardProvider>
         <ErrorBoundary FallbackComponent={FallbackComponent}>
           <GestureHandlerRootView style={{ flex: 1 }}>
-            <EpisodeBaruHomeContext
-              value={useMemo(() => ({ paramsState, setParamsState }), [paramsState])}>
-                <MovieListHomeContext
-                  value={useMemo(
-                    () => ({
-                      paramsState: movieParamsState,
-                      setParamsState: setMovieParamsState,
-                    }),
-                    [movieParamsState],
-                  )}>
-                  <ComicsListContext
-                    value={useMemo(
-                      () => ({
-                        paramsState: comicsData,
-                        setParamsState: setComicsData,
-                      }),
-                      [comicsData],
-                    )}>
-                    <NovelListContext
-                      value={useMemo(
-                        () => ({
-                          paramsState: novelData,
-                          setParamsState: setNovelData,
-                        }),
-                        [novelData],
-                      )}>
-                      <PaperProvider theme={colorScheme === 'dark' ? MDDark : MDLight}>
+            <EpisodeBaruHomeContext value={episodeContextValue}>
+              <MovieListHomeContext value={movieContextValue}>
+                <ComicsListContext value={comicsContextValue}>
+                  <NovelListContext value={novelContextValue}>
+                    <PaperProvider theme={colorScheme === 'dark' ? MDDark : MDLight}>
                       <NavigationContainer
                         linking={linking}
                         ref={navigationRef}
@@ -415,45 +495,23 @@ function App() {
                         </Portal>
                         <Stack.Navigator
                           initialRouteName="connectToServer"
-                          screenOptions={{
-                            headerShown: false,
-                            header: props => (
-                              <Appbar.Header>
-                                {props.back && (
-                                  <Appbar.BackAction
-                                    onPress={() => {
-                                      props.navigation.goBack();
-                                    }}
-                                  />
-                                )}
-                                <Appbar.Content
-                                  titleStyle={{ fontWeight: 'bold' }}
-                                  title={
-                                    typeof props.options.headerTitle === 'string'
-                                      ? props.options.headerTitle
-                                      : ''
-                                  }
-                                />
-                              </Appbar.Header>
-                            ),
-                          }}>
+                          screenOptions={stackScreenOptions}>
                           {screens.map(({ name, component, options }) => (
-                            <Stack.Screen key={name} name={name} options={options}>
-                              {component}
-                            </Stack.Screen>
+                            <Stack.Screen
+                              key={name}
+                              name={name}
+                              component={component}
+                              options={options}
+                            />
                           ))}
                         </Stack.Navigator>
-                        <CFBypassIsOpenContext
-                          value={useMemo(
-                            () => ({ isOpen, url: cfUrl, setIsOpen }),
-                            [isOpen, cfUrl],
-                          )}>
+                        <CFBypassIsOpenContext.Provider value={cfBypassContextValue}>
                           {isOpen && (
                             <Suspense>
                               <CFBypassWebView />
                             </Suspense>
                           )}
-                        </CFBypassIsOpenContext>
+                        </CFBypassIsOpenContext.Provider>
                         {__DEV__ && (
                           <View style={styles.Dev} pointerEvents="none">
                             <Text style={[globalStyles.text, styles.DevText]}>Dev</Text>
@@ -462,9 +520,9 @@ function App() {
                       </NavigationContainer>
                       <ChatForum />
                     </PaperProvider>
-                    </NovelListContext>
-                  </ComicsListContext>
-                </MovieListHomeContext>
+                  </NovelListContext>
+                </ComicsListContext>
+              </MovieListHomeContext>
             </EpisodeBaruHomeContext>
           </GestureHandlerRootView>
         </ErrorBoundary>
@@ -492,11 +550,13 @@ const styles = StyleSheet.create({
 
 function AppWithAuth() {
   return (
-    <AuthProvider>
-      <LevelProvider>
-        <App />
-      </LevelProvider>
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <LevelProvider>
+          <App />
+        </LevelProvider>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
 

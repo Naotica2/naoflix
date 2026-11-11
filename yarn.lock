@@ -6560,6 +6560,52 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expo-image-loader@npm:~6.0.0":
+  version: 6.0.0
+  resolution: "expo-image-loader@npm:6.0.0"
+  peerDependencies:
+    expo: "*"
+  checksum: 564f4930a4d688571ed61bfc84aa0a38adf550fd01d4d40cf76e8cc315e52a8e32b59dcaf6527231765888e25d8bea829f1953b8c50580fefb3ab0e647067a33
+  languageName: node
+  linkType: hard
+
+"expo-image-manipulator@npm:~14.0.8":
+  version: 14.0.8
+  resolution: "expo-image-manipulator@npm:14.0.8"
+  dependencies:
+    expo-image-loader: ~6.0.0
+  peerDependencies:
+    expo: "*"
+  checksum: ae00d2a5f45016c290e8318c785ba4f4d08bb23acfb25f85f0782af85dc62731484886b21f44f7995ee78e7a53317df6d0d2dc72cd1c62ffa44eccc06400218e
+  languageName: node
+  linkType: hard
+
+"expo-image-picker@npm:~17.0.11":
+  version: 17.0.11
+  resolution: "expo-image-picker@npm:17.0.11"
+  dependencies:
+    expo-image-loader: ~6.0.0
+  peerDependencies:
+    expo: "*"
+  checksum: b5287f133c0077c59d88c26460bb3657c37afa18d5a6b6522729477f2313a77d824780945a196eef4b47b7a73d65551b32cf7240c3168b3ef8982044d9cf03ea
+  languageName: node
+  linkType: hard
+
+"expo-image@npm:~3.0.11":
+  version: 3.0.11
+  resolution: "expo-image@npm:3.0.11"
+  peerDependencies:
+    expo: "*"
+    react: "*"
+    react-native: "*"
+    react-native-web: "*"
+  peerDependenciesMeta:
+    react-native-web:
+      optional: true
+  checksum: 3012bad604609187aa381eced26785fae65122016701a95b9cee91c4721ab3c20fd34dabbc8afed37c0f838740c3bf16827f89c0f2d53771d535e18fbfe279ec
+  languageName: node
+  linkType: hard
+
 "expo-json-utils@npm:~0.15.0":
   version: 0.15.0
   resolution: "expo-json-utils@npm:0.15.0"
@@ -9794,6 +9840,9 @@ __metadata:
     expo: ^54.0.33
     expo-clipboard: ~8.0.8
     expo-document-picker: ~14.0.8
+    expo-image: ~3.0.11
+    expo-image-manipulator: ~14.0.8
+    expo-image-picker: ~17.0.11
     expo-linear-gradient: ~15.0.8
     expo-media-library: ~18.2.1
     expo-splash-screen: ~31.0.13

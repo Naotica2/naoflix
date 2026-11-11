@@ -46,6 +46,7 @@ import { ShowSkeletonLoading, RenderScrollComponent } from './AnimePage';
 import DialogManager from '../../utils/dialogManager';
 import { DatabaseManager, useModifiedKeyValueIfFocused } from '../../utils/DatabaseManager';
 import HeaderInfo from './HeaderInfo';
+import { tSync, useLanguage } from '../../misc/LanguageContext';
 
 type NovelPageProps = BottomTabScreenProps<HomeNavigator, 'HomePage'>;
 
@@ -55,6 +56,7 @@ const NovelPage = memo(NovelPageComponent);
 export default NovelPage;
 
 function NovelPageComponent(_props: NovelPageProps) {
+  const { t } = useLanguage();
   const globalStyles = useGlobalStyles();
   const colorScheme = useColorScheme();
   const styles = useStyles();
@@ -76,7 +78,14 @@ function NovelPageComponent(_props: NovelPageProps) {
 
   const searchHistory = useModifiedKeyValueIfFocused<string[]>(
     'novelSearchHistory',
-    result => JSON.parse(result) as string[],
+    result => {
+      try {
+        return JSON.parse(result) as string[];
+      } catch {
+        return [] as string[];
+      }
+    },
+    [] as string[],
   );
 
   const clearSearch = useCallback(() => {
@@ -103,14 +112,11 @@ function NovelPageComponent(_props: NovelPageProps) {
       })
       .catch(err => {
         if (err.name === 'AbortError') return;
-        DialogManager.alert('Error', 'Gagal mencari novel');
+        DialogManager.alert(tSync('common.error'), tSync('search.searchNovelsFailed'));
       })
       .finally(() => {
-        if (searchHistory.includes(searchText)) {
-          searchHistory.splice(searchHistory.indexOf(searchText), 1);
-        }
-        searchHistory.unshift(searchText);
-        DatabaseManager.set('novelSearchHistory', JSON.stringify(searchHistory));
+        const nextHistory = [searchText, ...searchHistory.filter(h => h !== searchText)];
+        DatabaseManager.set('novelSearchHistory', JSON.stringify(nextHistory));
         setSearchLoading(false);
       });
   }, [searchHistory, searchText]);
@@ -166,7 +172,6 @@ function NovelPageComponent(_props: NovelPageProps) {
 
   return (
     <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
-      {/* SEARCH BAR */}
       <View style={{ paddingTop: insets.top, paddingHorizontal: 12, paddingBottom: 6, backgroundColor: styles.container.backgroundColor }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           {showSearchHistory && (
@@ -186,7 +191,7 @@ function NovelPageComponent(_props: NovelPageProps) {
               onIconPress={submitSearch}
               onChangeText={setSearchText}
               onFocus={onTextInputFocus}
-              placeholder="Cari novel..."
+              placeholder={t('search.placeholderNovels')}
               value={searchText}
               autoCorrect={false}
               ref={textInputRef}
@@ -204,17 +209,16 @@ function NovelPageComponent(_props: NovelPageProps) {
       {searchLoading && (
         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, padding: 8 }}>
           <ActivityIndicator size="small" color={theme.colors.primary} />
-          <Text style={[globalStyles.text, { opacity: 0.8 }]}>Mencari novel...</Text>
+          <Text style={[globalStyles.text, { opacity: 0.8 }]}>{t('search.searchingNovels')}</Text>
         </View>
       )}
 
       {hasSearchResults && !searchLoading && (
         <View style={{ flex: 1 }}>
           <Text style={[globalStyles.text, { fontWeight: 'bold', fontSize: 13, textAlign: 'center', marginVertical: 4 }]}>
-            Hasil pencarian untuk: {currentSearchQuery}
+            {t('search.resultsPrefix', { query: currentSearchQuery })}
           </Text>
           <FlashList
-        estimatedItemSize={200}
             data={novelSearchData}
             keyExtractor={(item, index) => `novel-search-${index}`}
             renderItem={({ item }) => <NovelSearchItem item={item} navigation={navigation} />}
@@ -234,9 +238,9 @@ function NovelPageComponent(_props: NovelPageProps) {
       {isSearchEmpty && !searchLoading && (
         <Reanimated.View entering={FadeInUp} style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <Icon name="search-minus" size={60} color={theme.colors.outline} style={{ marginBottom: 15 }} />
-          <Text style={[globalStyles.text, { fontSize: 20, fontWeight: 'bold', marginBottom: 8 }]}>Novel tidak ditemukan</Text>
+          <Text style={[globalStyles.text, { fontSize: 20, fontWeight: 'bold', marginBottom: 8 }]}>{t('search.novelsNotFound')}</Text>
           <Text style={[globalStyles.text, { fontSize: 14, opacity: 0.6, textAlign: 'center', paddingHorizontal: 40 }]}>
-            Coba kata kunci lain.
+            {t('search.tryOtherKeywords')}
           </Text>
           <TouchableOpacityAnimated style={novelStyles.closeSearchResult} onPress={clearSearch} entering={ZoomIn} exiting={ZoomOut}>
             <Icon name="times" size={30} style={{ alignSelf: 'center' }} color="#dadada" />
@@ -267,7 +271,6 @@ function NovelPageComponent(_props: NovelPageProps) {
           exiting={ZoomOut.springify()}
           style={novelStyles.searchHistoryContainer}>
           <FlashList
-        estimatedItemSize={200}
             drawDistance={250}
             keyboardShouldPersistTaps="always"
             data={searchHistory}
@@ -281,7 +284,7 @@ function NovelPageComponent(_props: NovelPageProps) {
             ListHeaderComponent={
               <View style={novelStyles.searchHistoryHeader}>
                 <Text style={[globalStyles.text, { fontWeight: 'bold', flex: 1, textAlign: 'center' }]}>
-                  Riwayat Pencarian: {searchHistory.length}
+                  {t('search.recentHistory')}: {searchHistory.length}
                 </Text>
               </View>
             }
@@ -296,6 +299,7 @@ function NovelPageComponent(_props: NovelPageProps) {
 
 const NovelLatestList = memo(NovelLatestListComponent);
 function NovelLatestListComponent() {
+  const { t } = useLanguage();
   const styles = useStyles();
   const [isError, setIsError] = useState(false);
   const navigation = useNavigation<NavigationProp<RootStackNavigator>>();
@@ -351,14 +355,14 @@ function NovelLatestListComponent() {
   return (
     <View style={styles.sectionContainer}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Novel Terbaru</Text>
+        <Text style={styles.sectionTitle}>{t('lists.headerLatestNovels')}</Text>
         <TouchableOpacity
           style={styles.seeMoreButton}
           disabled={!data || data.length === 0}
           onPress={() => {
             navigation.dispatch(StackActions.push('SeeMore', { type: 'NovelsList' }));
           }}>
-          <Text style={styles.seeMoreText}>Lihat Semua</Text>
+          <Text style={styles.seeMoreText}>{t('common.seeMore')}</Text>
           <MaterialIcon name="chevron-right" style={styles.seeMoreText} />
         </TouchableOpacity>
       </View>
@@ -366,13 +370,12 @@ function NovelLatestListComponent() {
       {isError && (
         <View style={styles.errorContainer}>
           <MaterialIcon name="error-outline" size={24} color="#d80000" />
-          <Text style={styles.errorText}>Error mendapatkan data. Silahkan refresh untuk mencoba lagi</Text>
+          <Text style={styles.errorText}>{t('lists.serverDataErrorRefresh')}</Text>
         </View>
       )}
 
       {data && data?.length !== 0 ? (
         <FlashList
-        estimatedItemSize={200}
           renderScrollComponent={RenderScrollComponent}
           contentContainerStyle={{ gap: 3 }}
           horizontal
@@ -391,6 +394,7 @@ function NovelLatestListComponent() {
 
 const NovelPopularList = memo(NovelPopularListComponent);
 function NovelPopularListComponent() {
+  const { t } = useLanguage();
   const styles = useStyles();
   const [isError, setIsError] = useState(false);
   const [data, setData] = useState<LatestNovel[] | null>(null);
@@ -446,14 +450,14 @@ function NovelPopularListComponent() {
   return (
     <View style={styles.sectionContainer}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Novel Populer</Text>
+        <Text style={styles.sectionTitle}>{t('lists.headerPopularNovels')}</Text>
         <TouchableOpacity
           style={styles.seeMoreButton}
           disabled={!data || data.length === 0}
           onPress={() => {
             navigation.dispatch(StackActions.push('SeeMore', { type: 'NovelsPopular' }));
           }}>
-          <Text style={styles.seeMoreText}>Lihat Semua</Text>
+          <Text style={styles.seeMoreText}>{t('common.seeMore')}</Text>
           <MaterialIcon name="chevron-right" style={styles.seeMoreText} />
         </TouchableOpacity>
       </View>
@@ -461,13 +465,12 @@ function NovelPopularListComponent() {
       {isError && (
         <View style={styles.errorContainer}>
           <MaterialIcon name="error-outline" size={24} color="#d80000" />
-          <Text style={styles.errorText}>Error mendapatkan data. Silahkan refresh untuk mencoba lagi</Text>
+          <Text style={styles.errorText}>{t('lists.serverDataErrorRefresh')}</Text>
         </View>
       )}
 
       {data && data.length !== 0 ? (
         <FlashList
-        estimatedItemSize={200}
           renderScrollComponent={RenderScrollComponent}
           contentContainerStyle={{ gap: 3 }}
           horizontal
@@ -545,12 +548,14 @@ function HistoryItem({ item, index, onSelect }: { item: string; index: number; o
         <TouchableOpacityReactNative
           hitSlop={14}
           onPress={async () => {
-            DatabaseManager.set(
-              'novelSearchHistory',
-              JSON.stringify(
-                (JSON.parse((await DatabaseManager.get('novelSearchHistory')) ?? '[]') as string[]).filter((_, i) => i !== index),
-              ),
-            );
+            try {
+              const raw = (await DatabaseManager.get('novelSearchHistory')) ?? '[]';
+              const parsed = JSON.parse(raw);
+              const next = (Array.isArray(parsed) ? (parsed as string[]) : []).filter((_, i) => i !== index);
+              DatabaseManager.set('novelSearchHistory', JSON.stringify(next));
+            } catch {
+              DatabaseManager.set('novelSearchHistory', '[]');
+            }
           }}>
           <Icon name="times" size={25} color="#ff0f0f" />
         </TouchableOpacityReactNative>

@@ -14,6 +14,7 @@ import {
 import appPackage from '../../../../package.json';
 import { DonasiSaweria } from '../../Loading Screen/Connect';
 import DarkOverlay from '../../misc/DarkOverlay';
+import { useLanguage } from '../../../misc/LanguageContext';
 
 const tokyo = require('../../../assets/tokyo.jpg');
 
@@ -25,6 +26,7 @@ const allDependencies = Object.entries({
 function About() {
   const theme = useTheme();
   const styles = useStyles();
+  const { t } = useLanguage();
 
   const renderHeader = () => (
     <View>
@@ -42,52 +44,49 @@ function About() {
           {appPackage.version} • Build JS_{appPackage.OTAJSVersion}
         </Text>
         <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant }}>
-          Dikembangkan oleh Naotica
+          {t('utils.aboutDevBy')}
         </Text>
       </View>
 
       <Card style={styles.card}>
         <Card.Content>
           <Text variant="bodyMedium" style={{ textAlign: 'center', marginBottom: 8 }}>
-            NaoFlix adalah aplikasi streaming anime non-komersial yang dibangun untuk tujuan
-            pembelajaran mobile development menggunakan React Native.
+            {t('utils.aboutSummary')}
           </Text>
         </Card.Content>
       </Card>
 
       <Text variant="titleMedium" style={styles.sectionHeader}>
-        ⚖️ Pelepasan Tanggung Jawab
+        {t('utils.aboutDisclaimerTitle')}
       </Text>
       <Surface style={styles.surface} elevation={1}>
         <View style={{ padding: 16 }}>
           <Text variant="bodySmall" style={styles.disclaimerText}>
-            • <Text style={{ fontWeight: 'bold' }}>Ketiadaan Hosting:</Text> Kami tidak menyimpan,
-            menghosting, atau memiliki kontrol atas konten video yang ditampilkan. Semua data
-            diambil dari sumber pihak ketiga yang tersedia publik di internet.
+            • <Text style={{ fontWeight: 'bold' }}>{t('utils.aboutNoHostingTitle')}:</Text>{' '}
+            {t('utils.aboutNoHostingDesc')}
           </Text>
           <Text variant="bodySmall" style={styles.disclaimerText}>
-            • <Text style={{ fontWeight: 'bold' }}>Tanggung Jawab:</Text> Pengguna bertanggung jawab
-            penuh atas tindakan mereka. Pengembang tidak bertanggung jawab atas penyalahgunaan atau
-            pelanggaran hak cipta.
+            • <Text style={{ fontWeight: 'bold' }}>{t('utils.aboutUserRespTitle')}:</Text>{' '}
+            {t('utils.aboutUserRespDesc')}
           </Text>
           <Text variant="bodySmall" style={styles.disclaimerText}>
-            • <Text style={{ fontWeight: 'bold' }}>Hak Cipta:</Text> Semua merek dagang, judul, dan
-            poster adalah milik sah dari pemegang lisensi masing-masing.
+            • <Text style={{ fontWeight: 'bold' }}>{t('utils.aboutCopyrightTitle')}:</Text>{' '}
+            {t('utils.aboutCopyrightDesc')}
           </Text>
           <Text variant="bodySmall" style={{ ...styles.disclaimerText, marginBottom: 0 }}>
-            • <Text style={{ fontWeight: 'bold' }}>Dukungan Resmi:</Text> Kami sangat menyarankan
-            Anda menonton melalui platform resmi seperti Crunchyroll, Netflix, dll.
+            • <Text style={{ fontWeight: 'bold' }}>{t('utils.aboutOfficialTitle')}:</Text>{' '}
+            {t('utils.aboutOfficialDesc')}
           </Text>
         </View>
       </Surface>
 
       <Text variant="titleMedium" style={styles.sectionHeader}>
-        📄 Lisensi Perangkat Lunak
+        {t('utils.aboutLicenseTitle')}
       </Text>
       <Surface style={styles.surface} elevation={1}>
         <List.Item
           title="GPL-3.0 License"
-          description="Aplikasi ini bersifat Open Source (Copyleft)"
+          description={t('utils.aboutGplDesc')}
           left={props => <List.Icon {...props} icon="file-certificate" />}
           right={props => <List.Icon {...props} icon="open-in-new" />}
           onPress={() => Linking.openURL('https://www.gnu.org/licenses/gpl-3.0.html')}
@@ -95,24 +94,24 @@ function About() {
       </Surface>
 
       <Text variant="titleMedium" style={styles.sectionHeader}>
-        Support Developer
+        {t('settings.donateTitle')}
       </Text>
       <Surface style={styles.surface} elevation={1}>
         <View style={{ padding: 16, alignItems: 'center' }}>
           <Text variant="bodyMedium" style={{ marginBottom: 12, textAlign: 'center' }}>
-            Bantu kami terus mengembangkan NaoFlix dengan memberikan donasi melalui Saweria.
+            {t('account.donateDesc')}
           </Text>
           <DonasiSaweria />
         </View>
       </Surface>
 
       <Text variant="titleMedium" style={styles.sectionHeader}>
-        Kredit & Sumber Daya
+        {t('utils.aboutCreditsTitle')}
       </Text>
       <Surface style={styles.surface} elevation={1}>
         <List.Item
-          title="Background Image"
-          description="Tokyo Architecture by rawpixel"
+          title={t('utils.aboutBgImageTitle')}
+          description={t('utils.aboutBgImageDesc')}
           left={props => <List.Icon {...props} icon="image" />}
           right={props => <List.Icon {...props} icon="open-in-new" />}
           onPress={() =>
@@ -123,8 +122,8 @@ function About() {
         />
         <Divider />
         <List.Item
-          title="Kutipan/Quotes"
-          description="Repository quotes-indonesia"
+          title={t('utils.aboutQuotesTitle')}
+          description={t('utils.aboutQuotesDesc')}
           left={props => <List.Icon {...props} icon="format-quote-close" />}
           right={props => <List.Icon {...props} icon="open-in-new" />}
           onPress={() => Linking.openURL('https://github.com/lakuapik/quotes-indonesia')}
@@ -132,12 +131,12 @@ function About() {
       </Surface>
 
       <Text variant="titleMedium" style={styles.sectionHeader}>
-        Open Source Libraries
+        {t('utils.aboutLibrariesTitle')}
       </Text>
       <Text
         variant="bodySmall"
         style={{ marginHorizontal: 16, marginBottom: 8, color: theme.colors.onSurfaceVariant }}>
-        Terima kasih kepada para pengembang library berikut:
+        {t('utils.aboutLibrariesThanks')}
       </Text>
     </View>
   );
@@ -145,7 +144,7 @@ function About() {
   const renderFooter = () => (
     <View style={{ padding: 24, alignItems: 'center' }}>
       <Text variant="labelSmall" style={{ color: theme.colors.outline }}>
-        Made with ❤️ using React Native & Expo
+        {t('utils.aboutMadeWith')}
       </Text>
     </View>
   );
@@ -156,7 +155,6 @@ function About() {
 
       <LegendList
         data={allDependencies}
-        estimatedItemSize={56}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={renderHeader}
         ListFooterComponent={renderFooter}

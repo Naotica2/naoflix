@@ -6,9 +6,9 @@ export interface Database {
   public: {
     Tables: {
       profiles: {
-        Row: { id: string; username: string; avatar_url: string | null; display_name: string | null; bio: string; banner_url: string | null; total_exp: number; level: number; created_at: string; is_vip: boolean; nobar_count: number; last_nobar_date: string | null; vip_until: string | null };
-        Insert: { id: string; username: string; avatar_url?: string | null; display_name?: string | null; bio?: string; banner_url?: string | null; total_exp?: number; level?: number; is_vip?: boolean; nobar_count?: number; last_nobar_date?: string | null; vip_until?: string | null };
-        Update: { id?: string; username?: string; avatar_url?: string | null; display_name?: string | null; bio?: string; banner_url?: string | null; total_exp?: number; level?: number; is_vip?: boolean; nobar_count?: number; last_nobar_date?: string | null; vip_until?: string | null };
+        Row: { id: string; username: string; avatar_url: string | null; display_name: string | null; bio: string; banner_url: string | null; total_exp: number; level: number; created_at: string };
+        Insert: { id: string; username: string; avatar_url?: string | null; display_name?: string | null; bio?: string; banner_url?: string | null; total_exp?: number; level?: number };
+        Update: { id?: string; username?: string; avatar_url?: string | null; display_name?: string | null; bio?: string; banner_url?: string | null; total_exp?: number; level?: number };
         Relationships: [];
       };
       follows: {
@@ -56,9 +56,147 @@ export interface Database {
           { foreignKeyName: 'dm_messages_user_id_fkey'; columns: ['user_id']; isOneToOne: false; referencedRelation: 'profiles'; referencedColumns: ['id'] }
         ];
       };
+      forum_posts: {
+        Row: {
+          id: string;
+          author_id: string;
+          category: string;
+          post_type: string;
+          title: string;
+          body: string;
+          media_items: any;
+          linked_media: any;
+          poll_options: any;
+          poll_tallies: any;
+          poll_expires_at: string | null;
+          rating: number | null;
+          nobar_room_id: string | null;
+          external_link: string | null;
+          is_spoiler: boolean;
+          spoiler_label: string | null;
+          is_nsfw: boolean;
+          is_pinned: boolean;
+          status: string;
+          upvotes_count: number;
+          downvotes_count: number;
+          score: number;
+          comments_count: number;
+          hot_score: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          author_id: string;
+          category: string;
+          post_type: string;
+          title: string;
+          body?: string;
+          media_items?: any;
+          linked_media?: any;
+          poll_options?: any;
+          poll_tallies?: any;
+          poll_expires_at?: string | null;
+          rating?: number | null;
+          nobar_room_id?: string | null;
+          external_link?: string | null;
+          is_spoiler?: boolean;
+          spoiler_label?: string | null;
+          is_nsfw?: boolean;
+          is_pinned?: boolean;
+          status?: string;
+        };
+        Update: {
+          title?: string;
+          body?: string;
+          status?: string;
+          is_spoiler?: boolean;
+          spoiler_label?: string | null;
+          is_nsfw?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [
+          { foreignKeyName: 'forum_posts_author_id_fkey'; columns: ['author_id']; isOneToOne: false; referencedRelation: 'profiles'; referencedColumns: ['id'] }
+        ];
+      };
+      forum_post_votes: {
+        Row: { post_id: string; user_id: string; value: number; created_at: string };
+        Insert: { post_id: string; user_id: string; value: number };
+        Update: { value?: number };
+        Relationships: [];
+      };
+      forum_comments: {
+        Row: {
+          id: string;
+          post_id: string;
+          author_id: string;
+          parent_id: string | null;
+          depth: number;
+          body: string;
+          image_item: any;
+          is_spoiler: boolean;
+          status: string;
+          score: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          post_id: string;
+          author_id: string;
+          parent_id?: string | null;
+          depth?: number;
+          body?: string;
+          image_item?: any;
+          is_spoiler?: boolean;
+          status?: string;
+        };
+        Update: { body?: string; status?: string };
+        Relationships: [];
+      };
+      forum_comment_votes: {
+        Row: { comment_id: string; user_id: string; value: number; created_at: string };
+        Insert: { comment_id: string; user_id: string; value: number };
+        Update: { value?: number };
+        Relationships: [];
+      };
+      forum_poll_votes: {
+        Row: { post_id: string; user_id: string; option_index: number; created_at: string };
+        Insert: { post_id: string; user_id: string; option_index: number };
+        Update: { option_index?: number };
+        Relationships: [];
+      };
+      forum_bookmarks: {
+        Row: { user_id: string; post_id: string; created_at: string };
+        Insert: { user_id: string; post_id: string };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      forum_reports: {
+        Row: { id: string; reporter_id: string; target_type: string; target_id: string; reason: string; details: string | null; created_at: string };
+        Insert: { id?: string; reporter_id: string; target_type: string; target_id: string; reason: string; details?: string | null };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      user_blocks: {
+        Row: { blocker_id: string; blocked_id: string; created_at: string };
+        Insert: { blocker_id: string; blocked_id: string };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      forum_upload_logs: {
+        Row: { id: string; user_id: string; provider: string; storage_path: string; file_id: string | null; size_bytes: number; created_at: string };
+        Insert: { id?: string; user_id: string; provider: string; storage_path: string; file_id?: string | null; size_bytes: number };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      [key: string]: {
+        Args: Record<string, any>;
+        Returns: any;
+      };
+    };
     Enums: Record<string, never>;
   };
 }

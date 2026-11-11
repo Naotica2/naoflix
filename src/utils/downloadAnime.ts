@@ -1,8 +1,10 @@
 import { useCallback } from 'react';
 import { PermissionsAndroid, Platform } from 'react-native';
 import RNFetchBlob from 'react-native-blob-util';
+import { tSync } from '../misc/LanguageContext';
 import deviceUserAgent from './deviceUserAgent';
 import DialogManager from './dialogManager';
+import getStreamHeaders from './streamHeaders';
 
 function useDownloadAnime() {
   const downloadAnime = useCallback(
@@ -14,18 +16,18 @@ function useDownloadAnime() {
       force: boolean | undefined = false,
       callback: () => any,
     ) => {
-      let Title = _Title.replace(/[/\\:*?"<>|]/g, '_'); //safe title
+      let Title = _Title.replace(/[/\\:*?"<>|]/g, '_');
       if (downloadSource.includes(source) && force === false) {
         DialogManager.alert(
-          'Lanjutkan?',
-          'kamu sudah mengunduh bagian ini. Masih ingin melanjutkan?',
+          tSync('downloadAnime.continueTitle'),
+          tSync('downloadAnime.continueDesc'),
           [
             {
-              text: 'Batalkan',
+              text: tSync('common.cancel'),
               onPress: () => null,
             },
             {
-              text: 'Lanjutkan',
+              text: tSync('downloadAnime.continueTitle').replace('?', ''),
               onPress: () => {
                 downloadAnime(source, downloadSource, Title, resolution, true, callback);
               },
@@ -42,7 +44,7 @@ function useDownloadAnime() {
       const isGranted = await PermissionsAndroid.check(
         PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
       );
-      if (isGranted || Number(Platform.Version) >= 33) {
+      if (isGranted || Number(Platform.Version) >= 29) {
         download();
       } else {
         const granted = await PermissionsAndroid.request(
@@ -52,18 +54,20 @@ function useDownloadAnime() {
           download();
         } else {
           DialogManager.alert(
-            'Akses ditolak',
-            'Gagal mendownload karena akses ke penyimpanan di tolak',
+            tSync('downloadAnime.permissionDeniedTitle'),
+            tSync('downloadAnime.permissionDeniedDesc'),
           );
         }
       }
 
       async function download() {
         if (source.includes('mp4upload')) {
-          DialogManager.alert('Perhatian', 'Download movie dari mp4upload mungkin akan gagal!');
+          DialogManager.alert(
+            tSync('downloadAnime.mp4uploadWarningTitle'),
+            tSync('downloadAnime.mp4uploadWarningDesc'),
+          );
         }
         RNFetchBlob.config({
-          trusty: true,
           addAndroidDownloads: {
             useDownloadManager: true,
             notification: true,
@@ -74,11 +78,7 @@ function useDownloadAnime() {
         })
           .fetch('GET', source, {
             'User-Agent': deviceUserAgent,
-            ...(source.includes('mp4upload')
-              ? {
-                  Referer: 'https://www.mp4upload.com/',
-                }
-              : {}),
+            ...(getStreamHeaders(source) || {}),
           })
           .catch(() => {});
         callback?.();

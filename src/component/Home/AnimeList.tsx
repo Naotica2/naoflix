@@ -49,6 +49,7 @@ import {
   EpisodeBaruHomeContext,
   MovieListHomeContext,
 } from '../../misc/context';
+import { tSync, TranslationKey, useLanguage } from '../../misc/LanguageContext';
 import { EpisodeBaruHome as EpisodeBaruType, JadwalAnime, NewAnimeList } from '../../types/anime';
 import { HomeNavigator, RootStackNavigator } from '../../types/navigation';
 import AnimeAPI from '../../utils/AnimeAPI';
@@ -73,6 +74,7 @@ function HomeList(props: HomeProps) {
   const colorScheme = useColorScheme();
   const styles = useStyles();
   const theme = useTheme();
+  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const { paramsState: data, setParamsState: setData } = useContext(EpisodeBaruHomeContext);
   const [refresh, setRefresh] = useState(false);
@@ -97,7 +99,7 @@ function HomeList(props: HomeProps) {
           if (e.name === 'SankaRateLimitError') {
             setIsRateLimit(true);
           } else {
-            ToastAndroid.show('Gagal terhubung ke server.', ToastAndroid.SHORT);
+            ToastAndroid.show(tSync('utils.failedConnectAnimeServer'), ToastAndroid.SHORT);
           }
           setRefresh(false);
         });
@@ -181,7 +183,7 @@ function HomeList(props: HomeProps) {
           </View>
           <TouchableOpacity style={styles.refreshButton} onPress={refreshing} disabled={refresh}>
             <MaterialIcon name="refresh" size={20} color="#FFFFFF" style={styles.refreshIcon} />
-            <Text style={styles.refreshText}>Refresh Data</Text>
+            <Text style={styles.refreshText}>{t('lists.refreshDataBtn')}</Text>
           </TouchableOpacity>
           <EpisodeBaru
             isRefreshing={refresh}
@@ -200,7 +202,7 @@ function HomeList(props: HomeProps) {
               styles.scheduleSection,
               { flexDirection: 'row', justifyContent: 'space-between' },
             ]}>
-            <Text style={styles.sectionTitle}>Jadwal Anime</Text>
+            <Text style={styles.sectionTitle}>{t('schedule.title')}</Text>
             <MaterialIcons
               name={jadwalHidden ? 'arrow-downward' : 'arrow-upward'}
               size={20}
@@ -242,6 +244,7 @@ function EpisodeBaruUNMEMO({
   styles: ReturnType<typeof useStyles>;
   globalStyles: ReturnType<typeof useGlobalStyles>;
 }) {
+  const { t } = useLanguage();
   const renderNewAnime = useCallback(
     ({ item }: ListRenderItemInfo<NewAnimeList>) => (
       <ListAnimeComponent
@@ -257,19 +260,18 @@ function EpisodeBaruUNMEMO({
   return (
     <View style={styles.sectionContainer}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Episode Anime Terbaru</Text>
+        <Text style={styles.sectionTitle}>{t('home.sectionAnimeNew')}</Text>
         <TouchableOpacity
           style={styles.seeMoreButton}
           onPress={() => {
             props.navigation.dispatch(StackActions.push('SeeMore', { type: 'AnimeList' }));
           }}>
-          <Text style={styles.seeMoreText}>Lihat Semua</Text>
+          <Text style={styles.seeMoreText}>{t('common.seeMore')}</Text>
           <MaterialIcon name="chevron-right" style={styles.seeMoreText} />
         </TouchableOpacity>
       </View>
       {(data?.newAnime.length || 0) > 0 ? (
         <FlashList
-        estimatedItemSize={200}
           renderScrollComponent={RenderScrollComponent}
           contentContainerStyle={{ gap: 3 }}
           horizontal
@@ -285,14 +287,14 @@ function EpisodeBaruUNMEMO({
         <TouchableOpacity style={styles.errorContainer} onPress={onRetry}>
           <MaterialIcon name="hourglass-empty" size={24} color="#f39c12" />
           <Text style={styles.errorText}>
-            Server Sanka sedang antre, coba sebentar lagi. Ketuk untuk mencoba ulang.
+            {t('lists.serverRateLimitSanka')}
           </Text>
         </TouchableOpacity>
       ) : (
         <View>
           <MaterialIcon name="error-outline" size={24} color="#d80000" />
           <Text style={styles.errorText}>
-            Error mendapatkan data. Silahkan refresh data untuk mencoba lagi
+            {t('lists.serverDataErrorRefresh')}
           </Text>
         </View>
       )}
@@ -303,6 +305,7 @@ function EpisodeBaruUNMEMO({
 const MovieList = memo(MovieListUNMEMO);
 function MovieListUNMEMO({ props }: { props: HomeProps }) {
   const styles = useStyles();
+  const { t } = useLanguage();
   const { paramsState: data, setParamsState: setData } = useContext(MovieListHomeContext);
   const [isError, setIsError] = useState(false);
   const navigation = useNavigation<NavigationProp<RootStackNavigator>>();
@@ -320,7 +323,7 @@ function MovieListUNMEMO({ props }: { props: HomeProps }) {
   );
 
   useEffect(() => {
-    setData?.([]); // so the skeleton loading show
+    setData?.([]); // clear immediately so skeleton placeholder renders
     queueMicrotask(() => {
       AnimeAPI.search('movie')
         .then(res => {
@@ -347,14 +350,14 @@ function MovieListUNMEMO({ props }: { props: HomeProps }) {
   return (
     <View style={styles.sectionContainer}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Movie Terbaru</Text>
+        <Text style={styles.sectionTitle}>{t('lists.headerLatestMovies')}</Text>
         <TouchableOpacity
           style={styles.seeMoreButton}
           disabled={data?.length === 0}
           onPress={() => {
             props.navigation.dispatch(StackActions.push('SeeMore', { type: 'MovieList' }));
           }}>
-          <Text style={styles.seeMoreText}>Lihat Semua</Text>
+          <Text style={styles.seeMoreText}>{t('common.seeMore')}</Text>
           <MaterialIcon name="chevron-right" style={styles.seeMoreText} />
         </TouchableOpacity>
       </View>
@@ -370,14 +373,13 @@ function MovieListUNMEMO({ props }: { props: HomeProps }) {
           style={styles.errorContainer}>
           <MaterialIcon name="refresh" size={24} color="#d80000" />
           <Text style={styles.errorText}>
-            Error mendapatkan data. Ketuk disini untuk mencoba ulang.
+            {t('lists.serverDataErrorTapRetry')}
           </Text>
         </TouchableOpacity>
       )}
 
       {data?.length !== 0 ? (
         <FlashList
-        estimatedItemSize={200}
           renderScrollComponent={RenderScrollComponent}
           contentContainerStyle={{ gap: 3 }}
           horizontal
@@ -397,6 +399,7 @@ function MovieListUNMEMO({ props }: { props: HomeProps }) {
 const ComicList = memo(ComicListUNMEMO);
 function ComicListUNMEMO() {
   const styles = useStyles();
+  const { t } = useLanguage();
   const [isError, setIsError] = useState(false);
   const navigation = useNavigation<NavigationProp<RootStackNavigator, 'AnimeDetail'>>();
 
@@ -432,14 +435,14 @@ function ComicListUNMEMO() {
   return (
     <View style={styles.sectionContainer}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Komik Terbaru</Text>
+        <Text style={styles.sectionTitle}>{t('home.sectionComicsNew')}</Text>
         <TouchableOpacity
           style={styles.seeMoreButton}
           disabled={data?.length === 0}
           onPress={() => {
             navigation.dispatch(StackActions.push('SeeMore', { type: 'ComicsList' }));
           }}>
-          <Text style={styles.seeMoreText}>Lihat Semua</Text>
+          <Text style={styles.seeMoreText}>{t('common.seeMore')}</Text>
           <MaterialIcon name="chevron-right" style={styles.seeMoreText} />
         </TouchableOpacity>
       </View>
@@ -448,14 +451,13 @@ function ComicListUNMEMO() {
         <View>
           <MaterialIcon name="error-outline" size={24} color="#d80000" />
           <Text style={styles.errorText}>
-            Error mendapatkan data. Silahkan refresh data untuk mencoba lagi
+            {t('lists.serverDataErrorRefresh')}
           </Text>
         </View>
       )}
 
       {data && data?.length !== 0 ? (
         <FlashList
-        estimatedItemSize={200}
           renderScrollComponent={RenderScrollComponent}
           contentContainerStyle={{ gap: 3 }}
           horizontal
@@ -499,13 +501,28 @@ function ShowSkeletonLoading() {
   );
 }
 
+const JADWAL_DAY_KEYS: Record<string, TranslationKey> = {
+  senin: 'schedule.dayFull.Senin',
+  selasa: 'schedule.dayFull.Selasa',
+  rabu: 'schedule.dayFull.Rabu',
+  kamis: 'schedule.dayFull.Kamis',
+  jumat: 'schedule.dayFull.Jumat',
+  "jum'at": 'schedule.dayFull.Jumat',
+  sabtu: 'schedule.dayFull.Sabtu',
+  minggu: 'schedule.dayFull.Minggu',
+};
+
 function JadwalComponent({ item, props }: { item: keyof JadwalAnime; props: HomeProps }) {
   const styles = useStyles();
+  const { t } = useLanguage();
   const { paramsState: data } = use(EpisodeBaruHomeContext);
   const { getMappingKey } = useMappingHelper();
+  const dayKey = JADWAL_DAY_KEYS[String(item).trim().toLowerCase()];
   return (
     <View style={[styles.scheduleContainer, styles.scheduleSection]}>
-      <Text style={styles.scheduleDay}>{item}</Text>
+      <Text style={styles.scheduleDay}>
+        {dayKey ? t(dayKey) : item}
+      </Text>
       {data?.jadwalAnime[item]!.map((x, index) => (
         <TouchableOpacity
           style={[

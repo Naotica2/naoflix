@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { TouchableNativeFeedback } from 'react-native-gesture-handler';
 import useGlobalStyles from '../../../assets/style';
+import { tSync, useLanguage } from '../../../misc/LanguageContext';
 import ImageLoading from '../../misc/ImageLoading';
 
 interface TagConfidence {
@@ -40,6 +41,7 @@ interface FruatreFinderResult {
 
 function SearchAnimeByImage() {
   const globalStyles = useGlobalStyles();
+  const { t } = useLanguage();
   const [searchResult, setSearchResult] = useState<FruatreFinderResult | null>(null);
   const [choosenImage, setChoosenImage] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
@@ -74,17 +76,19 @@ function SearchAnimeByImage() {
 
       const json = await response.json();
       if (!json.status) {
-        ToastAndroid.show(json.error || 'Terjadi kesalahan!', ToastAndroid.SHORT);
+        ToastAndroid.show(json.error || tSync('common.error'), ToastAndroid.SHORT);
       }
       setSearchResult(json);
-    } catch (e) {
-      ToastAndroid.show('Gagal menghubungi server', ToastAndroid.SHORT);
+    } catch {
+      ToastAndroid.show(tSync('utils.imgSearchServerError'), ToastAndroid.SHORT);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const highestRating = searchResult?.result?.rating?.sort((a, b) => b.confidence - a.confidence)[0];
+  const highestRating = searchResult?.result?.rating
+    ? [...searchResult.result.rating].sort((a, b) => b.confidence - a.confidence)[0]
+    : undefined;
 
   return (
     <View style={styles.container}>
@@ -101,8 +105,8 @@ function SearchAnimeByImage() {
               size={32}
               color={colorScheme === 'dark' ? '#BB86FC' : '#6200EE'}
             />
-            <Text style={styles.imagePickerText}>Pilih Gambar</Text>
-            <Text style={styles.imagePickerSubtext}>Gunakan API Fruatre Finder</Text>
+            <Text style={styles.imagePickerText}>{t('utils.imgSearchPick')}</Text>
+            <Text style={styles.imagePickerSubtext}>{t('utils.imgSearchSub')}</Text>
           </View>
         </TouchableNativeFeedback>
       </View>
@@ -117,7 +121,7 @@ function SearchAnimeByImage() {
         ) : (
           <View style={styles.placeholderContainer}>
             <Icon name="image" size={48} color={colorScheme === 'dark' ? '#555' : '#aaa'} />
-            <Text style={styles.placeholderText}>Pilih gambar karakter anime</Text>
+            <Text style={styles.placeholderText}>{t('utils.imgSearchPlaceholder')}</Text>
           </View>
         )}
       </View>
@@ -125,14 +129,14 @@ function SearchAnimeByImage() {
       {isLoading && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colorScheme === 'dark' ? '#BB86FC' : '#6200EE'} />
-          <Text style={styles.loadingText}>Menganalisis gambar...</Text>
+          <Text style={styles.loadingText}>{t('utils.imgSearchAnalyzing')}</Text>
         </View>
       )}
 
       {searchResult?.result && !isLoading && (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
             <View style={styles.resultContainer}>
-              <Text style={styles.sectionTitle}>Karakter Terdeteksi</Text>
+              <Text style={styles.sectionTitle}>{t('utils.imgSearchChars')}</Text>
               {searchResult.result!.character?.list?.length > 0 ? (
                 searchResult.result!.character.list.slice(0, 5).map((char, i) => (
                   <View key={i} style={styles.tagRow}>
@@ -141,22 +145,22 @@ function SearchAnimeByImage() {
                   </View>
                 ))
               ) : (
-                <Text style={styles.unknownText}>Tidak ada karakter spesifik yang terdeteksi</Text>
+                <Text style={styles.unknownText}>{t('utils.imgSearchNoChars')}</Text>
               )}
 
               <View style={styles.divider} />
 
-              <Text style={styles.sectionTitle}>Rating Konten</Text>
+              <Text style={styles.sectionTitle}>{t('utils.imgSearchRating')}</Text>
               <View style={styles.tagRow}>
                 <Text style={[styles.tagLabel, { textTransform: 'capitalize', color: highestRating?.label === 'explicit' ? '#ef4444' : globalStyles.text.color }]}>
-                  {highestRating?.label || 'Unknown'}
+                  {highestRating?.label || t('common.unknown')}
                 </Text>
                 <Text style={styles.tagConfidence}>{((highestRating?.confidence || 0) * 100).toFixed(1)}%</Text>
               </View>
 
               <View style={styles.divider} />
 
-              <Text style={styles.sectionTitle}>Atribut Terdeteksi</Text>
+              <Text style={styles.sectionTitle}>{t('utils.imgSearchTags')}</Text>
               <View style={styles.tagsWrapper}>
                 {searchResult.result!.tags?.list?.slice(0, 15).map((tag, i) => (
                   <View key={i} style={styles.chip}>

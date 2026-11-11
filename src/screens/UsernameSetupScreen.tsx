@@ -14,13 +14,16 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackNavigator } from '../types/navigation';
 import { useAuth } from '../misc/AuthContext';
+import { useLanguage } from '../misc/LanguageContext';
 import { supabase } from '../config/supabaseClient';
 import { useColorScheme } from 'react-native';
+import MaterialIcons from '@react-native-vector-icons/material-icons';
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_]+$/;
 
 function UsernameSetupScreen() {
   const { user, hasProfile, refreshProfile, signOut } = useAuth();
+  const { t } = useLanguage();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackNavigator>>();
   const isDark = useColorScheme() === 'dark';
   const [username, setUsername] = useState('');
@@ -49,15 +52,15 @@ function UsernameSetupScreen() {
 
     if (username.length === 0) return;
     if (username.length < 3) {
-      setErrorMsg('Minimal 3 karakter');
+      setErrorMsg(t('auth.usernameTooShort'));
       return;
     }
     if (username.length > 20) {
-      setErrorMsg('Maksimal 20 karakter');
+      setErrorMsg(t('auth.usernameMaxLen'));
       return;
     }
     if (!USERNAME_REGEX.test(username)) {
-      setErrorMsg('Hanya huruf, angka, dan underscore');
+      setErrorMsg(t('auth.usernameInvalidChars'));
       return;
     }
 
@@ -70,14 +73,14 @@ function UsernameSetupScreen() {
         .eq('username', username.toLowerCase())
         .maybeSingle();
       setIsAvailable(!data);
-      if (data) setErrorMsg('Username sudah dipakai');
+      if (data) setErrorMsg(t('auth.usernameTaken'));
       setIsChecking(false);
     }, 500);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [username]);
+  }, [username, t]);
 
   const handleSubmit = useCallback(async () => {
     if (!user || username.length < 3 || !isAvailable) return;
@@ -90,18 +93,18 @@ function UsernameSetupScreen() {
         display_name: fullName || null,
       });
       if (error) {
-        const msg = error.code === '23505' ? 'Username sudah dipakai' : error.message;
+        const msg = error.code === '23505' ? t('auth.usernameTaken') : error.message;
         setErrorMsg(msg);
         ToastAndroid.show(msg, ToastAndroid.LONG);
       } else {
         await refreshProfile();
       }
-    } catch (e) {
-      ToastAndroid.show('Gagal menyimpan username', ToastAndroid.LONG);
+    } catch {
+      ToastAndroid.show(t('common.error'), ToastAndroid.LONG);
     } finally {
       setIsSubmitting(false);
     }
-  }, [user, username, isAvailable, avatarUrl, fullName, refreshProfile]);
+  }, [user, username, isAvailable, avatarUrl, fullName, refreshProfile, t]);
 
   const canSubmit = username.length >= 3 && isAvailable === true && !isChecking && !errorMsg;
 
@@ -115,15 +118,19 @@ function UsernameSetupScreen() {
             <Text style={[styles.avatarText, { color: isDark ? '#fff' : '#000' }]}>{fullName.charAt(0).toUpperCase()}</Text>
           </View>
         )}
-        <Text style={[styles.greeting, { color: isDark ? '#fff' : '#000' }]}>Halo, {fullName || 'User'}!</Text>
-        <Text style={[styles.subtitle, { color: isDark ? '#888' : '#666' }]}>Pilih username untuk profilmu</Text>
-        <Text style={styles.warning}>Username tidak bisa diubah setelah disimpan</Text>
+        <Text style={[styles.greeting, { color: isDark ? '#fff' : '#000' }]}>
+          {t('auth.greetingUser', { name: fullName || t('common.user') })}
+        </Text>
+        <Text style={[styles.subtitle, { color: isDark ? '#888' : '#666' }]}>{t('auth.usernameSetupSubtitle')}</Text>
+        <Text style={styles.warning}>
+          {t('auth.usernameImmutable')}
+        </Text>
 
         <View style={[styles.inputContainer, { backgroundColor: isDark ? '#111' : '#f9f9f9', borderColor: isDark ? '#222' : '#ddd' }]}>
           <Text style={[styles.atSign, { color: isDark ? '#555' : '#888' }]}>@</Text>
           <TextInput
             style={[styles.input, { color: isDark ? '#fff' : '#000' }]}
-            placeholder="username"
+            placeholder={t('auth.usernameLabel').toLowerCase()}
             placeholderTextColor={isDark ? '#555' : '#aaa'}
             value={username}
             onChangeText={setUsername}
@@ -133,7 +140,7 @@ function UsernameSetupScreen() {
           />
           {isChecking && <ActivityIndicator size="small" color="#888" />}
           {!isChecking && isAvailable === true && username.length >= 3 && (
-            <Text style={styles.checkOk}>✓</Text>
+            <MaterialIcons name="check-circle" size={20} color="#22c55e" />
           )}
         </View>
 
@@ -147,12 +154,14 @@ function UsernameSetupScreen() {
           {isSubmitting ? (
             <ActivityIndicator color={isDark ? '#000' : '#fff'} size="small" />
           ) : (
-            <Text style={[styles.submitText, { color: isDark ? '#000' : '#fff' }]}>Lanjutkan</Text>
+            <Text style={[styles.submitText, { color: isDark ? '#000' : '#fff' }]}>{t('auth.saveProfile')}</Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity onPress={signOut} style={styles.signOutButton}>
-          <Text style={styles.signOutText}>Gunakan akun lain</Text>
+          <Text style={styles.signOutText}>
+            {t('auth.useAnotherAccount')}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -175,7 +184,6 @@ const styles = StyleSheet.create({
   },
   atSign: { fontSize: 18, color: '#555', marginRight: 4, fontWeight: '600' },
   input: { flex: 1, fontSize: 18, color: '#fff', paddingVertical: 12 },
-  checkOk: { fontSize: 18, color: '#22c55e', fontWeight: '700' },
   errorText: { color: '#ef4444', fontSize: 13, marginTop: 8, alignSelf: 'flex-start' },
   submitButton: {
     backgroundColor: '#fff', borderRadius: 28, paddingVertical: 14, width: '100%',

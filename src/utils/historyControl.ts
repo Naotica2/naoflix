@@ -4,11 +4,14 @@ import { HistoryItemKey } from '../types/databaseTarget';
 import { HistoryAdditionalData, HistoryJSON } from '../types/historyJSON';
 import { DatabaseManager } from './DatabaseManager';
 import { supabase } from '../config/supabaseClient';
-import { syncHistoryToCloud } from './watchHistorySync';
+import { syncHistoryToCloud, cleanAnimeTitle } from './watchHistorySync';
 import { RootStackNavigator } from '../types/navigation';
 import { ComicsReading } from './scrapers/comicsv2';
 import { KomikuReading } from './scrapers/komiku';
 import { NovelReading } from './scrapers/meionovel';
+
+const lastCloudHintByKey = new Map<string, { sig: string; sentAt: number }>();
+const CLOUD_HINT_TTL_MS = 180_000;
 
 async function setHistory(
   targetData:
@@ -63,37 +66,51 @@ async function setHistory(
   }
 
   if (seriesTitle && seriesTitle.trim()) {
-    title = seriesTitle.trim();
-  }
-  
-  if (title) {
-    title = title.replace(/Subtitle Indonesia|Sub Indo/i, '').split('(Episode')[0].trim();
+    title = cleanAnimeTitle(seriesTitle.trim());
+  } else if (title) {
+    title = cleanAnimeTitle(title);
   }
   const dataKey =
     `historyItem:${title}:${isComics ?? 'false'}:${isMovie ?? 'false'}` as HistoryItemKey;
 
-  const keyOrder: HistoryItemKey[] = JSON.parse(
-    (await DatabaseManager.get('historyKeyCollectionsOrder')) ?? '[]',
-  );
+  let keyOrder: HistoryItemKey[] = [];
+  try {
+    const parsedOrder = JSON.parse((await DatabaseManager.get('historyKeyCollectionsOrder')) ?? '[]');
+    if (Array.isArray(parsedOrder)) keyOrder = parsedOrder;
+  } catch {}
   const isDataExist = await DatabaseManager.get(dataKey);
+  let orderChanged = false;
   if (!isDataExist) {
-    if (!keyOrder.includes(dataKey)) keyOrder.splice(0, 0, dataKey);
-  } else if (!skipUpdateDate) {
+    if (!keyOrder.includes(dataKey)) {
+      keyOrder.splice(0, 0, dataKey);
+      orderChanged = true;
+    }
+  } else if (!skipUpdateDate && keyOrder[0] !== dataKey) {
     const keyIndex = keyOrder.findIndex(z => z === dataKey);
     if (keyIndex !== -1) {
       keyOrder.splice(keyIndex, 1);
     }
     keyOrder.splice(0, 0, dataKey);
+    orderChanged = true;
   }
-  const historyData: HistoryJSON = JSON.parse(isDataExist ?? '{}');
+  let historyData: Partial<HistoryJSON> = {};
+  try {
+    const parsedHist = JSON.parse(isDataExist ?? '{}');
+    if (parsedHist && typeof parsedHist === 'object') historyData = parsedHist;
+  } catch {}
 
   let finalThumbnailUrl = historyData.thumbnailUrl || '';
-  if ((targetData as any).type === 'animeDetail') {
-    finalThumbnailUrl = (targetData as any).thumbnailUrl || finalThumbnailUrl;
-  } else if ((targetData as any).coverImage) {
-    finalThumbnailUrl = (targetData as any).coverImage;
-  } else if (!finalThumbnailUrl) {
-    finalThumbnailUrl = (targetData as any).thumbnailUrl || ((targetData as any).comicImages?.[0]) || '';
+  if ((additionalData as any).thumbnailUrl) {
+    finalThumbnailUrl = (additionalData as any).thumbnailUrl || finalThumbnailUrl;
+  }
+  if (!finalThumbnailUrl) {
+    if ((targetData as any).type === 'animeDetail') {
+      finalThumbnailUrl = (targetData as any).thumbnailUrl || finalThumbnailUrl;
+    } else if ((targetData as any).coverImage) {
+      finalThumbnailUrl = (targetData as any).coverImage;
+    } else {
+      finalThumbnailUrl = (targetData as any).thumbnailUrl || ((targetData as any).comicImages?.[0]) || '';
+    }
   }
 
   const fullPayload = {
@@ -107,16 +124,35 @@ async function setHistory(
     isComics,
   };
 
-  DatabaseManager.set('historyKeyCollectionsOrder', JSON.stringify(keyOrder));
+  if (orderChanged) {
+    DatabaseManager.set('historyKeyCollectionsOrder', JSON.stringify(keyOrder));
+  }
   DatabaseManager.set(
     dataKey,
     JSON.stringify(fullPayload),
   );
 
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    if (session?.user) {
-      syncHistoryToCloud(session.user.id, fullPayload);
-    }
-  });
+  const cloudHintSig = `${fullPayload.title}\0${fullPayload.episode ?? ''}\0${fullPayload.thumbnailUrl}\0${fullPayload.link}\0${Boolean(fullPayload.isMovie)}\0${Boolean(fullPayload.isComics)}`;
+  const prevHint = lastCloudHintByKey.get(dataKey);
+  const now = Date.now();
+  if (
+    isDataExist &&
+    skipUpdateDate &&
+    prevHint &&
+    prevHint.sig === cloudHintSig &&
+    now - prevHint.sentAt < CLOUD_HINT_TTL_MS
+  ) {
+    return;
+  }
+
+  supabase.auth
+    .getSession()
+    .then(({ data: { session } }) => {
+      if (session?.user) {
+        lastCloudHintByKey.set(dataKey, { sig: cloudHintSig, sentAt: Date.now() });
+        syncHistoryToCloud(session.user.id, fullPayload);
+      }
+    })
+    .catch(() => {});
 }
 export default setHistory;

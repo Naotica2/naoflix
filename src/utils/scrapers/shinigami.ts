@@ -75,6 +75,28 @@ export async function getPopularComicsReleases(
   }));
 }
 
+export async function getManhwaComicsReleases(
+  page: number = 1,
+  signal?: AbortSignal,
+): Promise<LatestComicsRelease[]> {
+  const data = await apiGet(
+    `/v1/manga/list?format=manhwa&page=${page}&page_size=24&sort=latest&sort_order=desc`,
+    signal,
+  );
+  if (!Array.isArray(data)) return [];
+
+  return data.map((item: any) => ({
+    title: item.title || '',
+    detailUrl: `shinigami://detail/${item.manga_id || ''}`,
+    type: (item.taxonomy?.Format?.[0]?.name || 'Manhwa') as 'Manga' | 'Manhwa' | 'Manhua',
+    latestChapter: item.latest_chapter_number?.toString() || '',
+    thumbnailUrl: item.cover_portrait_url || item.cover_image_url || '',
+    concept: '',
+    shortDescription: item.description ? item.description.substring(0, 80) : '',
+    additionalInfo: item.country_id || '',
+  }));
+}
+
 export async function getComicsSearch(
   query: string,
   page: number = 1,
@@ -230,4 +252,21 @@ export async function getComicsReading(
     nextChapter,
     prevChapter,
   };
+}
+
+export async function getShinigamiDetailUrlFromChapter(
+  chapterIdRaw: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  if (chapterIdRaw.startsWith('shinigami://detail/')) {
+    return chapterIdRaw;
+  }
+  const chapterId = chapterIdRaw.replace('shinigami://chapter/', '').trim();
+  if (!chapterId) return null;
+
+  const data = await apiGet(`/v1/chapter/detail/${chapterId}`, signal);
+  if (data?.manga_id) {
+    return `shinigami://detail/${data.manga_id}`;
+  }
+  return null;
 }

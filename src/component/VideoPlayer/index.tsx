@@ -24,6 +24,7 @@ import {
   AppState,
   GestureResponderEvent,
   Pressable,
+  StyleSheet,
   Text,
   ToastAndroid,
   TouchableOpacity,
@@ -41,6 +42,7 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import { runOnJS, runOnRuntime } from 'react-native-worklets';
 import AniFlixRuntime from '../../misc/AniFlixRuntime';
+import { tSync, useLanguage } from '../../misc/LanguageContext';
 import { DatabaseManager, useModifiedKeyValueIfFocused } from '../../utils/DatabaseManager';
 import deviceUserAgent from '../../utils/deviceUserAgent';
 import ReText from '../misc/ReText';
@@ -78,6 +80,7 @@ type VideoPlayerProps = {
   showNextPrevButtons?: boolean;
   disableControls?: boolean;
   onPlayingChange?: (isPlaying: boolean, currentTime: number) => void;
+  onEnded?: () => void;
 };
 
 const ICON_SIZE = 45;
@@ -108,8 +111,10 @@ function VideoPlayer({
   showNextPrevButtons,
   disableControls,
   onPlayingChange,
+  onEnded,
 }: VideoPlayerProps) {
   useKeepAwake();
+  const { t } = useLanguage();
 
   const currentDurationSecond = useSharedValue(0);
   const totalDurationSecond = useSharedValue(0);
@@ -146,13 +151,6 @@ function VideoPlayer({
   const pressableShowControlsLocation = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const [isBuffering, setIsBuffering] = useState(true);
-  useEffect(() => {
-    setIsBuffering(true);
-    seekBarProgress.set(0);
-    currentDurationSecond.set(0);
-    totalDurationSecond.set(0);
-  }, [currentDurationSecond, seekBarProgress, streamingURL, totalDurationSecond]);
-
   const [isError, setIsError] = useState(false);
 
   const [paused, setPaused] = useState(isPaused ?? false);
@@ -164,8 +162,36 @@ function VideoPlayer({
 
   const [showControls, setShowControls] = useState(true);
   const controlsShowedCzOfLag = useRef(false);
-  const preventAutoHideControls = useRef(true);
   const showControlsOpacity = useSharedValue(1);
+  const hideControlsTimer = useRef<NodeJS.Timeout | null>(null);
+  const onEndedRef = useRef(onEnded);
+  onEndedRef.current = onEnded;
+
+  useEffect(() => {
+    setIsBuffering(true);
+    setIsError(false);
+    controlsShowedCzOfLag.current = false;
+    setShowControls(true);
+    seekBarProgress.set(0);
+    currentDurationSecond.set(0);
+    totalDurationSecond.set(0);
+  }, [currentDurationSecond, seekBarProgress, streamingURL, totalDurationSecond]);
+
+  const startAutoHideTimer = useCallback(() => {
+    if (hideControlsTimer.current) {
+      clearTimeout(hideControlsTimer.current);
+    }
+    hideControlsTimer.current = setTimeout(() => {
+      setShowControls(false);
+    }, 3500);
+  }, []);
+
+  const cancelAutoHideTimer = useCallback(() => {
+    if (hideControlsTimer.current) {
+      clearTimeout(hideControlsTimer.current);
+      hideControlsTimer.current = null;
+    }
+  }, []);
 
   const [subtitles, setSubtitles] = useState<Awaited<ReturnType<typeof parseSubtitles>> | null>(
     null,
@@ -194,7 +220,7 @@ function VideoPlayer({
           setSubtitles(subtitle);
         } catch (error) {
           setSubtitleError(true);
-          ToastAndroid.show('Gagal mendapatkan subtitle', ToastAndroid.SHORT);
+          ToastAndroid.show(tSync('player.subtitleFailed'), ToastAndroid.SHORT);
         }
       }
       subtitleURL && fetchSubtitles(subtitleURL);
@@ -252,7 +278,7 @@ function VideoPlayer({
       setShowControls(true);
       controlsShowedCzOfLag.current = player.status === 'loading';
     } else {
-      if (controlsShowedCzOfLag.current && !preventAutoHideControls.current) {
+      if (controlsShowedCzOfLag.current) {
         setShowControls(false);
       }
       controlsShowedCzOfLag.current = false;
@@ -296,9 +322,11 @@ function VideoPlayer({
   );
   useEventListener(player, 'playToEnd', () => {
     setShowControls(true);
+    onEndedRef.current?.();
   });
 
   const setPositionAsync = (duration: number) => {
+    if (disableControls) return;
     player.currentTime = duration;
     if (!paused) {
       try { player.play(); } catch { }
@@ -313,19 +341,17 @@ function VideoPlayer({
   }, []);
   const onPressOut = useCallback((e: GestureResponderEvent) => {
     if (
-      Math.abs(e.nativeEvent.locationX - pressableShowControlsLocation.current.x) < 10 &&
-      Math.abs(e.nativeEvent.locationY - pressableShowControlsLocation.current.y) < 10
+      Math.abs(e.nativeEvent.locationX - pressableShowControlsLocation.current.x) < 15 &&
+      Math.abs(e.nativeEvent.locationY - pressableShowControlsLocation.current.y) < 15
     ) {
       controlsShowedCzOfLag.current = false;
-      setShowControls(a => {
-        preventAutoHideControls.current = !a;
-        return !a;
-      });
+      setShowControls(prev => !prev);
     }
   }, []);
 
   const onRewind = useCallback(() => {
     if (disableControls) return;
+    startAutoHideTimer();
     const rewind = Math.max(0, currentDurationSecond.get() - 5);
     player.currentTime = rewind;
     currentDurationSecond.set(rewind);
@@ -334,10 +360,11 @@ function VideoPlayer({
       try { player.play(); } catch { }
     }
     onPlayingChange?.(!paused, rewind);
-  }, [currentDurationSecond, player, seekBarProgress, totalDurationSecond, paused, disableControls, onPlayingChange]);
+  }, [currentDurationSecond, player, seekBarProgress, totalDurationSecond, paused, disableControls, onPlayingChange, startAutoHideTimer]);
 
   const onForward = useCallback(() => {
     if (disableControls) return;
+    startAutoHideTimer();
     const forward = Math.min(totalDurationSecond.get(), currentDurationSecond.get() + 10);
     player.currentTime = forward;
     currentDurationSecond.set(forward);
@@ -346,24 +373,26 @@ function VideoPlayer({
       try { player.play(); } catch { }
     }
     onPlayingChange?.(!paused, forward);
-  }, [currentDurationSecond, player, seekBarProgress, totalDurationSecond, paused, disableControls, onPlayingChange]);
+  }, [currentDurationSecond, player, seekBarProgress, totalDurationSecond, paused, disableControls, onPlayingChange, startAutoHideTimer]);
+
   const onPlayPausePressed = useCallback(() => {
     if (disableControls) return;
     if (!paused) {
       player.pause();
       setPaused(true);
+      cancelAutoHideTimer();
     } else {
       player.play();
       setPaused(false);
+      startAutoHideTimer();
     }
-  }, [paused, player, disableControls]);
+  }, [paused, player, disableControls, startAutoHideTimer, cancelAutoHideTimer]);
 
   const onFullScreenButtonPressed = useCallback(() => {
-    onFullscreenUpdate?.(isFullscreen);
-    setIsFullscreen(a => !a);
+    const nextFullscreen = !isFullscreen;
+    setIsFullscreen(nextFullscreen);
+    onFullscreenUpdate?.(nextFullscreen);
   }, [onFullscreenUpdate, isFullscreen]);
-
-  // useEffect(() => {
 
   useEffect(() => {
     showControlsOpacity.set(
@@ -372,12 +401,22 @@ function VideoPlayer({
         reduceMotion: ReduceMotion.Never,
       }),
     );
-  }, [showControls, showControlsOpacity]);
+    if (showControls && !paused) {
+      startAutoHideTimer();
+    } else {
+      cancelAutoHideTimer();
+    }
+  }, [showControls, paused, showControlsOpacity, startAutoHideTimer, cancelAutoHideTimer]);
+
+  useEffect(() => {
+    return () => {
+      if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
+    };
+  }, []);
 
   const showControlsStyle = useAnimatedStyle(() => {
     return {
       opacity: showControlsOpacity.get(),
-      display: showControlsOpacity.get() === 0 ? 'none' : 'flex',
     };
   });
 
@@ -408,7 +447,7 @@ function VideoPlayer({
   }, [streamingURL]);
 
   return (
-    <View style={[style]}>
+    <View style={[{ width: '100%', height: '100%', backgroundColor: '#000' }, style]}>
       <VideoView
         onPictureInPictureStop={onPiPStop}
         allowsPictureInPicture={true}
@@ -449,14 +488,21 @@ function VideoPlayer({
             }}>
             {isSubtitleEnabled
               ? subtitles === null && !subtitleError && subtitleURL
-                ? 'Memuat Subtitle...'
+                ? t('player.loadingSubtitle')
                 : currentSubtitle
               : ''}
           </Text>
         </View>
         <Reanimated.View
-          pointerEvents="box-none"
+          pointerEvents={showControls ? 'box-none' : 'none'}
           style={[{ flex: 1, zIndex: 999, backgroundColor: '#00000094' }, showControlsStyle]}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => {
+              setShowControls(false);
+              cancelAutoHideTimer();
+            }}
+          />
           <Top
             title={title}
             videoRef={videoRef}
@@ -490,14 +536,17 @@ function VideoPlayer({
             totalDurationSecond={totalDurationSecond}
             isFullscreen={isFullscreen}
             onFullScreenButtonPressed={onFullScreenButtonPressed}
+            disabled={disableControls}
             onProgressChange={e => {
               'worklet';
+              if (disableControls) return;
               seekBarProgress.set(e);
               seekBarProgressDisabled.set(true);
               currentDurationSecond.set(e * totalDurationSecond.get());
             }}
             onProgressChangeEnd={e => {
               'worklet';
+              if (disableControls) return;
               seekBarProgress.set(e);
               seekBarProgressDisabled.set(false);
               runOnJS(setPositionAsync)?.(e * totalDurationSecond.get());
@@ -539,6 +588,7 @@ function Top({
   isSubtitleEnabled: boolean;
   onToggleSubtitle: () => void;
 }) {
+  const { t } = useLanguage();
   const requestPiP = useCallback(() => {
     videoRef?.current?.startPictureInPicture();
   }, [videoRef]);
@@ -563,6 +613,7 @@ function Top({
           padding: 5,
           borderRadius: 5,
         }}
+        onPress={requestPiP}
         hitSlop={2}>
         <Icons name={'picture-in-picture'} size={20} color={'white'} />
       </TouchableOpacity>
@@ -583,7 +634,7 @@ function Top({
             hitSlop={2}>
             <Icons name={'closed-caption-off'} size={18} color={'#ff6b6b'} />
             <Text style={{ color: '#ff6b6b', fontSize: 10, fontWeight: 'bold' }}>
-              RETRY SUBTITLE
+              {t('player.retrySubtitle').toUpperCase()}
             </Text>
           </TouchableOpacity>
         ) : (
@@ -656,15 +707,15 @@ function CenterControl({
   return (
     <View
       pointerEvents="box-none"
-      onStartShouldSetResponder={() => true}
       style={{
         position: 'absolute',
-        top: 0,
-        bottom: 0,
+        top: '50%',
+        marginTop: -(ICON_SIZE / 2),
         alignSelf: 'center',
         flexDirection: 'row',
         alignItems: 'center',
         gap: 20,
+        zIndex: 10,
       }}>
       {/* Im wrapping the TouchableOpacity in "View" with onStartShouldSetResponder because RNGH's Touchables still execute the parent "Pressable" pressIn/Out */}
       {showNextPrevButtons && !disableControls && (
@@ -730,6 +781,7 @@ function BottomControl({
   isFullscreen,
   currentDurationSecond,
   totalDurationSecond,
+  disabled = false,
 }: {
   seekBarProgress: SharedValue<number>;
   onProgressChange: (value: number) => void;
@@ -781,6 +833,7 @@ function BottomControl({
           </View>
           <TouchableOpacity
             style={{ justifyContent: 'center' }}
+            onPress={onFullScreenButtonPressed}
             hitSlop={2}>
             <Icons
               name={isFullscreen ? 'fullscreen-exit' : 'fullscreen'}
@@ -795,6 +848,7 @@ function BottomControl({
             style={{ flex: 1, zIndex: 0 }}
             onProgressChange={onProgressChange}
             onProgressChangeEnd={onProgressChangeEnd}
+            disabled={disabled}
           />
         </View>
       </View>

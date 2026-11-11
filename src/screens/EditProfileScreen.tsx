@@ -10,7 +10,7 @@ import {
   ToastAndroid,
   ScrollView,
   useColorScheme,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -18,19 +18,21 @@ import MaterialIcons from '@react-native-vector-icons/material-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { supabase } from '../config/supabaseClient';
 import { useAuth } from '../misc/AuthContext';
+import { tSync, useLanguage } from '../misc/LanguageContext';
 import { uploadAvatar, uploadBanner } from '../utils/profileStorage';
 
-const { width } = Dimensions.get('window');
-const BANNER_HEIGHT = width * (9 / 16);
 const AVATAR_SIZE = 96;
 
 function EditProfileScreen() {
   const { profile, user, refreshProfile } = useAuth();
+  const { t } = useLanguage();
   const navigation = useNavigation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const { width } = useWindowDimensions();
+  const bannerHeight = Math.min(Math.round(width * (9 / 16)), 230);
 
-  const styles = useMemo(() => makeStyles(isDark), [isDark]);
+  const styles = useMemo(() => makeStyles(isDark, bannerHeight), [isDark, bannerHeight]);
 
   const [displayName, setDisplayName] = useState(profile?.display_name || '');
   const [bio, setBio] = useState(profile?.bio || '');
@@ -58,14 +60,14 @@ function EditProfileScreen() {
 
       if (type === 'avatar') {
         if (sizeInMB > 4) {
-          ToastAndroid.show('Avatar maksimal 4MB', ToastAndroid.LONG);
+          ToastAndroid.show(tSync('auth.avatarMaxSize'), ToastAndroid.LONG);
           return;
         }
         setAvatarUri(fileUri);
         setAvatarChanged(true);
       } else {
         if (sizeInMB > 6) {
-          ToastAndroid.show('Banner maksimal 6MB', ToastAndroid.LONG);
+          ToastAndroid.show(tSync('auth.bannerMaxSize'), ToastAndroid.LONG);
           return;
         }
         setBannerUri(fileUri);
@@ -106,10 +108,10 @@ function EditProfileScreen() {
       if (error) throw error;
 
       await refreshProfile();
-      ToastAndroid.show('Profil berhasil diperbarui!', ToastAndroid.SHORT);
+      ToastAndroid.show(tSync('auth.profileUpdated'), ToastAndroid.SHORT);
       navigation.goBack();
     } catch (e: any) {
-      ToastAndroid.show(`Gagal menyimpan: ${e.message}`, ToastAndroid.LONG);
+      ToastAndroid.show(tSync('auth.profileUpdateFailed', { message: e?.message || tSync('common.unknown') }), ToastAndroid.LONG);
     } finally {
       setIsSaving(false);
     }
@@ -117,12 +119,11 @@ function EditProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <MaterialIcons name="close" size={24} color={isDark ? '#fff' : '#111'} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profil</Text>
+        <Text style={styles.headerTitle}>{t('auth.editProfileTitle')}</Text>
         <TouchableOpacity 
           style={styles.saveBtn} 
           onPress={handleSave} 
@@ -130,15 +131,16 @@ function EditProfileScreen() {
           {isSaving ? (
             <ActivityIndicator size="small" color="#6366f1" />
           ) : (
-            <Text style={styles.saveBtnText}>Simpan</Text>
+            <Text style={styles.saveBtnText}>{t('common.save')}</Text>
           )}
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Banner Section */}
         <View style={styles.section}>
-          <Text style={[styles.label, { color: isDark ? '#aaa' : '#666' }]}>Banner Profil (Maks 6MB, GIF support)</Text>
+          <Text style={[styles.label, { color: isDark ? '#aaa' : '#666' }]}>
+            {t('auth.bannerLabel')} ({t('auth.bannerMaxSize')})
+          </Text>
           <TouchableOpacity 
             style={[styles.bannerContainer, { backgroundColor: isDark ? '#1a1a1a' : '#e0e0e0' }]} 
             activeOpacity={0.8}
@@ -154,9 +156,10 @@ function EditProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Avatar Section */}
         <View style={styles.section}>
-          <Text style={[styles.label, { color: isDark ? '#aaa' : '#666' }]}>Avatar Profil (Maks 4MB, GIF support)</Text>
+          <Text style={[styles.label, { color: isDark ? '#aaa' : '#666' }]}>
+            {t('auth.avatarLabel')} ({t('auth.avatarMaxSize')})
+          </Text>
           <TouchableOpacity 
             style={[styles.avatarContainer, { backgroundColor: isDark ? '#1a1a1a' : '#ddd' }]} 
             activeOpacity={0.8}
@@ -174,9 +177,8 @@ function EditProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Display Name Section */}
         <View style={styles.section}>
-          <Text style={[styles.label, { color: isDark ? '#aaa' : '#666' }]}>Nama Tampilan</Text>
+          <Text style={[styles.label, { color: isDark ? '#aaa' : '#666' }]}>{t('auth.displayNameLabel')}</Text>
           <TextInput
             style={[styles.input, { 
               backgroundColor: isDark ? '#111' : '#fff',
@@ -185,15 +187,14 @@ function EditProfileScreen() {
             }]}
             value={displayName}
             onChangeText={setDisplayName}
-            placeholder="Masukkan nama tampilan"
+            placeholder={t('auth.displayNameInputPlaceholder')}
             placeholderTextColor={isDark ? '#555' : '#999'}
             maxLength={30}
           />
         </View>
 
-        {/* Bio Section */}
         <View style={styles.section}>
-          <Text style={[styles.label, { color: isDark ? '#aaa' : '#666' }]}>Bio (Maks 160 Karakter)</Text>
+          <Text style={[styles.label, { color: isDark ? '#aaa' : '#666' }]}>{t('auth.bioLabelMax', { max: 160 })}</Text>
           <TextInput
             style={[styles.input, styles.bioInput, { 
               backgroundColor: isDark ? '#111' : '#fff',
@@ -202,7 +203,7 @@ function EditProfileScreen() {
             }]}
             value={bio}
             onChangeText={setBio}
-            placeholder="Tulis sesuatu tentang dirimu..."
+            placeholder={t('auth.bioPlaceholder')}
             placeholderTextColor={isDark ? '#555' : '#999'}
             maxLength={160}
             multiline
@@ -218,7 +219,7 @@ function EditProfileScreen() {
   );
 }
 
-function makeStyles(isDark: boolean) {
+function makeStyles(isDark: boolean, bannerHeight: number) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: isDark ? '#000000' : '#f8f9fa' },
     header: {
@@ -239,7 +240,7 @@ function makeStyles(isDark: boolean) {
     label: { fontSize: 13, fontWeight: '600', marginBottom: 8 },
     bannerContainer: {
       width: '100%',
-      height: BANNER_HEIGHT,
+      height: bannerHeight,
       borderRadius: 12,
       justifyContent: 'center',
       alignItems: 'center',

@@ -1,11 +1,12 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { EventEmitter } from 'expo';
 import SQLiteKV from 'expo-sqlite/kv-store';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import defaultDatabaseValue from '../misc/defaultDatabaseValue.json';
 import { HistoryItemKey, SetDatabaseTarget } from '../types/databaseTarget';
 import { HistoryJSON } from '../types/historyJSON';
 
-export type DataKey = SetDatabaseTarget | HistoryItemKey;
+export type DataKey = SetDatabaseTarget | HistoryItemKey | `IGNORE_DEFAULT_DB_${string}`;
 
 export type AppDatabase = Omit<
   Record<SetDatabaseTarget | 'history', string>,
@@ -18,6 +19,9 @@ export class DatabaseManager {
   static async set(key: string, value: string) {
     await SQLiteKV.setItem(key, value);
     this.#event.emit('valueChanged', key);
+  }
+  static async setSilent(key: string, value: string) {
+    await SQLiteKV.setItem(key, value);
   }
   static setSync(key: DataKey, value: string) {
     SQLiteKV.setItemSync(key, value);
@@ -45,24 +49,48 @@ export class DatabaseManager {
   }
 
   static async getDataForBackup(): Promise<AppDatabase> {
-    const historyKeyOrder: HistoryItemKey[] = JSON.parse(
-      (await this.get('historyKeyCollectionsOrder')) ?? '[]',
-    );
+    let historyKeyOrder: HistoryItemKey[] = [];
+    try {
+      const parsed = JSON.parse((await this.get('historyKeyCollectionsOrder')) ?? '[]');
+      if (Array.isArray(parsed)) {
+        historyKeyOrder = parsed as HistoryItemKey[];
+      }
+    } catch {
+      historyKeyOrder = [];
+    }
     const history = await toOldHistoryStructure(historyKeyOrder);
 
     return {
-      audioMixingMode: (await this.get('audioMixingMode'))!,
-      colorScheme: (await this.get('colorScheme'))!,
-      enableBatteryTimeInfo: (await this.get('enableBatteryTimeInfo'))!,
-      enableNowPlayingNotification: (await this.get('enableNowPlayingNotification'))!,
+      audioMixingMode: (await this.get('audioMixingMode')) ?? defaultDatabaseValue.audioMixingMode,
+      colorScheme: (await this.get('colorScheme')) ?? defaultDatabaseValue.colorScheme,
+      enableBatteryTimeInfo:
+        (await this.get('enableBatteryTimeInfo')) ?? defaultDatabaseValue.enableBatteryTimeInfo,
+      enableNowPlayingNotification:
+        (await this.get('enableNowPlayingNotification')) ??
+        defaultDatabaseValue.enableNowPlayingNotification,
       history: JSON.stringify(history),
-      searchHistory: (await this.get('searchHistory'))!,
-      novelSearchHistory: (await this.get('novelSearchHistory'))!,
-      watchLater: (await this.get('watchLater'))!,
-      extensionPreferences: (await this.get('extensionPreferences'))!,
-      local_exp: (await this.get('local_exp'))!,
-      enableForumChat: (await this.get('enableForumChat'))!,
-      last_announcement_hash: (await this.get('last_announcement_hash'))!,
+      searchHistory: (await this.get('searchHistory')) ?? defaultDatabaseValue.searchHistory,
+      novelSearchHistory:
+        (await this.get('novelSearchHistory')) ?? defaultDatabaseValue.novelSearchHistory,
+      watchLater: (await this.get('watchLater')) ?? defaultDatabaseValue.watchLater,
+      extensionPreferences:
+        (await this.get('extensionPreferences')) ?? defaultDatabaseValue.extensionPreferences,
+      local_exp: (await this.get('local_exp')) ?? defaultDatabaseValue.local_exp,
+      enableForumChat:
+        (await this.get('enableForumChat')) ?? defaultDatabaseValue.enableForumChat,
+      last_announcement_hash:
+        (await this.get('last_announcement_hash')) ?? defaultDatabaseValue.last_announcement_hash,
+      remoteConfig: (await this.get('remoteConfig')) ?? defaultDatabaseValue.remoteConfig,
+      homeShowAnime: (await this.get('homeShowAnime')) ?? defaultDatabaseValue.homeShowAnime,
+      homeShowComics: (await this.get('homeShowComics')) ?? defaultDatabaseValue.homeShowComics,
+      homeShowNovels: (await this.get('homeShowNovels')) ?? defaultDatabaseValue.homeShowNovels,
+      homeShowFilms: (await this.get('homeShowFilms')) ?? defaultDatabaseValue.homeShowFilms,
+      homeShowDonghua: (await this.get('homeShowDonghua')) ?? defaultDatabaseValue.homeShowDonghua,
+      offlineAnimeList:
+        (await this.get('offlineAnimeList')) ?? defaultDatabaseValue.offlineAnimeList,
+      pausedDownloads:
+        (await this.get('pausedDownloads')) ?? defaultDatabaseValue.pausedDownloads,
+      language: (await this.get('language')) ?? defaultDatabaseValue.language,
     };
   }
 
@@ -75,10 +103,12 @@ export function useKeyValueIfFocused(key: DataKey) {
   const [value, setValue] = useState(() => DatabaseManager.getSync(key));
   useFocusEffect(
     useCallback(() => {
-      setValue(DatabaseManager.getSync(key));
+      const syncVal = DatabaseManager.getSync(key);
+      setValue(prev => (prev === syncVal ? prev : syncVal));
       const listener = DatabaseManager.listenOnValueChanged(async changeKey => {
         if (key === changeKey) {
-          setValue(await DatabaseManager.get(key));
+          const nextVal = await DatabaseManager.get(key);
+          setValue(prev => (prev === nextVal ? prev : nextVal));
         }
       });
 
@@ -102,15 +132,23 @@ export function useModifiedKeyValueIfFocused<T>(
     }
   });
   const modifyFuncRef = useRef(modifyValueFunc);
-  modifyFuncRef.current = modifyValueFunc;
+  const lastRawRef = useRef<string | null | undefined>(value);
+  useEffect(() => {
+    modifyFuncRef.current = modifyValueFunc;
+  });
   useFocusEffect(
     useCallback(() => {
+      if (lastRawRef.current === value) return;
+      lastRawRef.current = value;
       try {
-        if (value == null) return;
+        if (value == null) {
+          setModifiedValue(fallback as T);
+          return;
+        }
         setModifiedValue(modifyFuncRef.current(value));
       } catch {
       }
-    }, [value]),
+    }, [value, fallback]),
   );
   return modifiedValue;
 }
@@ -119,24 +157,33 @@ export function toNewHistoryStructure(oldHistory: HistoryJSON[]): {
   keyCollectionsOrder: HistoryItemKey[];
   newHistory: { key: HistoryItemKey; data: HistoryJSON }[];
 } {
+  const validItems = Array.isArray(oldHistory)
+    ? oldHistory.filter(x => x && typeof x.title === 'string' && x.title.trim().length > 0)
+    : [];
   return {
-    keyCollectionsOrder: oldHistory.map(
+    keyCollectionsOrder: validItems.map(
       x =>
         `historyItem:${x.title.trim()}:${x.isComics ?? 'false'}:${x.isMovie ?? 'false'}` as const,
     ),
-    newHistory: oldHistory.map(x => ({
-      key: `historyItem:${x.title.trim()}:${x.isComics ?? 'false'}:${x.isMovie ?? 'false'}`,
+    newHistory: validItems.map(x => ({
+      key: `historyItem:${x.title.trim()}:${x.isComics ?? 'false'}:${x.isMovie ?? 'false'}` as const,
       data: x,
     })),
   };
 }
 export async function toOldHistoryStructure(keyCollectionsOrder: HistoryItemKey[]) {
   const history: HistoryJSON[] = [];
+  if (!Array.isArray(keyCollectionsOrder)) return history;
   for (const key of keyCollectionsOrder) {
+    if (typeof key !== 'string') continue;
     const data = await DatabaseManager.get(key);
     if (!data) continue;
-    const dataJson = JSON.parse(data) as HistoryJSON;
-    history.push(dataJson);
+    try {
+      const dataJson = JSON.parse(data) as HistoryJSON;
+      if (dataJson && typeof dataJson === 'object') {
+        history.push(dataJson);
+      }
+    } catch {}
   }
   return history;
 }

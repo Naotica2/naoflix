@@ -2,8 +2,8 @@ import { StackActions, useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useCallback, useRef } from 'react';
 import { Text, ToastAndroid, View } from 'react-native';
-import randomTipsArray from '../../assets/loadingTips.json';
 import useGlobalStyles from '../../assets/style';
+import { tSync, useLanguage } from '../../misc/LanguageContext';
 import { RootStackNavigator } from '../../types/navigation';
 import watchLaterJSON from '../../types/watchLaterJSON';
 import AnimeAPI from '../../utils/AnimeAPI';
@@ -19,6 +19,7 @@ import {
   ComicsDetail,
   getComicsDetailFromUrl,
   getComicsReading,
+  resolveComicDetailUrl,
 } from '../../utils/scrapers/comicsv2';
 import { getNovelDetail, getNovelReading } from '../../utils/scrapers/meionovel';
 import {
@@ -26,18 +27,17 @@ import {
   getKomikuReading,
   KomikuDetail,
 } from '../../utils/scrapers/komiku';
-import { getPlayStreams, searchMoviebox } from '../../utils/scrapers/moviebox';
+import { FilmAPI } from '../../utils/FilmAPI';
 import LoadingIndicator from '../misc/LoadingIndicator';
 
 type Props = NativeStackScreenProps<RootStackNavigator, 'FromUrl'>;
 
 function FromUrl(props: Props) {
   const globalStyles = useGlobalStyles();
+  const { t } = useLanguage();
 
-  const randomTips = useRef<string>(
-    // eslint-disable-next-line no-bitwise
-    randomTipsArray[~~(Math.random() * randomTipsArray.length)],
-  ).current;
+  const tipIndex = useRef<number>(Math.floor(Math.random() * 6)).current;
+  const randomTips = t(`loadingTips.${tipIndex}` as any);
 
 
   const handleError = useCallback(
@@ -51,9 +51,9 @@ function FromUrl(props: Props) {
       }
       const errMessage =
         err.message === 'Network Error' || err.message === 'Network request failed'
-          ? 'Permintaan gagal: Jaringan Error / Akses Diblokir ISP\\nPastikan internet stabil atau coba gunakan VPN / Private DNS (seperti 1.1.1.1)'
-          : 'Error tidak diketahui: ' + err.message;
-      DialogManager.alert('Error', errMessage);
+          ? tSync('utils.fromUrlNetworkBlocked')
+          : tSync('player.unknownError', { message: err.message });
+      DialogManager.alert(tSync('common.error'), errMessage);
       props.navigation.goBack();
     },
     [props.navigation],
@@ -63,7 +63,7 @@ function FromUrl(props: Props) {
       props.navigation.setOptions({ headerTitle: props.route.params.title });
       const abort: AbortController = new AbortController();
       let link: string;
-      if (props.route.params.link.startsWith('shinigami://')) {
+      if (!/^https?:\/\//i.test(props.route.params.link)) {
         link = props.route.params.link;
       } else {
         try {
@@ -76,8 +76,8 @@ function FromUrl(props: Props) {
       if (link.includes('nanimex')) {
         props.navigation.goBack();
         DialogManager.alert(
-          'Perhatian!',
-          'Dikarenakan data yang digunakan berbeda, history lama tidak didukung, sehingga sebagai solusi, kamu harus mencari anime ini secara manual di menu pencarian dan pilih episode yang sesuai.',
+          tSync('utils.fromUrlOldNanimexTitle'),
+          tSync('utils.fromUrlOldNanimexDesc'),
         );
         return;
       }
@@ -109,11 +109,11 @@ function FromUrl(props: Props) {
           }
         }
 
-        getPlayStreams(subjectId, detailPath, se, ep, abort.signal)
-          .then(streams => {
+        FilmAPI.getPlayStreams('lk21', subjectId, detailPath, se, ep, abort.signal)
+          .then((streams: any[]) => {
             if (abort.signal.aborted || props.navigation.getState().routes.length === 1) return;
             if (streams.length === 0) {
-              DialogManager.alert('Error', 'Video tidak tersedia untuk film ini.');
+              DialogManager.alert(tSync('common.error'), tSync('utils.fromUrlFilmUnavailable'));
               props.navigation.goBack();
               return;
             }
@@ -139,8 +139,8 @@ function FromUrl(props: Props) {
           .then(async result => {
             if (result === 'Unsupported') {
               DialogManager.alert(
-                'Tidak didukung!',
-                'Anime yang kamu tuju tidak memiliki data yang didukung!',
+                tSync('player.unsupportedTitle'),
+                tSync('player.unsupportedAnime'),
               );
               props.navigation.goBack();
               return;
@@ -149,10 +149,16 @@ function FromUrl(props: Props) {
               if (result.type === 'animeDetail') {
                 if (result.genres.includes('')) {
                   DialogManager.alert(
-                    'Perhatian!',
-                    'Anime ini mengandung genre ecchi. Mohon bijak dalam menonton.',
+                    tSync('common.warning'),
+                    tSync('player.ecchiWarning'),
                   );
                 }
+                
+                // Use passed thumbnail if scraper couldn't find one
+                if (props.route.params.thumbnailUrl && !result.thumbnailUrl) {
+                  result.thumbnailUrl = props.route.params.thumbnailUrl;
+                }
+
                 if (abort.signal.aborted || props.navigation.getState().routes.length === 1) return;
                 props.navigation.dispatch(
                   StackActions.replace('AnimeDetail', {
@@ -161,6 +167,24 @@ function FromUrl(props: Props) {
                   }),
                 );
               } else if (result.type === 'animeStreaming') {
+                if (
+                  props.route.params.forceDetail &&
+                  result.episodeData?.animeDetail &&
+                  result.episodeData.animeDetail !== link
+                ) {
+                  props.navigation.dispatch(
+                    StackActions.replace('FromUrl', {
+                      title: props.route.params.title,
+                      link: result.episodeData.animeDetail,
+                      type: props.route.params.type,
+                      thumbnailUrl: props.route.params.thumbnailUrl,
+                      historyData: props.route.params.historyData,
+                      seriesLink: result.episodeData.animeDetail,
+                      forceDetail: false,
+                    }),
+                  );
+                  return;
+                }
                 if (abort.signal.aborted || props.navigation.getState().routes.length === 1) return;
                 props.navigation.dispatch(
                   StackActions.replace('Video', {
@@ -170,14 +194,19 @@ function FromUrl(props: Props) {
                   }),
                 );
 
-                setHistory(result, link, false, props.route.params.historyData);
+                setHistory(result, link, false, {
+                  ...props.route.params.historyData,
+                  seriesLink: result.episodeData?.animeDetail,
+                });
 
                 const episodeIndex = result.title.toLowerCase().indexOf(' episode');
                 const title =
                   episodeIndex >= 0 ? result.title.slice(0, episodeIndex) : result.title;
-                const watchLater: watchLaterJSON[] = JSON.parse(
-                  (await DatabaseManager.get('watchLater'))!,
-                );
+                let watchLater: watchLaterJSON[] = [];
+                try {
+                  const parsed = JSON.parse((await DatabaseManager.get('watchLater')) ?? '[]');
+                  if (Array.isArray(parsed)) watchLater = parsed;
+                } catch {}
                 const normalizeWatchLaterTitle = (str: string) => {
                   let resultString = str.split('(Episode')[0].trim();
                   if (resultString.endsWith('BD')) {
@@ -195,13 +224,13 @@ function FromUrl(props: Props) {
                 if (watchLaterIndex >= 0) {
                   controlWatchLater('delete', watchLaterIndex);
                   ToastAndroid.show(
-                    `${title} dihapus dari daftar tonton nanti`,
+                    `${title} - ${tSync('detail.removedWatchLater')}`,
                     ToastAndroid.SHORT,
                   );
                 }
               }
             } catch (e: any) {
-              DialogManager.alert('Error', e.message);
+              DialogManager.alert(tSync('common.error'), e.message);
               props.navigation.goBack();
             }
           })
@@ -235,50 +264,123 @@ function FromUrl(props: Props) {
             .catch(handleError);
         }
       } else {
-        const isKomiku = link.includes('komiku');
-        const isBacakomik = link.includes('page=manga') || link.includes('page=chapter') || link.includes('fruatre.my.id');
-        const isKomikindo = link.includes('komikindo') || link.includes('bacakomik') || isBacakomik;
-        const isKomikcast = link.startsWith('komikcast://');
+        const isKomikcast = link.startsWith('komikindo://');
+        const isKomiku =
+          link.includes('komiku') &&
+          !isKomikcast &&
+          !link.includes('komikindo') &&
+          !link.includes('bacakomik') &&
+          !link.includes('mynimeku') &&
+          !link.includes('voratoon') &&
+          !link.includes('softkomik');
+        const isBacakomik =
+          link.includes('page=manga') ||
+          link.includes('page=chapter') ||
+          link.includes('fruatre.my.id');
+        const isKomikindo =
+          (link.includes('komikindo') && !isKomikcast) ||
+          link.includes('bacakomik') ||
+          isBacakomik;
+        const isLuvyaa = link.startsWith('luvyaa://');
+        const isVoratoon =
+          link.startsWith('voratoon://') ||
+          link.startsWith('voratoon:/') ||
+          link.includes('voratoon');
         const isSoftkomik = link.includes('softkomik');
         const isMynimeku = link.includes('mynimeku');
-        const isMangadex = link.startsWith('/title/') || link.startsWith('/chapter/');
         const isShinigami = link.startsWith('shinigami://');
         const isSoftkomikGoToDetail = isSoftkomik && !link.includes('/chapter/');
         const isKomikuGoToDetail = isKomiku && link.includes('/manga/');
-        const isKomikindoGoToDetail =
-          isKomikindo && !(link.includes('-chapter-') || link.includes('-chapte-') || link.includes('page=chapter') || link.includes('/api/manga/bacakomik-chapter'));
-        const isMynimekuGoToDetail = isMynimeku && link.includes('/komik/');
-        const isMangadexGoToDetail = isMangadex && link.startsWith('/title/');
+        const isKomikindoChapterLike =
+          link.includes('-chapter-') ||
+          link.includes('-chapte-') ||
+          link.includes('/chapter/') ||
+          link.includes('page=chapter') ||
+          link.includes('/api/manga/bacakomik-chapter') ||
+          /-(?:chapter|ch)[-_]?\d+/i.test(link);
+        const isKomikindoGoToDetail = isKomikindo && !isKomikindoChapterLike;
+        const isMynimekuGoToDetail =
+          isMynimeku &&
+          link.includes('/komik/') &&
+          !/\/komik\/[^/?#]+\/chapter/i.test(link) &&
+          !link.includes('/chapter/');
         const isShinigamiGoToDetail = isShinigami && link.startsWith('shinigami://detail/');
-        const isKomikcastGoToDetail = isKomikcast && link.startsWith('komikcast://detail/');
-        const goToDetail = isKomikuGoToDetail || isKomikindoGoToDetail || isSoftkomikGoToDetail || isMynimekuGoToDetail || isMangadexGoToDetail || isShinigamiGoToDetail || isKomikcastGoToDetail;
-        if (goToDetail) {
+        const isKomikcastGoToDetail = isKomikcast && link.startsWith('komikindo://detail/');
+        const isLuvyaaGoToDetail = isLuvyaa && link.startsWith('luvyaa://detail/');
+        const isVoratoonGoToDetail =
+          isVoratoon &&
+          (link.startsWith('voratoon://detail') ||
+            (link.includes('/series/') && !link.includes('/chapter/')));
+        const goToDetail =
+          isKomikuGoToDetail ||
+          isKomikindoGoToDetail ||
+          isSoftkomikGoToDetail ||
+          isMynimekuGoToDetail ||
+          isShinigamiGoToDetail ||
+          isKomikcastGoToDetail ||
+          isLuvyaaGoToDetail ||
+          isVoratoonGoToDetail;
+
+        const isNonKomikuTarget = (target: string) =>
+          target.includes('komikindo') ||
+          target.includes('bacakomik') ||
+          target.includes('page=manga') ||
+          target.includes('page=chapter') ||
+          target.includes('fruatre.my.id') ||
+          target.includes('softkomik') ||
+          target.includes('mynimeku') ||
+          target.startsWith('shinigami://') ||
+          target.startsWith('komikindo://') ||
+          target.startsWith('luvyaa://') ||
+          target.startsWith('voratoon://') ||
+          target.startsWith('voratoon:/') ||
+          target.includes('voratoon');
+
+        const openComicDetail = (targetLink: string) => {
           const fetchComicsPromise = (
-            isKomikindo || link.includes('softkomik') || isMynimeku || isMangadex || isShinigami || isKomikcast
-              ? getComicsDetailFromUrl(link, abort.signal)
-              : getKomikuDetailFromUrl(link, abort.signal)
+            isNonKomikuTarget(targetLink)
+              ? getComicsDetailFromUrl(targetLink, abort.signal)
+              : getKomikuDetailFromUrl(targetLink, abort.signal)
           ) as Promise<ComicsDetail | KomikuDetail>;
-          fetchComicsPromise
+          return fetchComicsPromise
             .then(result => {
               if (abort.signal.aborted || props.navigation.getState().routes.length === 1) return;
+              if (props.route.params.thumbnailUrl && !result.thumbnailUrl) {
+                result.thumbnailUrl = props.route.params.thumbnailUrl;
+              }
               if (result.genres.includes('Ecchi')) {
                 DialogManager.alert(
-                  'Perhatian!',
-                  'Komik ini mengandung genre ecchi. Mohon bijak dalam membaca.',
+                  tSync('common.warning'),
+                  tSync('utils.fromUrlComicEcchiWarning'),
                 );
               }
               props.navigation.dispatch(
                 StackActions.replace('ComicsDetail', {
                   data: result,
-                  link: link,
+                  link: targetLink,
                 }),
               );
             })
             .catch(handleError);
+        };
+
+        const resolvedSeriesLink =
+          props.route.params.seriesLink ?? (props.route.params.historyData as any)?.seriesLink;
+
+        if (goToDetail) {
+          openComicDetail(link);
+        } else if (props.route.params.forceDetail) {
+          resolveComicDetailUrl(link, props.route.params.title, abort.signal)
+            .then(resolvedDetailUrl => {
+              if (abort.signal.aborted || props.navigation.getState().routes.length === 1) return;
+              if (resolvedDetailUrl && resolvedDetailUrl !== link) {
+                return openComicDetail(resolvedDetailUrl);
+              }
+              throw new Error('Detail komik tidak ditemukan untuk link chapter ini.');
+            })
+            .catch(handleError);
         } else {
-          (isKomikindo || link.includes('softkomik') || isMynimeku || isMangadex || isShinigami || isKomikcast
-            ? getComicsReading
-            : getKomikuReading)(link, abort.signal)
+          (isNonKomikuTarget(link) ? getComicsReading : getKomikuReading)(link, abort.signal)
             .then(async result => {
               if (abort.signal.aborted || props.navigation.getState().routes.length === 1) return;
               props.navigation.dispatch(
@@ -286,22 +388,40 @@ function FromUrl(props: Props) {
                   data: result,
                   historyData: props.route.params.historyData,
                   link: link,
+                  seriesLink: resolvedSeriesLink,
                   title: props.route.params.title,
                   thumbnailUrl: props.route.params.thumbnailUrl,
                 }),
               );
-              setHistory(result, link, false, { ...props.route.params.historyData, thumbnailUrl: props.route.params.thumbnailUrl }, false, true, props.route.params.title);
+              setHistory(
+                result,
+                link,
+                false,
+                {
+                  ...props.route.params.historyData,
+                  thumbnailUrl: props.route.params.thumbnailUrl,
+                  ...(resolvedSeriesLink ? { seriesLink: resolvedSeriesLink } : {}),
+                },
+                false,
+                true,
+                props.route.params.title,
+              );
               const chapterIndex = result.title.toLowerCase().indexOf(' chapter');
               const title = chapterIndex >= 0 ? result.title.slice(0, chapterIndex) : result.title;
-              const watchLater: watchLaterJSON[] = JSON.parse(
-                (await DatabaseManager.get('watchLater'))!,
-              );
+              let watchLater: watchLaterJSON[] = [];
+              try {
+                const parsed = JSON.parse((await DatabaseManager.get('watchLater')) ?? '[]');
+                if (Array.isArray(parsed)) watchLater = parsed;
+              } catch {}
               const watchLaterIndex = watchLater.findIndex(
                 z => z.title.trim() === title.trim() && z.isComics === true,
               );
               if (watchLaterIndex >= 0) {
                 controlWatchLater('delete', watchLaterIndex);
-                ToastAndroid.show(`${title} dihapus dari daftar tonton nanti`, ToastAndroid.SHORT);
+                ToastAndroid.show(
+                  `${title} - ${tSync('detail.removedWatchLater')}`,
+                  ToastAndroid.SHORT,
+                );
               }
             })
             .catch(handleError);
@@ -313,7 +433,10 @@ function FromUrl(props: Props) {
     }, [
       handleError,
       props.navigation,
+      props.route.params.forceDetail,
       props.route.params.historyData,
+      props.route.params.seriesLink,
+      props.route.params.thumbnailUrl,
       props.route.params.title,
       props.route.params.type,
       props.route.params.link,
@@ -331,7 +454,7 @@ function FromUrl(props: Props) {
         }}>
         <LoadingIndicator size={15} />
         <Text style={[globalStyles.text, { fontWeight: 'bold', marginBottom: 20 }]}>
-          Mengambil data... Mohon tunggu sebentar!
+          {t('utils.fromUrlFetchingData')}
         </Text>
       </View>
       <View style={{ alignItems: 'center' }}>

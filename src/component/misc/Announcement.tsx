@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, useWindowDimensions, View, TouchableOpacity, useColorScheme } from 'react-native';
+import {
+  InteractionManager,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useColorScheme,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import Markdown from 'react-native-marked';
-import { Modal, Portal, useTheme } from 'react-native-paper';
+import { Modal, Portal } from 'react-native-paper';
 import MaterialIcons from '@react-native-vector-icons/material-icons';
-import useGlobalStyles from '../../assets/style';
+import { useLanguage } from '../../misc/LanguageContext';
 import { DatabaseManager } from '../../utils/DatabaseManager';
 
 const hashCode = (str: string) => {
@@ -16,43 +24,18 @@ const hashCode = (str: string) => {
   return hash.toString();
 };
 
-export default function Announcement() {
-  const [modalVisible, setModalVisible] = useState(false);
-  const [announcementText, setAnnouncementText] = useState('');
-  const [currentHash, setCurrentHash] = useState('');
-
+function AnnouncementModal({
+  announcementText,
+  onClose,
+  onDontShowAgain,
+}: {
+  announcementText: string;
+  onClose: () => void;
+  onDontShowAgain: () => void;
+}) {
   const dimensions = useWindowDimensions();
-  const globalStyles = useGlobalStyles();
+  const { t } = useLanguage();
   const isDark = useColorScheme() === 'dark';
-  const theme = useTheme();
-
-  useEffect(() => {
-    fetch(
-      'https://raw.githubusercontent.com/Naotica2/naoflix/refs/heads/main/Announcement.md',
-    )
-      .then(async data => {
-        if (!data.ok) return;
-        const text = await data.text();
-        if (text.trim() === '') return;
-        
-        const newHash = hashCode(text);
-        const savedHash = await DatabaseManager.get('last_announcement_hash');
-        
-        if (savedHash !== newHash) {
-          setAnnouncementText(text);
-          setCurrentHash(newHash);
-          setModalVisible(true);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  const handleDontShowAgain = async () => {
-    if (currentHash) {
-      await DatabaseManager.set('last_announcement_hash', currentHash);
-    }
-    setModalVisible(false);
-  };
 
   const markdownTheme = useMemo<any>(() => {
     return {
@@ -69,28 +52,23 @@ export default function Announcement() {
   return (
     <Portal>
       <Modal
-        visible={modalVisible}
-        onDismiss={() => setModalVisible(false)}
+        visible
+        onDismiss={onClose}
         contentContainerStyle={styles.modalContentContainer}>
         <View style={styles.modalBackground}>
           <View style={[styles.container, { backgroundColor: isDark ? '#1f2937' : '#ffffff' }]}>
-            
-            {/* Header */}
             <View style={[styles.header, { backgroundColor: isDark ? '#111827' : '#f3f4f6' }]}>
               <View style={styles.headerIconContainer}>
                 <MaterialIcons name="campaign" size={28} color="#3b82f6" />
               </View>
               <Text style={[styles.headerText, { color: isDark ? '#f9fafb' : '#111827' }]}>
-                Pemberitahuan
+                {t('utils.announcementHeader')}
               </Text>
-              <TouchableOpacity
-                style={styles.closeIcon}
-                onPress={() => setModalVisible(false)}>
+              <TouchableOpacity style={styles.closeIcon} onPress={onClose}>
                 <MaterialIcons name="close" size={24} color={isDark ? '#9ca3af' : '#6b7280'} />
               </TouchableOpacity>
             </View>
 
-            {/* Content */}
             <View style={styles.content}>
               <Markdown
                 theme={markdownTheme}
@@ -107,26 +85,85 @@ export default function Announcement() {
               />
             </View>
 
-            {/* Footer */}
-            <View style={[styles.footer, { borderTopColor: isDark ? '#374151' : '#e5e7eb', flexDirection: 'row', gap: 10 }]}>
+            <View
+              style={[
+                styles.footer,
+                { borderTopColor: isDark ? '#374151' : '#e5e7eb', flexDirection: 'row', gap: 10 },
+              ]}>
               <TouchableOpacity
-                style={[styles.actionButton, { flex: 1, backgroundColor: 'transparent', borderWidth: 1, borderColor: '#3b82f6' }]}
+                style={[
+                  styles.actionButton,
+                  { flex: 1, backgroundColor: 'transparent', borderWidth: 1, borderColor: '#3b82f6' },
+                ]}
                 activeOpacity={0.8}
-                onPress={handleDontShowAgain}>
-                <Text style={[styles.actionButtonText, { color: '#3b82f6', fontSize: 13, textAlign: 'center' }]}>Jangan Tampilkan Lagi</Text>
+                onPress={onDontShowAgain}>
+                <Text style={[styles.actionButtonText, { color: '#3b82f6', fontSize: 13, textAlign: 'center' }]}>
+                  {t('utils.dontShowAgain')}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionButton, { flex: 1 }]}
                 activeOpacity={0.8}
-                onPress={() => setModalVisible(false)}>
-                <Text style={styles.actionButtonText}>Mengerti</Text>
+                onPress={onClose}>
+                <Text style={styles.actionButtonText}>{t('utils.understood')}</Text>
               </TouchableOpacity>
             </View>
-
           </View>
         </View>
       </Modal>
     </Portal>
+  );
+}
+
+export default function Announcement() {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [announcementText, setAnnouncementText] = useState('');
+  const [currentHash, setCurrentHash] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    const task = InteractionManager.runAfterInteractions(() => {
+      if (cancelled) return;
+      fetch(
+        'https://raw.githubusercontent.com/Naotica2/naoflix/refs/heads/main/Announcement.md',
+      )
+        .then(async data => {
+          if (!data.ok || cancelled) return;
+          const text = await data.text();
+          if (text.trim() === '' || cancelled) return;
+
+          const newHash = hashCode(text);
+          const savedHash = await DatabaseManager.get('last_announcement_hash');
+
+          if (!cancelled && savedHash !== newHash) {
+            setAnnouncementText(text);
+            setCurrentHash(newHash);
+            setModalVisible(true);
+          }
+        })
+        .catch(() => {});
+    });
+    return () => {
+      cancelled = true;
+      task.cancel();
+    };
+  }, []);
+
+  const handleDontShowAgain = async () => {
+    if (currentHash) {
+      await DatabaseManager.set('last_announcement_hash', currentHash);
+    }
+    setModalVisible(false);
+  };
+
+  if (!modalVisible) return null;
+
+  return (
+    <AnnouncementModal
+      announcementText={announcementText}
+      onClose={() => setModalVisible(false)}
+      onDontShowAgain={handleDontShowAgain}
+    />
   );
 }
 

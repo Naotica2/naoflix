@@ -1,5 +1,32 @@
 # Changelog NaoFlix
 
+## [v2.2.0] - Community Forum, Offline Downloads & Performance Overhaul
+### Added
+- **Community Forum:** Menghadirkan tab **Forum** baru untuk berdiskusi seputar anime, film, komik, ulasan, dan ajakan Nonton Bareng. Mendukung unggah hingga 4 gambar atau GIF, *Upvote/Downvote*, polling, rating ulasan, balasan komentar bergambar, penanda *Spoiler/NSFW*, tautan langsung ke judul Anime/Film/Komik di dalam aplikasi, *Bookmark*, lapor & blokir pengguna, serta bonus EXP harian.
+- **Offline Anime Downloads:** Menambahkan fitur unduh episode Anime lengkap dengan pilihan resolusi, tombol jeda & lanjutkan, lanjut otomatis saat koneksi kembali, serta tab **Downloads** dan mode **Offline** di Beranda agar tontonan tetap bisa diputar tanpa kuota internet.
+- **Language Options (ID / EN):** Menambahkan pilihan bahasa **Indonesia** dan **English** untuk seluruh tampilan aplikasi yang dapat diganti kapan saja di menu Pengaturan (*Settings*).
+- **Anime Release Schedule:** Menambahkan halaman **Jadwal Rilis Anime** mingguan serta baris khusus *Jadwal Hari Ini* di kategori Anime halaman Beranda.
+- **Home Category Filters & Account Search:** Menambahkan filter kategori cepat (*All*, *Anime*, *Film*, *Comics*) dan baris khusus Manhwa/Webtoon di Beranda serta *My Lists*, tombol **Detail** pada banner utama, serta tab pencarian **Akun** di halaman *Browse*.
+- **New Streaming & Reading Sources:** Menambahkan sumber baru di *Extension Manager*: **LK21** untuk Film/Series, **Nimegami** untuk Anime, serta **Komikindo**, **Voratoon**, dan **Luvyaa (NSFW)** untuk Komik.
+
+### Changed
+- **6-Tab Bottom Navigation:** Mengubah bilah navigasi bawah menjadi 6 tab utama (**Home**, **Browse**, **Forum**, **Messages**, **My Lists**, **Account**) dengan penanda jumlah unduhan yang sedang berjalan.
+- **Free Watch Party (Nobar):** Menghapus seluruh batasan VIP dan batas maksimal peserta sehingga fitur Nonton Bareng (*Nobar*) kini 100% gratis tanpa batas untuk semua pengguna.
+- **Faster & Lighter Performance:** Mengoptimalkan kinerja aplikasi secara menyeluruh agar perpindahan halaman, pemuatan gambar, dan pemutaran video terasa jauh lebih ringan dan lancar di perangkat kelas bawah (*low-end*).
+- **Improved Backup & Restore:** Memperbarui fitur cadangan (*Backup & Restore*) di Pengaturan agar ikut menyimpan data unduhan offline, pilihan bahasa, dan pengaturan sumber ekstensi.
+
+### Removed
+- **Old Sources Removal:** Menghapus beberapa sumber lama yang sudah mati atau tidak stabil (**Moviebox**, **Animelovers**, **Komikcast**, dan **MangaDex**).
+
+### Fixed
+- **Watch History & Comic Reader Fixes:** Memperbaiki duplikasi riwayat tontonan serta judul episode atau server yang berantakan, memperbaiki judul *chapter* komik yang sempat kosong, serta menyempurnakan keakuratan status tontonan di halaman detail Anime.
+- **Player & Loading Stability:** Memperbaiki video agar otomatis terjeda saat aplikasi berpindah ke latar belakang (*background*), tombol batal saat memuat novel yang sebelumnya tidak menutup *loading*, serta beberapa kendala pemuatan gambar dan tautan video dari sumber lama.
+- **Forum Navigation & Media Fixes (Beta):** Memperbaiki *lag* parah saat keluar-masuk halaman *Postingan Saya* / *Tersimpan* dari tab Profil, tautan komik yang sebelumnya langsung melompat ke halaman baca alih-alih Detail Komik, serta tampilan pratinjau GIF dan unggahan gambar yang ditemukan selama pengujian *beta*.
+- **Offline Download Stability (Beta):** Memperbaiki berbagai kendala unduhan yang ditemukan selama pengujian *beta*, seperti file video korup atau gagal diputar, lanjut unduhan setelah koneksi terputus, menjaga folder unduhan tidak muncul di galeri ponsel, serta tampilan daftar episode pada pemutar offline.
+- **New Sources Stability (Beta):** Memperbaiki kegagalan pemuatan episode dan video pada sumber baru (**LK21**, **Nimegami**, **Komikindo**, **Voratoon**, dan **Luvyaa**) yang ditemukan selama masa pengujian *beta*.
+- **Watch Party (Nobar) Fixes:** Memperbaiki sinkronisasi pemutaran jarak jauh antara Host dan peserta di Anime maupun Film/Series, tautan undangan yang langsung membuka room, pesan notifikasi peserta yang berulang, serta mengaktifkan kirim undangan Nobar lewat DM.
+
+---
 ## [v2.1.0] - Social Features & Watch Party Polish
 ### Added
 - **Direct Messaging (DM) & Chat Requests:** Menambahkan fitur Private Chat antar pengguna. Termasuk sistem *Preview-Before-Accept* di mana kamu bisa mengintip isi pesan dari orang tak dikenal di menu *Requests* sebelum memutuskan untuk menerima atau menolak undangannya.

@@ -34,6 +34,10 @@ import { __ALIAS as MynimekuAlias } from '../../utils/scrapers/mynimeku';
 import { __ALIAS as ShinigamiAlias } from '../../utils/scrapers/shinigami';
 import controlWatchLater from '../../utils/watchLaterControl';
 import ImageLoading from '../misc/ImageLoading';
+import cleanSynopsis from '../../utils/cleanSynopsis';
+import { tSync, useLanguage } from '../../misc/LanguageContext';
+import { normalizeMediaKey } from '../../types/forum';
+import MediaForumSection from '../Forum/MediaForumSection';
 
 type RecyclerViewType = (
   props: RecyclerViewProps<KomikuDetail['chapters'][0] | ComicsDetailTypeData['chapters'][0]> & {
@@ -48,6 +52,7 @@ const ReanimatedFlashList = Reanimated.createAnimatedComponent<RecyclerViewType>
 type Props = NativeStackScreenProps<RootStackNavigator, 'ComicsDetail'>;
 const IMG_HEIGHT = 200;
 export default function ComicsDetail(props: Props) {
+  const { t } = useLanguage();
   const colorScheme = useColorScheme();
   const globalStyles = useGlobalStyles();
   const insets = useSafeAreaInsets();
@@ -76,6 +81,7 @@ export default function ComicsDetail(props: Props) {
   const { data } = props.route.params;
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [showFullSynopsis, setShowFullSynopsis] = useState(false);
   const filteredChapters = useMemo(() => {
     if (!searchQuery) return data.chapters;
     return data.chapters.toReversed().filter(chapter => {
@@ -85,7 +91,14 @@ export default function ComicsDetail(props: Props) {
 
   const watchLaterListsJson = useModifiedKeyValueIfFocused(
     'watchLater',
-    state => JSON.parse(state) as watchLaterJSON[],
+    state => {
+      try {
+        return JSON.parse(state) as watchLaterJSON[];
+      } catch {
+        return [] as watchLaterJSON[];
+      }
+    },
+    [] as watchLaterJSON[],
   );
   const isInList = useMemo(
     () => watchLaterListsJson.some(item => item.title === data.title && item.isComics),
@@ -94,7 +107,14 @@ export default function ComicsDetail(props: Props) {
 
   const historyListsJson = useModifiedKeyValueIfFocused(
     'historyKeyCollectionsOrder',
-    state => JSON.parse(state) as HistoryItemKey[],
+    state => {
+      try {
+        return JSON.parse(state) as HistoryItemKey[];
+      } catch {
+        return [] as HistoryItemKey[];
+      }
+    },
+    [] as HistoryItemKey[],
   );
   const lastReaded = useMemo(() => {
     let historyKey = historyListsJson.find(
@@ -107,7 +127,12 @@ export default function ComicsDetail(props: Props) {
       );
     }
     if (historyKey) {
-      return JSON.parse(DatabaseManager.getSync(historyKey)!) as HistoryJSON;
+      try {
+        const raw = DatabaseManager.getSync(historyKey);
+        return raw ? (JSON.parse(raw) as HistoryJSON) : undefined;
+      } catch {
+        return undefined;
+      }
     } else return undefined;
   }, [historyListsJson, data.title]);
 
@@ -125,7 +150,15 @@ export default function ComicsDetail(props: Props) {
   const readComic = useCallback(
     (url: string, fromHistory?: HistoryJSON) => {
       let link = url;
-      const currentScraper = [KomikuAlias, MynimekuAlias, ShinigamiAlias].find(alias =>
+      const currentScraper = [
+        KomikuAlias,
+        MynimekuAlias,
+        ShinigamiAlias,
+        'voratoon',
+        'komikindo',
+        'bacakomik',
+        'luvyaa',
+      ].find(alias =>
         link.includes(alias),
       );
       const isSameScraper = currentScraper && props.route.params.link.includes(currentScraper);
@@ -152,6 +185,7 @@ export default function ComicsDetail(props: Props) {
         link,
         type: 'comics',
         thumbnailUrl: data.thumbnailUrl,
+        seriesLink: props.route.params.link,
         historyData: fromHistory
           ? {
               lastDuration: fromHistory.lastDuration ?? 0,
@@ -173,7 +207,7 @@ export default function ComicsDetail(props: Props) {
         data={filteredChapters}
         ListEmptyComponent={() => (
           <View style={[styles.mainContainer, { marginVertical: 6 }]}>
-            <Text style={globalStyles.text}>Tidak ada chapter</Text>
+            <Text style={globalStyles.text}>{t('detail.noChapters')}</Text>
           </View>
         )}
         renderItem={({ item }) => {
@@ -200,20 +234,20 @@ export default function ComicsDetail(props: Props) {
                     </Text>
                     <Text style={[globalStyles.text, styles.chapterDetailText]}>
                       <Icon color={styles.chapterDetailText.color} name="eye" size={12} />{' '}
-                      {item.views}x dilihat
+                      {t('detail.viewsCount', { views: item.views })}
                     </Text>
                   </>
                 )}
                 {(isLastReaded || isLastReadedByLink) && (
                   <Text
                     style={[globalStyles.text, styles.chapterDetailText, styles.lastReadedText]}>
-                    <Icon color={styles.lastReadedText.color} name="book" size={12} /> Terakhir
-                    dibaca
+                    <Icon color={styles.lastReadedText.color} name="book" size={12} />{' '}
+                    {t('detail.lastRead')}
                   </Text>
                 )}
                 {isRead && !isLastReaded && !isLastReadedByLink && (
                   <Text style={[globalStyles.text, styles.chapterDetailText, { color: '#888' }]}>
-                    <Icon color="#888" name="check" size={12} /> Sudah dibaca
+                    <Icon color="#888" name="check" size={12} /> {t('detail.alreadyRead')}
                   </Text>
                 )}
               </View>
@@ -249,7 +283,7 @@ export default function ComicsDetail(props: Props) {
                   },
                 ]}>
                 <ImageLoading
-                  source={{ uri: data.thumbnailUrl }}
+                  source={{ uri: (data as any).thumbnailUrl }}
                   style={{ width: '100%', height: '100%', opacity: colorScheme === 'dark' ? 0.4 : 0.8 }}
                   blurRadius={10}
                   resizeMode="cover"
@@ -361,8 +395,20 @@ export default function ComicsDetail(props: Props) {
                 </View>
 
                 <View style={styles.synopsisContainer}>
-                  <Text style={[globalStyles.text, styles.synopsisTitle]}>Sinopsis</Text>
-                  <Text style={[globalStyles.text, styles.synopsisText]}>{data.synopsis}</Text>
+                  <Text style={[globalStyles.text, styles.synopsisTitle]}>{t('detail.synopsis')}</Text>
+                  <Text 
+                    style={[globalStyles.text, styles.synopsisText]} 
+                    numberOfLines={showFullSynopsis ? undefined : 3}
+                  >
+                    {cleanSynopsis(data.synopsis)}
+                  </Text>
+                  {data.synopsis !== '' && cleanSynopsis(data.synopsis).length > 150 && (
+                    <TouchableOpacity onPress={() => setShowFullSynopsis(!showFullSynopsis)} style={{ marginTop: 4 }}>
+                      <Text style={{ color: '#3b82f6', fontSize: 13, fontWeight: 'bold' }}>
+                        {showFullSynopsis ? t('detail.showLess') : t('detail.showMore')}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
               <View style={{ flexDirection: 'column', flex: 1, marginTop: 16 }}>
@@ -374,7 +420,7 @@ export default function ComicsDetail(props: Props) {
                   style={{ borderRadius: 6, marginBottom: 16 }}
                   onPress={() => {
                     if (!data.chapters[data.chapters.length - 1]) {
-                      ToastAndroid.show('Data chapter tidak ditemukan', ToastAndroid.SHORT);
+                      ToastAndroid.show(tSync('detail.searchChapterTitle'), ToastAndroid.SHORT);
                       return;
                     }
                     const lastData = data.chapters[data.chapters.length - 1];
@@ -394,12 +440,26 @@ export default function ComicsDetail(props: Props) {
                       isComics: true,
                     };
                     controlWatchLater('add', watchLaterJson);
-                    ToastAndroid.show('Ditambahkan ke tonton nanti', ToastAndroid.SHORT);
+                    ToastAndroid.show(tSync('detail.addedReadLaterToast'), ToastAndroid.SHORT);
                   }}>
-                  {isInList ? 'Sudah Ditambahkan' : 'Baca Nanti'}
+                  {isInList ? t('detail.alreadyAddedBtn') : t('detail.readLaterBtn')}
                 </Button>
+                <View style={{ marginTop: -4, marginBottom: 14 }}>
+                  <MediaForumSection
+                    navigation={props.navigation}
+                    defaultCategory="comics"
+                    horizontalMargin={0}
+                    linkedMedia={{
+                      media_key: normalizeMediaKey('comics', props.route.params.link || data.title),
+                      type: 'comics',
+                      title: data.title,
+                      poster_url: data.thumbnailUrl,
+                      link: props.route.params.link,
+                    }}
+                  />
+                </View>
                 <View style={styles.listChapterTextContainer}>
-                  <Text style={[globalStyles.text, styles.listChapterText]}>Daftar Chapter</Text>
+                  <Text style={[globalStyles.text, styles.listChapterText]}>{t('detail.chapters')}</Text>
                 </View>
                 <View style={styles.chapterButtonsContainer}>
                   {lastReaded && lastReaded.episode && (
@@ -412,14 +472,14 @@ export default function ComicsDetail(props: Props) {
                       onPress={() => {
                         readComic(lastReaded.link, lastReaded);
                       }}>
-                      Lanjutkan Membaca ({lastReaded.episode})
+                      {t('detail.continueReadingWithEp', { ep: lastReaded.episode })}
                     </Button>
                   )}
                   <Button
                     onPress={() => {
                       const chapterData = data.chapters[data.chapters.length - 1];
                       if (!chapterData?.chapterUrl) {
-                        ToastAndroid.show('Chapter tidak ditemukan', ToastAndroid.SHORT);
+                        ToastAndroid.show(tSync('detail.chapterNotFound'), ToastAndroid.SHORT);
                         return;
                       }
                       readComic(chapterData.chapterUrl);
@@ -428,13 +488,13 @@ export default function ComicsDetail(props: Props) {
                     buttonColor={colorScheme === 'dark' ? '#2a2a2a' : '#e0e0e0'}
                     textColor={colorScheme === 'dark' ? '#fff' : '#000'}
                     style={{ borderRadius: 6 }}>
-                    Baca Chapter Pertama
+                    {t('detail.readFirstChapter')}
                   </Button>
                   <Button
                     onPress={() => {
                       const chapterData = data.chapters[0];
                       if (!chapterData?.chapterUrl) {
-                        ToastAndroid.show('Chapter tidak ditemukan', ToastAndroid.SHORT);
+                        ToastAndroid.show(tSync('detail.chapterNotFound'), ToastAndroid.SHORT);
                         return;
                       }
                       readComic(chapterData?.chapterUrl);
@@ -443,7 +503,7 @@ export default function ComicsDetail(props: Props) {
                     buttonColor={colorScheme === 'dark' ? '#2a2a2a' : '#e0e0e0'}
                     textColor={colorScheme === 'dark' ? '#fff' : '#000'}
                     style={{ borderRadius: 6 }}>
-                    Baca Chapter Terakhir
+                    {t('detail.readLatestChapter')}
                   </Button>
                 </View>
                 <Searchbar
@@ -453,7 +513,7 @@ export default function ComicsDetail(props: Props) {
                   placeholderTextColor={colorScheme === 'dark' ? '#888' : '#aaa'}
                   onChangeText={setSearchQuery}
                   value={searchQuery}
-                  placeholder="Cari chapter..."
+                  placeholder={t('detail.searchChapterShort')}
                   keyboardType="number-pad"
                   elevation={0}
                 />

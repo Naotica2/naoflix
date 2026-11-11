@@ -68,6 +68,14 @@
           <data android:pathPattern=".*\\..*\\.cbz" />
         </intent-filter>
         
+        <intent-filter>
+          <action android:name="android.intent.action.VIEW" />
+          <category android:name="android.intent.category.DEFAULT" />
+          <category android:name="android.intent.category.BROWSABLE" />
+          <data android:scheme="naoflix" />
+          <data android:scheme="aniflix" />
+        </intent-filter>
+
       </activity>
       
       <meta-data android:name="expo.modules.updates.ENABLED" android:value="true"/>

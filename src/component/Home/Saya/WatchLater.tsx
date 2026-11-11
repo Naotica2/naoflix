@@ -8,6 +8,7 @@ import { useTheme } from 'react-native-paper';
 import Icon from '@react-native-vector-icons/material-design-icons';
 import URL from 'url';
 import useGlobalStyles from '../../../assets/style';
+import { useLanguage } from '../../../misc/LanguageContext';
 import { SayaDrawerNavigator } from '../../../types/navigation';
 import watchLaterJSON from '../../../types/watchLaterJSON';
 import { useModifiedKeyValueIfFocused } from '../../../utils/DatabaseManager';
@@ -20,10 +21,18 @@ type Props = DrawerScreenProps<SayaDrawerNavigator, 'WatchLater'>;
 function WatchLater(props: Props) {
   const styles = useStyles();
   const globalStyles = useGlobalStyles();
+  const { t } = useLanguage();
 
   const watchLaterLists = useModifiedKeyValueIfFocused<watchLaterJSON[]>(
     'watchLater',
-    result => JSON.parse(result) as watchLaterJSON[],
+    result => {
+      try {
+        const parsed = JSON.parse(result || '[]');
+        return Array.isArray(parsed) ? (parsed as watchLaterJSON[]) : [];
+      } catch {
+        return [];
+      }
+    },
     [] as watchLaterJSON[],
   );
 
@@ -33,9 +42,6 @@ function WatchLater(props: Props) {
     ({ item, index }) => {
       return (
         <TouchableOpacity
-          // entering={FadeInRight}
-          // exiting={FadeOutLeft}
-          // layout={LinearTransition}
           style={styles.listContainer}
           onPress={() => {
             if (item.link?.startsWith('film://')) {
@@ -96,7 +102,7 @@ function WatchLater(props: Props) {
           </View>
           <View style={styles.listInfoContainer}>
             <Text style={[globalStyles.text, styles.listDateText]}>
-              {moment(item.date).format('dddd DD-MM-YYYY [Pukul] HH:mm')}
+              {`${moment(item.date).format('dddd DD-MM-YYYY')} ${t('lists.atClock')} ${moment(item.date).format('HH:mm')}`}
             </Text>
 
             <View style={styles.titleContainer}>
@@ -113,15 +119,15 @@ function WatchLater(props: Props) {
                 hitSlop={4}
                 onPress={() => {
                   DialogManager.alert(
-                    'Hapus daftar tonton nanti',
-                    `Apakah kamu yakin ingin menghapus "${item.title}" dari daftar tonton nanti?`,
+                    t('lists.removeWatchLaterTitle'),
+                    t('lists.removeWatchLaterAsk', { title: item.title }),
                     [
                       {
-                        text: 'Batal',
+                        text: t('common.cancel'),
                         onPress: () => {},
                       },
                       {
-                        text: 'Hapus',
+                        text: t('common.delete'),
                         onPress: () => {
                           controlWatchLater('delete', index);
                         },
@@ -152,6 +158,7 @@ function WatchLater(props: Props) {
       styles.ratingContainer,
       styles.thumbnail,
       styles.titleContainer,
+      t,
     ],
   );
 
@@ -159,7 +166,7 @@ function WatchLater(props: Props) {
     <View style={{ flex: 1 }}>
       {watchLaterLists.length === 0 ? (
         <View style={styles.emptyList}>
-          <Text style={[globalStyles.text]}>Belum ada daftar tonton nanti</Text>
+          <Text style={[globalStyles.text]}>{t('lists.noWatchLaterYet')}</Text>
         </View>
       ) : (
         <FlashList
@@ -167,22 +174,24 @@ function WatchLater(props: Props) {
           ref={flashlistRef}
           data={watchLaterLists}
           extraData={styles}
-          estimatedItemSize={170}
           renderItem={renderItem}
           keyExtractor={extractKey}
           ListHeaderComponent={() => (
             <View>
               <Text style={[globalStyles.text, { margin: 10 }]}>
-                Jumlah daftar tonton nanti kamu:{' '}
-                <Text style={{ fontWeight: 'bold' }}>{watchLaterLists.length}</Text>
+                {t('lists.watchLaterCountLabel', { count: watchLaterLists.length })}
                 {'\n'}
-                <Text
-                  style={[
-                    globalStyles.text,
-                    { margin: 10, fontWeight: 'bold', fontSize: 12, color: 'gray' },
-                  ]}>
-                  Sejak {moment(watchLaterLists.at(-1)!.date).format('DD MMMM YYYY')}
-                </Text>
+                {watchLaterLists.at(-1)?.date ? (
+                  <Text
+                    style={[
+                      globalStyles.text,
+                      { margin: 10, fontWeight: 'bold', fontSize: 12, color: 'gray' },
+                    ]}>
+                    {t('lists.sinceDate', {
+                      date: moment(watchLaterLists.at(-1)!.date).format('DD MMMM YYYY'),
+                    })}
+                  </Text>
+                ) : null}
               </Text>
             </View>
           )}

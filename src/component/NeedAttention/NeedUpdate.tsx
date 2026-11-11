@@ -22,6 +22,7 @@ import Animated, {
 import { runOnJS } from 'react-native-worklets';
 import { version as appVersion, OTAJSVersion } from '../../../package.json';
 import useGlobalStyles from '../../assets/style';
+import { tSync, useLanguage } from '../../misc/LanguageContext';
 import { RootStackNavigator } from '../../types/navigation';
 import DialogManager from '../../utils/dialogManager';
 
@@ -32,6 +33,7 @@ const MB = 1000;
 function NeedUpdate(props: Props) {
   const globalStyles = useGlobalStyles();
   const styles = useStyles();
+  const { t } = useLanguage();
 
   const [isDownloadStart, setIsDownloadStart] = useState(false);
   const downloadProgress = useSharedValue(0);
@@ -41,7 +43,7 @@ function NeedUpdate(props: Props) {
   const lastMS = useRef(0);
   const [totalMB, setTotalMB] = useState(0);
   const [netSpeed, setNetSpeed] = useState('0 MB/s');
-  const [progressPercent, setProgressPercent] = useState(0); // new state
+  const [progressPercent, setProgressPercent] = useState(0);
 
   const OTAUpdateStatus = Updates.useUpdates();
 
@@ -94,7 +96,7 @@ function NeedUpdate(props: Props) {
           const total = Number(totalS);
           const percent = Math.floor((received / total) * 100);
           downloadProgress.set(withTiming(percent));
-          setProgressPercent(percent); // update progress percentage
+          setProgressPercent(percent);
           setNetSpeed(
             `${(
               (received - lastMB.current) /
@@ -115,33 +117,43 @@ function NeedUpdate(props: Props) {
             'application/vnd.android.package-archive',
           );
         })
-        .catch(() => {
+        .catch((err: any) => {
           setIsDownloadStart(false);
-          ToastAndroid.show('Download gagal!', ToastAndroid.SHORT);
+          ToastAndroid.show(
+            tSync('utils.nativeUpdateFailed', { message: err?.message || tSync('common.unknown') }),
+            ToastAndroid.SHORT,
+          );
         });
     } else {
       setIsDownloadStart(true);
       Updates.fetchUpdateAsync()
         .then(() => {
           downloadProgress.set(100);
-          DialogManager.alert('Download selesai', 'Restart aplikasi untuk melakukan update', [
-            {
-              text: 'Restart',
-              onPress: () => {
-                Updates.reloadAsync();
+          DialogManager.alert(
+            tSync('utils.downloadCompleteTitle'),
+            tSync('utils.downloadCompleteDesc'),
+            [
+              {
+                text: tSync('utils.restartBtn'),
+                onPress: () => {
+                  Updates.reloadAsync();
+                },
               },
-            },
-          ]);
+            ],
+          );
         })
-        .catch(() => {
+        .catch((err: any) => {
           setIsDownloadStart(false);
-          ToastAndroid.show('Download gagal!', ToastAndroid.SHORT);
+          ToastAndroid.show(
+            tSync('utils.nativeUpdateFailed', { message: err?.message || tSync('common.unknown') }),
+            ToastAndroid.SHORT,
+          );
         });
     }
-    ToastAndroid.show('Mendownload update...', ToastAndroid.SHORT);
+    ToastAndroid.show(tSync('utils.downloadingUpdateToast', { percent: 0 }), ToastAndroid.SHORT);
     DialogManager.alert(
-      'Perhatian',
-      'Selama proses download, tolong jangan keluar aplikasi untuk menghindari kesalahan',
+      tSync('utils.warningTitle'),
+      tSync('utils.keepAppOpenDesc'),
     );
   }, [downloadProgress, props.route.params]);
 
@@ -165,9 +177,9 @@ function NeedUpdate(props: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.titleContainer}>
-        <Text style={[globalStyles.text, styles.needUpdate]}>Update baru tersedia!</Text>
+        <Text style={[globalStyles.text, styles.needUpdate]}>{t('utils.newUpdateAvailable')}</Text>
         <Text style={[globalStyles.text, styles.desc]}>
-          Untuk melanjutkan penggunaan aplikasi harap lakukan update.
+          {t('utils.pleaseUpdateToContinue')}
         </Text>
       </View>
 
@@ -178,7 +190,7 @@ function NeedUpdate(props: Props) {
           </Text>
           <Text style={[globalStyles.text, { fontSize: 20 }]}>{'->'}</Text>
           <Text style={[globalStyles.text, styles.latestVersion]}>
-            {props.route.params.nativeUpdate ? props.route.params.latestVersion : 'OTA Update'}
+            {props.route.params.nativeUpdate ? props.route.params.latestVersion : t('utils.otaUpdateLabel')}
           </Text>
         </View>
         <Markdown
@@ -193,7 +205,7 @@ function NeedUpdate(props: Props) {
               color={styles.buttonText.color}
               size={20}
             />
-            <Text style={[globalStyles.text, styles.buttonText]}>Download update</Text>
+            <Text style={[globalStyles.text, styles.buttonText]}>{t('utils.downloadUpdateAction')}</Text>
           </TouchableOpacity>
         ) : isProgress100 === true ? (
           <View style={styles.installOrRedownload}>
@@ -201,7 +213,7 @@ function NeedUpdate(props: Props) {
               style={[styles.download, { backgroundColor: '#1d1d66' }, { flex: 1 }]}
               onPress={installUpdate}>
               <Icon name="download" color={styles.buttonText.color} size={20} iconStyle="solid" />
-              <Text style={[globalStyles.text, styles.buttonText]}>Instal update</Text>
+              <Text style={[globalStyles.text, styles.buttonText]}>{t('utils.installUpdateAction')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.download, { flex: 1 }]} onPress={downloadUpdate}>
               <Icon
@@ -211,7 +223,7 @@ function NeedUpdate(props: Props) {
                 iconStyle="solid"
               />
               <Text style={[globalStyles.text, styles.buttonText, { textAlign: 'center' }]}>
-                Download ulang update
+                {t('utils.redownloadUpdateAction')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -360,7 +372,7 @@ function useStyles() {
           color: colorScheme === 'dark' ? '#ebebeb' : '#555555',
         },
         buttonText: {
-          color: '#fff', // button text color for better readability
+          color: '#fff',
           fontWeight: '600',
         },
       }),

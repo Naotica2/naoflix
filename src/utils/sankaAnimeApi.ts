@@ -1,4 +1,5 @@
 import { AniDetail, AniStreaming, EpisodeBaruHome, NewAnimeList, SearchAnime } from '../types/anime';
+import { tSync } from '../misc/LanguageContext';
 import deviceUserAgent from './deviceUserAgent';
 
 const BASE_URL = 'https://www.sankavollerei.com/anime/stream';
@@ -144,10 +145,16 @@ async function getBloggerVideo(url: string, quality: string = '720', signal?: Ab
     const links = apiText.split('https://rr');
     if (links.length > 1) {
        links.shift();
-       const cleanedLinks = links.map(l => {
+       const cleanedLinks = links
+         .map(l => {
            const encoded = l.split('\\\\",[')[0].replace(/\\\\/g, '\\');
-           return JSON.parse(`"https://rr${encoded}"`);
-       });
+           try {
+             return JSON.parse(`"https://rr${encoded}"`) as string;
+           } catch {
+             return `https://rr${encoded}`;
+           }
+         })
+         .filter(Boolean);
        if (quality === '360' && cleanedLinks.length >= 1) return cleanedLinks[0];
        if (quality === '480' && cleanedLinks.length >= 2) return cleanedLinks[1];
        if ((quality === '720' || quality === '1080') && cleanedLinks.length >= 1) return cleanedLinks[cleanedLinks.length - 1];
@@ -157,7 +164,7 @@ async function getBloggerVideo(url: string, quality: string = '720', signal?: Ab
   }
 }
 
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = 5 * 60 * 1000;
 const apiCache = new Map<string, { data: any; timestamp: number }>();
 
 function buildCacheKey(endpoint: string) {
@@ -440,7 +447,7 @@ const sankaAnimeApi = {
         releaseYear: data.release_year || 'Unknown',
         genres: data.genres || [],
         rating: data.rating || '',
-        synopsis: data.synopsis || 'Tidak ada sinopsis.',
+        synopsis: data.synopsis || tSync('detail.noSynopsis'),
         episodeList,
         detailOnly: false,
         epsTotal: String(episodeList.length || '?'),

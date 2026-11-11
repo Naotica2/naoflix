@@ -4,15 +4,18 @@ import { ScrollView, StyleSheet, useWindowDimensions, View, useColorScheme } fro
 import { Appbar, Surface, Text, TouchableRipple, useTheme } from 'react-native-paper';
 import MaterialIcons from '@react-native-vector-icons/material-icons';
 import { UtilsStackNavigator, RootStackNavigator } from '../../types/navigation';
+import { TranslationKey, useLanguage } from '../../misc/LanguageContext';
 import About from './Utilitas/About';
 import Changelog from './Utilitas/Changelog';
 import SearchAnimeByImage from './Utilitas/SearchAnimeByImage';
 import Setting from './Utilitas/Setting';
 import ExtensionManager from './Utilitas/ExtensionManager';
+import HomePreferences from './Utilitas/HomePreferences';
 
 const Stack = createNativeStackNavigator<UtilsStackNavigator>();
 
 function Utils({ route }: NativeStackScreenProps<RootStackNavigator, 'Utils'>) {
+  const { t } = useLanguage();
   const initialScreen = route?.params?.screen ?? 'ChooseScreen';
   return (
     <Stack.Navigator
@@ -41,64 +44,71 @@ function Utils({ route }: NativeStackScreenProps<RootStackNavigator, 'Utils'>) {
       <Stack.Screen
         name="ChooseScreen"
         component={ChooseScreen}
-        options={{ title: 'Pilih utilitas' }}
+        options={{ title: t('utils.chooseUtility') }}
       />
       <Stack.Screen
         name="SearchAnimeByImage"
         component={SearchAnimeByImage}
-        options={{ title: 'Cari Anime dari Gambar' }}
+        options={{ title: t('utils.searchImageTitle') }}
       />
-      <Stack.Screen name="Changelog" component={Changelog} options={{ title: 'Changelog' }} />
-      <Stack.Screen name="Setting" component={Setting} options={{ title: 'Pengaturan' }} />
-      <Stack.Screen name="About" component={About} options={{ title: 'Tentang' }} />
-      <Stack.Screen name="ExtensionManager" component={ExtensionManager} options={{ title: 'Sumber Ekstensi' }} />
+      <Stack.Screen name="Changelog" component={Changelog} options={{ title: t('utils.changelogTitle') }} />
+      <Stack.Screen name="Setting" component={Setting} options={{ title: t('settings.title') }} />
+      <Stack.Screen name="About" component={About} options={{ title: t('settings.aboutBtnTitle') }} />
+      <Stack.Screen name="ExtensionManager" component={ExtensionManager} options={{ title: t('utils.extNavTitle') }} />
+      <Stack.Screen name="HomePreferences" component={HomePreferences} options={{ title: t('utils.homePrefsNavTitle') }} />
     </Stack.Navigator>
   );
 }
 
 export default memo(Utils);
 
-const Screens = [
+const Screens: readonly {
+  titleKey: TranslationKey;
+  descKey: TranslationKey;
+  icon: 'public' | 'image' | 'history' | 'settings' | 'info';
+  color: string;
+  screen: keyof UtilsStackNavigator;
+}[] = [
   {
-    title: 'Pengaturan Sumber',
-    desc: 'Atur website yang jadi sumber utama Anime & Komik',
+    titleKey: 'utils.extTitleCard',
+    descKey: 'utils.extDescCard',
     icon: 'public',
     color: '#d84b3e',
     screen: 'ExtensionManager',
   },
   {
-    title: 'Cari Anime dari Gambar',
-    desc: 'Cari judul anime dari gambar screenshot.',
+    titleKey: 'utils.searchImageTitle',
+    descKey: 'utils.searchImageDesc',
     icon: 'image',
     color: '#3a8fac',
     screen: 'SearchAnimeByImage',
   },
   {
-    title: 'Catatan update',
-    desc: 'Perubahan setiap update mulai dari versi 1.1.0',
+    titleKey: 'utils.changelogTitle',
+    descKey: 'utils.changelogDesc',
     icon: 'history',
     color: '#417e3b',
     screen: 'Changelog',
   },
   {
-    title: 'Pengaturan',
-    desc: 'Atur aplikasi NaoFlix kamu',
+    titleKey: 'settings.title',
+    descKey: 'utils.settingsDescCard',
     icon: 'settings',
     color: '#615e58',
     screen: 'Setting',
   },
   {
-    title: 'Tentang aplikasi',
-    desc: 'Tentang aplikasi NaoFlix dan pengembangnya',
+    titleKey: 'settings.aboutBtnTitle',
+    descKey: 'utils.aboutDescCard',
     icon: 'info',
     color: '#166db4',
     screen: 'About',
   },
-] as const;
+];
 
 function ChooseScreen(props: NativeStackScreenProps<UtilsStackNavigator, 'ChooseScreen'>) {
   const styles = useStyles();
-  const theme = useTheme();
+  const { t } = useLanguage();
 
   return (
     <ScrollView
@@ -119,11 +129,11 @@ function ChooseScreen(props: NativeStackScreenProps<UtilsStackNavigator, 'Choose
               </View>
               <Text
                 style={[styles.titleText]}>
-                {screen.title}
+                {t(screen.titleKey)}
               </Text>
               <Text
                 style={[styles.descText]}>
-                {screen.desc}
+                {t(screen.descKey)}
               </Text>
             </View>
           </TouchableRipple>

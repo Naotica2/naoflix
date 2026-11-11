@@ -5,13 +5,20 @@ import { Linking, StyleSheet, Text, TouchableOpacity, useColorScheme, View } fro
 import Fontisto from '@react-native-vector-icons/fontisto';
 import Icon from '@react-native-vector-icons/material-design-icons';
 import useGlobalStyles from '../../assets/style';
+import { useLanguage } from '../../misc/LanguageContext';
 import { RootStackNavigator } from '../../types/navigation';
+import offlineDownloadManager from '../../utils/offlineDownloadManager';
 
 type Props = NativeStackScreenProps<RootStackNavigator, 'FailedToConnect'>;
 
 function FailedToConnect(props: Props) {
   const globalStyles = useGlobalStyles();
   const styles = useStyles();
+  const { t } = useLanguage();
+  const offlineCount = useMemo(
+    () => offlineDownloadManager.getOfflineAnimeList().length,
+    [],
+  );
 
   const openLink = async () => {
     const url = 'https://github.com/Naotica2/naoflix/issues/new';
@@ -34,36 +41,49 @@ function FailedToConnect(props: Props) {
     <View style={[styles.container]}>
       <View style={styles.content}>
         <Icon name="server-network-off" size={60} color="#E57373" style={styles.icon} />
-        <Text style={[styles.title, globalStyles.text]}>Koneksi Gagal</Text>
+        <Text style={[styles.title, globalStyles.text]}>{t('utils.retryConnTitle')}</Text>
         <Text style={[styles.subtitle, globalStyles.text]}>
-          Tidak dapat terhubung ke server. Harap periksa koneksi internet Anda dan coba lagi.
+          {t('utils.retryConnDesc')}
         </Text>
 
         <TouchableOpacity style={styles.retryButton} onPress={tryagain}>
           <Icon name="refresh" size={20} color="#fff" />
-          <Text style={styles.retryButtonText}>Coba Lagi</Text>
+          <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.retryButton, { backgroundColor: '#3b82f6', marginTop: 10 }]}
+          onPress={() => {
+            props.navigation.dispatch(
+              StackActions.replace('Home', {
+                data: { newAnime: [], jadwalAnime: [] },
+              }),
+            );
+          }}>
+          <Icon name="download" size={20} color="#fff" />
+          <Text style={styles.retryButtonText}>
+            {t('utils.openOfflineMode', { count: offlineCount })}
+          </Text>
         </TouchableOpacity>
 
         <View style={styles.helpSection}>
           <Text style={[styles.helpText, globalStyles.text]}>
-            Jika masalah berlanjut, laporkan di GitHub:
+            {t('utils.githubReportPrompt')}
           </Text>
           <TouchableOpacity onPress={openLink}>
-            <Text style={styles.linkText}>Buat issue baru di GitHub</Text>
+            <Text style={styles.linkText}>{t('utils.createGithubIssue')}</Text>
           </TouchableOpacity>
           <Text style={[styles.helpText, globalStyles.text]}>
-            Atau bergabung dengan server Discord kami dengan mengklik tombol "Gabung Discord" di
-            bawah.
+            {t('utils.orJoinDiscord')}
           </Text>
         </View>
 
         <View style={styles.dnsSection}>
           <Text style={[styles.dnsText, globalStyles.text]}>
-            Jika kamu menggunakan DNS, pastikan untuk tidak menggunakan DNS versi "keamanan" (jika
-            ada).
+            {t('utils.dnsAdvice')}
           </Text>
           <Text style={[styles.dnsText, globalStyles.text]}>
-            DNS yang disarankan: 1.1.1.1 atau 8.8.8.8
+            {t('utils.recommendedDns')}
           </Text>
         </View>
 
@@ -74,7 +94,7 @@ function FailedToConnect(props: Props) {
             }}
             style={styles.bottomCreditButton}>
             <Icon name="github" size={30} color={globalStyles.text.color} />
-            <Text style={[styles.bottomCreditText, globalStyles.text]}>Open-Sourced on GitHub</Text>
+            <Text style={[styles.bottomCreditText, globalStyles.text]}>GitHub</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -83,13 +103,13 @@ function FailedToConnect(props: Props) {
             }}
             style={styles.bottomCreditButton}>
             <Fontisto name="discord" size={30} color="#7289d9" />
-            <Text style={[styles.bottomCreditText, globalStyles.text]}>Gabung Discord</Text>
+            <Text style={[styles.bottomCreditText, globalStyles.text]}>{t('utils.joinDiscord')}</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       <Text style={[styles.versionText, globalStyles.text]}>
-        Versi: {require('../../../package.json').version}
+        {t('utils.versionLabel', { version: require('../../../package.json').version })}
       </Text>
     </View>
   );

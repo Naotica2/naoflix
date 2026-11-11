@@ -1,13 +1,9 @@
 import Icon from '@react-native-vector-icons/fontawesome';
-import Fontisto from '@react-native-vector-icons/fontisto';
-import MaterialIcon from '@react-native-vector-icons/material-design-icons';
 import { StackActions, useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import * as Updates from 'expo-updates';
-import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Image,
   Linking,
   ScrollView,
   StyleSheet,
@@ -15,21 +11,20 @@ import {
   ToastAndroid,
   TouchableOpacity,
   useColorScheme,
+  useWindowDimensions,
   View,
   ViewStyle,
 } from 'react-native';
 import RNFetchBlob from 'react-native-blob-util';
 import Orientation from 'react-native-orientation-locker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useTheme } from 'react-native-paper';
-import {
-  default as Reanimated,
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Reanimated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
 import { version as appVersion, OTAJSVersion } from '../../../package.json';
-import useGlobalStyles from '../../assets/style';
 import defaultDatabase from '../../misc/defaultDatabaseValue.json';
 import { EpisodeBaruHome } from '../../types/anime';
 import { SetDatabaseTarget } from '../../types/databaseTarget';
@@ -39,57 +34,88 @@ import { DANGER_MIGRATE_OLD_HISTORY, DatabaseManager } from '../../utils/Databas
 import deviceUserAgent from '../../utils/deviceUserAgent';
 import { fetchLatestDomain } from '../../utils/scrapers/animeSeries';
 import { fetchLatestAnimeIndoDomain } from '../../utils/scrapers/animeindo';
+import offlineDownloadManager from '../../utils/offlineDownloadManager';
 import { useAuth } from '../../misc/AuthContext';
+import { TranslationKey, tSync, useLanguage } from '../../misc/LanguageContext';
 import { useLevel } from '../../misc/LevelContext';
 import { EXP_REWARDS } from '../../utils/LevelSystem';
-
-const saweriaIcon = require('../../assets/saweria_icon.png');
+import NaoFlixLogo from '../misc/NaoFlixLogo';
 
 export const DonasiSaweria = ({
   buttonColor,
-  size = 24,
+  size = 18,
   style,
 }: {
   buttonColor?: string;
   size?: number;
   style?: ViewStyle;
 }) => {
-  const styles = useStyles();
+  const isDark = useColorScheme() === 'dark';
+  const styles = useStyles(isDark);
+  const { t } = useLanguage();
   return (
     <TouchableOpacity
+      activeOpacity={0.75}
       onPress={() => Linking.openURL('https://saweria.co/naotica')}
       style={[styles.socialButton, buttonColor ? { backgroundColor: buttonColor } : {}, style]}>
-      <Icon name="coffee" size={size} color={buttonColor ? '#ffffff' : '#000000'} />
-      <Text style={styles.socialButtonText}>Donasi</Text>
+      <Icon name="coffee" size={size} color={buttonColor ? '#ffffff' : isDark ? '#e4e4e7' : '#334155'} />
+      <Text style={[styles.socialButtonText, buttonColor ? { color: '#ffffff' } : {}]}>{t('common.donate')}</Text>
     </TouchableOpacity>
   );
 };
 
 export const Github = ({
   buttonColor,
-  size = 24,
+  size = 18,
   style,
 }: {
   buttonColor?: string;
   size?: number;
   style?: ViewStyle;
 }) => {
-  const styles = useStyles();
-  const globalStyles = useGlobalStyles();
+  const isDark = useColorScheme() === 'dark';
+  const styles = useStyles(isDark);
   return (
     <TouchableOpacity
+      activeOpacity={0.75}
       onPress={() => Linking.openURL('https://github.com/Naotica2')}
       style={[styles.socialButton, buttonColor ? { backgroundColor: buttonColor } : {}, style]}>
-      <Icon name="github" size={size} color={globalStyles.text.color} />
-      <Text style={styles.socialButtonText}>GitHub</Text>
+      <Icon name="github" size={size} color={buttonColor ? '#ffffff' : isDark ? '#e4e4e7' : '#334155'} />
+      <Text style={[styles.socialButtonText, buttonColor ? { color: '#ffffff' } : {}]}>GitHub</Text>
     </TouchableOpacity>
   );
+};
+
+const STEP_KEYS = [
+  'prepareDb',
+  'checkVersion',
+  'fetchDomain',
+  'connectServer',
+] as const;
+
+type StepKey = (typeof STEP_KEYS)[number];
+type LoadStatusMap = Record<StepKey, boolean>;
+
+const STEP_LABEL_KEYS: Record<StepKey, TranslationKey> = {
+  prepareDb: 'utils.stepPrepareDb',
+  checkVersion: 'utils.stepCheckVersion',
+  fetchDomain: 'utils.stepFetchDomain',
+  connectServer: 'utils.stepConnectServer',
 };
 
 type Props = NativeStackScreenProps<RootStackNavigator, 'connectToServer'>;
 
 function Loading(props: Props) {
-  const styles = useStyles();
+  const isDark = useColorScheme() === 'dark';
+  const { t } = useLanguage();
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const styles = useStyles(isDark);
+
+  const isCompact = width < 360 || height < 640;
+  const logoSize = Math.round(Math.min(88, Math.max(72, width * 0.21)));
+  const progressBarWidth = Math.min(210, Math.round(width * 0.54));
+
   const { user, confirmedNoProfile } = useAuth();
   const { addExp } = useLevel();
 
@@ -97,26 +123,36 @@ function Loading(props: Props) {
     Orientation.lockToPortrait();
   }, []);
 
-  const [loadStatus, setLoadStatus] = useState({
-    'Menyiapkan database': false,
-    'Mengecek versi aplikasi': false,
-    'Mendapatkan domain terbaru': false,
-    'Menghubungkan ke server': false,
+  const [loadStatus, setLoadStatus] = useState<LoadStatusMap>({
+    prepareDb: false,
+    checkVersion: false,
+    fetchDomain: false,
+    connectServer: false,
   });
 
-  // const [isComics1WebViewOpen, setIsComics1WebViewOpen] = useState(false);
-  const [progressValue, setProgressValue] = useState(0);
   const progressValueAnimation = useSharedValue(0);
 
-  const fetchAnimeData = useCallback(async (signal: AbortSignal) => {
+  const fetchAnimeData = useCallback(async (signal: AbortSignal, isOfflineHint: boolean = false) => {
+    const showAnime = await DatabaseManager.get('homeShowAnime');
+    if (showAnime === 'false') {
+      return {
+        newAnime: [],
+        jadwalAnime: [],
+      };
+    }
+
+    let failed = false;
     const jsondata: EpisodeBaruHome | void = await AnimeAPI.home(signal).catch(() => {
-      ToastAndroid.show('Gagal menghubungkan ke server anime', ToastAndroid.SHORT);
+      failed = true;
     });
     setLoadStatus(old => ({
       ...old,
-      'Menghubungkan ke server': true,
+      connectServer: true,
     }));
-    if (jsondata === undefined) {
+    if (jsondata === undefined || (failed && !jsondata)) {
+      if (!isOfflineHint) {
+        ToastAndroid.show(tSync('utils.failedConnectAnimeServer'), ToastAndroid.SHORT);
+      }
       return {
         newAnime: [],
         jadwalAnime: [],
@@ -138,8 +174,11 @@ function Loading(props: Props) {
     // @ts-expect-error
     const history = await DatabaseManager.get('history');
     if (history) {
-      ToastAndroid.show('Mengoptimalkan data history...', ToastAndroid.SHORT);
-      await DANGER_MIGRATE_OLD_HISTORY(JSON.parse(history));
+      try {
+        const parsedHistory = JSON.parse(history);
+        ToastAndroid.show(tSync('utils.optimizingHistory'), ToastAndroid.SHORT);
+        await DANGER_MIGRATE_OLD_HISTORY(parsedHistory);
+      } catch {}
     }
     const isInDatabase = (key: string): key is SetDatabaseTarget => {
       return (arrOfDefaultData as readonly string[]).includes(key);
@@ -162,7 +201,7 @@ function Loading(props: Props) {
     const isExist = await RNFetchBlob.fs.exists(downloadPath);
     if (isExist) {
       await RNFetchBlob.fs.unlink(downloadPath);
-      ToastAndroid.show('Menghapus update tidak terpakai', ToastAndroid.SHORT);
+      ToastAndroid.show(tSync('utils.deletingOldUpdate'), ToastAndroid.SHORT);
     }
   }, []);
 
@@ -172,7 +211,7 @@ function Loading(props: Props) {
       fetchLatestAnimeIndoDomain(signal).catch(() => {}),
     ]).catch(() => {
       ToastAndroid.show(
-        'Gagal mendapatkan domain terbaru, menggunakan domain default',
+        tSync('utils.failedDomainDefault'),
         ToastAndroid.SHORT,
       );
     });
@@ -180,7 +219,7 @@ function Loading(props: Props) {
 
   const checkNativeAppVersion = useCallback(async (signal: AbortSignal) => {
     const abort = new AbortController();
-    const timoeut = setTimeout(() => abort.abort(), 15000);
+    const timeout = setTimeout(() => abort.abort(), 8000);
     const onAbort = () => abort.abort();
     signal.addEventListener('abort', onAbort);
 
@@ -195,38 +234,32 @@ function Loading(props: Props) {
     )
       .then(d => d.json())
       .catch(() => {});
-    clearTimeout(timoeut);
+    clearTimeout(timeout);
     signal.removeEventListener('abort', onAbort);
 
     if (signal.aborted) return null;
 
     if (data === undefined) {
-      ToastAndroid.show('Error saat mengecek versi', ToastAndroid.SHORT);
-      return true;
+      return 'offline' as const;
     } else if (data.message && data.message.includes('Not Found')) {
       return true;
     } else if (data[0] === undefined) {
       return true;
     }
-    
+
     const remoteVersion = data[0]?.tag_name || '';
     const cleanRemote = remoteVersion.replace(/[^0-9.]/g, '');
     const cleanCurrent = appVersion.replace(/[^0-9.]/g, '');
-    
-    const isNewer = cleanRemote.localeCompare(cleanCurrent, undefined, { numeric: true, sensitivity: 'base' }) > 0;
+
+    const isNewer =
+      cleanRemote.localeCompare(cleanCurrent, undefined, { numeric: true, sensitivity: 'base' }) > 0;
 
     if (!isNewer) {
       return true;
     }
-    
+
     return data[0];
   }, []);
-
-  // const [comics1Promise] = useState(
-  // const onComics1Ready = useCallback(() => {
-  //   setLoadStatus(old => ({
-  //     'Mempersiapkan data anime movie': !isAnimeMovieWebViewOpen && !isComics1WebViewOpen,
-  //   setIsComics1WebViewOpen(false);
 
   const authRef = useRef({ user, confirmedNoProfile });
   useEffect(() => {
@@ -234,35 +267,48 @@ function Loading(props: Props) {
   }, [user, confirmedNoProfile]);
 
   const connectToServers = useCallback(
-    async (signal: AbortSignal) => {
-      // setIsComics1WebViewOpen(true);
-      const animeData = await fetchAnimeData(signal);
+    async (signal: AbortSignal, isOfflineHint: boolean = false) => {
+      const animeData = await fetchAnimeData(signal, isOfflineHint);
       if (signal.aborted) return;
       if (animeData === undefined) {
         return;
       }
-      
+
+      const showAnimePref = await DatabaseManager.get('homeShowAnime');
+      const isHomeEmpty = animeData.newAnime.length === 0 && showAnimePref !== 'false';
+      const offlineList = offlineDownloadManager.getOfflineAnimeList();
+
+      if (isOfflineHint && isHomeEmpty) {
+        if (offlineList.length > 0) {
+          ToastAndroid.show(tSync('utils.offlineOpeningDownloads'), ToastAndroid.LONG);
+          props.navigation.dispatch(StackActions.replace('Home', { data: animeData }));
+          return;
+        }
+        props.navigation.dispatch(StackActions.replace('FailedToConnect'));
+        return;
+      }
+
       const anime = animeData;
-        const { user: currentUser, confirmedNoProfile: noProfile } = authRef.current;
+      const { user: currentUser, confirmedNoProfile: noProfile } = authRef.current;
 
-        if (currentUser) {
-          AsyncStorage.getItem('last_login_reward_date').then(lastDate => {
-            const today = new Date().toDateString();
-            if (lastDate !== today) {
-              addExp(EXP_REWARDS.LOGIN);
-              AsyncStorage.setItem('last_login_reward_date', today);
-              ToastAndroid.show(`+${EXP_REWARDS.LOGIN} EXP (Daily Login)`, ToastAndroid.SHORT);
-            }
-          });
-        }
+      if (currentUser) {
+        AsyncStorage.getItem('last_login_reward_date').then(lastDate => {
+          const today = new Date().toDateString();
+          if (lastDate !== today) {
+            addExp(EXP_REWARDS.LOGIN);
+            AsyncStorage.setItem('last_login_reward_date', today);
+            ToastAndroid.show(tSync('utils.dailyLoginExp', { exp: EXP_REWARDS.LOGIN }), ToastAndroid.SHORT);
+          }
+        });
+      }
 
-        if (currentUser && noProfile) {
-          props.navigation.dispatch(StackActions.replace('UsernameSetupScreen'));
-        } else {
-          props.navigation.dispatch(StackActions.replace('Home', { data: anime }));
-        }
+      if (currentUser && noProfile) {
+        props.navigation.dispatch(StackActions.replace('UsernameSetupScreen'));
+      } else {
+        props.navigation.dispatch(StackActions.replace('Home', { data: anime }));
+      }
     },
-    [fetchAnimeData, props.navigation],
+    [fetchAnimeData, props.navigation, addExp],
   );
 
   useFocusEffect(
@@ -272,10 +318,10 @@ function Loading(props: Props) {
 
       (async () => {
         setLoadStatus({
-          'Menyiapkan database': false,
-          'Mengecek versi aplikasi': false,
-          'Mendapatkan domain terbaru': false,
-          'Menghubungkan ke server': false,
+          prepareDb: false,
+          checkVersion: false,
+          fetchDomain: false,
+          connectServer: false,
         });
         await prepareData();
         if (signal.aborted) return;
@@ -285,36 +331,52 @@ function Loading(props: Props) {
 
         setLoadStatus(old => ({
           ...old,
-          'Menyiapkan database': true,
+          prepareDb: true,
         }));
 
         const nativeAppVersion = await checkNativeAppVersion(signal);
         if (signal.aborted) return;
 
         if (nativeAppVersion === null) {
+          const offlineList = offlineDownloadManager.getOfflineAnimeList();
+          if (offlineList.length > 0) {
+            ToastAndroid.show(tSync('utils.offlineOpeningDownloads'), ToastAndroid.LONG);
+            props.navigation.dispatch(
+              StackActions.replace('Home', { data: { newAnime: [], jadwalAnime: [] } }),
+            );
+            return;
+          }
           props.navigation.dispatch(StackActions.replace('FailedToConnect'));
-        } else if (nativeAppVersion === true || __DEV__) {
+        } else if (nativeAppVersion === 'offline' || nativeAppVersion === true || __DEV__) {
+          const isOfflineHint = nativeAppVersion === 'offline';
           let isOTADoneExecuted = false;
           async function OTADone() {
             if (isOTADoneExecuted || signal.aborted) return;
             isOTADoneExecuted = true;
             setLoadStatus(old => ({
               ...old,
-              'Mengecek versi aplikasi': true,
+              checkVersion: true,
             }));
-            await fetchDomain(signal);
-            if (signal.aborted) return;
+            if (!isOfflineHint) {
+              await fetchDomain(signal);
+              if (signal.aborted) return;
+            }
             setLoadStatus(old => ({
               ...old,
-              'Mendapatkan domain terbaru': true,
+              fetchDomain: true,
             }));
-            connectToServers(signal);
+            connectToServers(signal, isOfflineHint);
           }
           await OTADone();
         } else {
           const latestVersion = nativeAppVersion.tag_name;
           const changelog = nativeAppVersion.body;
-          const download = nativeAppVersion.assets[0].browser_download_url;
+          const download = nativeAppVersion.assets?.[0]?.browser_download_url || '';
+
+          if (!download) {
+            connectToServers(signal, false);
+            return;
+          }
 
           props.navigation.dispatch(
             StackActions.replace('NeedUpdate', {
@@ -341,173 +403,197 @@ function Loading(props: Props) {
   );
 
   useEffect(() => {
-    const completedSteps = Object.values(loadStatus).filter(Boolean).length;
-    const totalSteps = Object.keys(loadStatus).length;
-    const progress = (completedSteps / totalSteps) * 100;
-    setProgressValue(progress);
-    progressValueAnimation.set(withTiming(progress));
+    const completedSteps = STEP_KEYS.filter(key => loadStatus[key]).length;
+    const progress = (completedSteps / STEP_KEYS.length) * 100;
+    progressValueAnimation.set(withTiming(progress, { duration: 240 }));
   }, [loadStatus, progressValueAnimation]);
 
   const progressBarStyle = useAnimatedStyle(() => ({
     width: `${progressValueAnimation.get()}%`,
   }));
 
+  const currentStepIndex = STEP_KEYS.findIndex(k => !loadStatus[k]);
+  const activeStepLabel =
+    currentStepIndex === -1
+      ? t('utils.openingHome')
+      : t(STEP_LABEL_KEYS[STEP_KEYS[currentStepIndex]]);
+
+  const bgColors = isDark
+    ? (['#0b1526', '#060911', '#040508'] as const)
+    : (['#eef4fc', '#f8fafc', '#ffffff'] as const);
 
   return (
-    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.appName}>NaoFlix</Text>
-          <Text style={styles.subtitle}>Memuat pengalaman anime-mu...</Text>
-        </View>
+    <LinearGradient colors={bgColors} style={styles.screenBg}>
+      <ScrollView
+        style={styles.scrollFill}
+        contentContainerStyle={[
+          styles.container,
+          {
+            paddingTop: insets.top + (isCompact ? 20 : 28),
+            paddingBottom: Math.max(insets.bottom + 18, 26),
+            paddingHorizontal: isCompact ? 24 : 32,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+        bounces={false}>
+        <View style={styles.topSpacer} />
 
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <Reanimated.View style={[styles.progressFill, progressBarStyle]} />
-          </View>
-          <Text style={styles.progressText}>{Math.round(progressValue)}%</Text>
-        </View>
+        <View style={styles.centerBlock}>
+          <NaoFlixLogo size={logoSize} style={styles.logoMargin} />
 
-        <View style={styles.statusContainer}>
-          {Object.entries(loadStatus).map(([key, value]) => (
-            <View style={styles.statusItem} key={key}>
-              {value ? (
-                <MaterialIcon name="check-circle" size={18} color="#3b82f6" />
-              ) : (
-                <ActivityIndicator size="small" color="#3b82f6" />
-              )}
-              <Text style={styles.statusText}>{key}</Text>
+          <Text style={[styles.appName, { fontSize: isCompact ? 26 : 30 }]}>NaoFlix</Text>
+          <Text style={styles.brandTagline}>{t('utils.connectBrandTagline')}</Text>
+
+          <View style={[styles.progressTrackWrap, { width: progressBarWidth }]}>
+            <View style={styles.progressBar}>
+              <Reanimated.View style={[styles.progressFill, progressBarStyle]} />
             </View>
-          ))}
+            <Text style={styles.activeStepText} numberOfLines={1}>
+              {activeStepLabel}
+            </Text>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.footer}>
-        <View style={styles.socialButtons}>
-          <Github />
-          <DonasiSaweria />
+        <View style={styles.footer}>
+          <View style={styles.footerLinks}>
+            <TouchableOpacity
+              activeOpacity={0.65}
+              hitSlop={10}
+              onPress={() => Linking.openURL('https://github.com/Naotica2')}
+              style={styles.footerLinkItem}>
+              <Icon name="github" size={14} color={isDark ? '#94a3b8' : '#475569'} />
+              <Text style={styles.footerLinkText}>GitHub</Text>
+            </TouchableOpacity>
+            <View style={styles.footerDot} />
+            <TouchableOpacity
+              activeOpacity={0.65}
+              hitSlop={10}
+              onPress={() => Linking.openURL('https://saweria.co/naotica')}
+              style={styles.footerLinkItem}>
+              <Icon name="coffee" size={13} color={isDark ? '#94a3b8' : '#475569'} />
+              <Text style={styles.footerLinkText}>{t('common.donate')}</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.versionText}>
+            {appVersion} • JS_{OTAJSVersion}
+          </Text>
         </View>
-        <Text style={styles.versionText}>
-          {appVersion}-JS_{OTAJSVersion}
-        </Text>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
-function useStyles() {
-  const theme = useTheme();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+function useStyles(isDark: boolean) {
   return useMemo(
     () =>
       StyleSheet.create({
+        screenBg: {
+          flex: 1,
+        },
+        scrollFill: {
+          flex: 1,
+        },
         container: {
           flexGrow: 1,
-          padding: 32,
           justifyContent: 'space-between',
-          backgroundColor: isDark ? '#0a0a0a' : '#fafafa',
-        },
-        content: {
-          flex: 1,
           alignItems: 'center',
-          justifyContent: 'center',
         },
-        header: {
+        topSpacer: {
+          height: 24,
+        },
+        centerBlock: {
+          width: '100%',
+          maxWidth: 320,
           alignItems: 'center',
-          marginBottom: 48,
+        },
+        logoMargin: {
+          marginBottom: 18,
         },
         appName: {
-          fontSize: 36,
           fontWeight: '800',
-          color: '#3b82f6',
-          marginBottom: 8,
-          letterSpacing: -1,
+          color: isDark ? '#f8fafc' : '#0f172a',
+          letterSpacing: 0.4,
         },
-        subtitle: {
-          fontSize: 14,
-          color: isDark ? '#666' : '#999',
-          fontWeight: '500',
-        },
-        progressContainer: {
-          flexShrink: 0,
-          flexWrap: 'nowrap',
-          width: '100%',
+        brandTagline: {
+          fontSize: 10,
+          fontWeight: '600',
+          color: isDark ? '#64748b' : '#94a3b8',
+          letterSpacing: 2.2,
+          marginTop: 6,
           marginBottom: 32,
+        },
+        progressTrackWrap: {
           alignItems: 'center',
         },
         progressBar: {
-          height: 4,
+          height: 3.5,
           width: '100%',
-          backgroundColor: isDark ? '#222' : '#e8e8e8',
-          borderRadius: 2,
+          backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(15,23,42,0.1)',
+          borderRadius: 999,
           overflow: 'hidden',
-          marginBottom: 8,
         },
         progressFill: {
           height: '100%',
           backgroundColor: '#3b82f6',
-          borderRadius: 2,
+          borderRadius: 999,
         },
-        progressText: {
-          fontSize: 13,
-          color: isDark ? '#666' : '#999',
-          fontWeight: '600',
-        },
-        statusContainer: {
-          width: '100%',
-          backgroundColor: isDark ? '#151515' : '#fff',
-          borderRadius: 16,
-          padding: 16,
-          borderWidth: 1,
-          borderColor: isDark ? '#222' : '#eee',
-        },
-        statusItem: {
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingVertical: 10,
-        },
-        statusText: {
-          fontSize: 14,
-          color: isDark ? '#ccc' : '#444',
-          marginLeft: 12,
+        activeStepText: {
+          fontSize: 12,
+          color: isDark ? '#94a3b8' : '#64748b',
           fontWeight: '500',
+          marginTop: 12,
         },
         footer: {
           alignItems: 'center',
           paddingTop: 16,
+          width: '100%',
         },
-        socialButtons: {
-          flexWrap: 'wrap',
+        footerLinks: {
           flexDirection: 'row',
+          alignItems: 'center',
           justifyContent: 'center',
-          marginBottom: 16,
+          marginBottom: 10,
+        },
+        footerLinkItem: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingVertical: 4,
+          paddingHorizontal: 8,
+          gap: 6,
+        },
+        footerLinkText: {
+          fontSize: 12,
+          fontWeight: '600',
+          color: isDark ? '#94a3b8' : '#475569',
+        },
+        footerDot: {
+          width: 3,
+          height: 3,
+          borderRadius: 1.5,
+          backgroundColor: isDark ? '#334155' : '#cbd5e1',
+          marginHorizontal: 6,
         },
         socialButton: {
           flexDirection: 'row',
           alignItems: 'center',
-          backgroundColor: isDark ? '#1a1a1a' : '#f0f0f0',
-          paddingVertical: 8,
-          paddingHorizontal: 16,
-          borderRadius: 20,
-          marginHorizontal: 8,
+          backgroundColor: isDark ? '#141418' : '#ffffff',
+          paddingVertical: 7,
+          paddingHorizontal: 14,
+          borderRadius: 999,
           borderWidth: 1,
-          borderColor: isDark ? '#333' : '#ddd',
+          borderColor: isDark ? '#27272a' : '#e2e8f0',
         },
         socialButtonText: {
-          fontSize: 13,
+          fontSize: 12,
           fontWeight: '600',
-          color: isDark ? '#ccc' : '#444',
-          marginLeft: 8,
+          color: isDark ? '#d4d4d8' : '#334155',
+          marginLeft: 7,
         },
         versionText: {
           fontSize: 11,
-          color: isDark ? '#444' : '#bbb',
-          marginBottom: 8,
+          color: isDark ? '#475569' : '#94a3b8',
           fontWeight: '500',
-        },
-        loadingIndicator: {
-          color: '#3b82f6',
+          letterSpacing: 0.3,
         },
       }),
     [isDark],

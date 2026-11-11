@@ -1,4 +1,7 @@
 
+import { getCurrentLanguage } from '../misc/LanguageContext';
+import { DatabaseManager } from './DatabaseManager';
+
 export const MAX_LEVEL = 999;
 
 export const EXP_REWARDS = {
@@ -6,7 +9,64 @@ export const EXP_REWARDS = {
   WATCH_ANIME: 25,
   WATCH_MOVIE: 25,
   READ_CHAPTER: 15,
+  FORUM_POST: 10,
+  FORUM_COMMENT: 5,
 } as const;
+
+const FORUM_DAILY_EXP_KEY = 'IGNORE_DEFAULT_DB_forumDailyExp';
+const DAILY_MAX_POST_EXP = 4; // max 40 EXP/day from creating posts
+const DAILY_MAX_COMMENT_EXP = 10; // max 50 EXP/day from comments
+
+interface DailyForumExpLedger {
+  date: string;
+  posts: number;
+  comments: number;
+}
+
+function getLocalDateKey(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+export async function awardForumExpWithCap(
+  kind: 'post' | 'comment',
+  addExpFn: (amount: number) => Promise<void>,
+): Promise<number> {
+  try {
+    const today = getLocalDateKey();
+    const raw = await DatabaseManager.get(FORUM_DAILY_EXP_KEY);
+    let ledger: DailyForumExpLedger = { date: today, posts: 0, comments: 0 };
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.date === today) {
+        ledger = {
+          date: today,
+          posts: Number(parsed.posts) || 0,
+          comments: Number(parsed.comments) || 0,
+        };
+      }
+    }
+
+    if (kind === 'post') {
+      if (ledger.posts >= DAILY_MAX_POST_EXP) return 0;
+      ledger.posts += 1;
+      await DatabaseManager.setSilent(FORUM_DAILY_EXP_KEY, JSON.stringify(ledger));
+      await addExpFn(EXP_REWARDS.FORUM_POST);
+      return EXP_REWARDS.FORUM_POST;
+    }
+
+    if (ledger.comments >= DAILY_MAX_COMMENT_EXP) return 0;
+    ledger.comments += 1;
+    await DatabaseManager.setSilent(FORUM_DAILY_EXP_KEY, JSON.stringify(ledger));
+    await addExpFn(EXP_REWARDS.FORUM_COMMENT);
+    return EXP_REWARDS.FORUM_COMMENT;
+  } catch {
+    return 0;
+  }
+}
 
 const LEVEL_COLORS: [number, string][] = [
   [500, '#E0E0E0'], // Platinum
@@ -85,5 +145,5 @@ export function getLevelFromExp(totalExp: number): {
 }
 
 export function formatExp(exp: number): string {
-  return exp.toLocaleString('id-ID');
+  return exp.toLocaleString(getCurrentLanguage() === 'en' ? 'en-US' : 'id-ID');
 }

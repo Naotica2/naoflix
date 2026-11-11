@@ -82,6 +82,78 @@ export async function getLatestMynimekuReleases(
   return items;
 }
 
+function parseMixFeedCards($: ReturnType<typeof cheerio.load>): MynimekuRelease[] {
+  const items: MynimekuRelease[] = [];
+
+  $('article.mynimeku-mix-feed__item').each((_i, el) => {
+    const $el = $(el);
+    const coverLink = $el.find('a.mynimeku-mix-feed__cover');
+    const detailUrl = coverLink.attr('href') || '';
+    if (!detailUrl.includes('/komik/')) return;
+
+    const imgEl = coverLink.find('img');
+    const thumbnailUrl = normalizeUrl(
+      imgEl.attr('data-lazy-src') || imgEl.attr('data-src') || imgEl.attr('src') || '',
+    );
+    const title = $el.find('a.mynimeku-mix-feed__series-title').text().trim();
+
+    const typeRaw = $el.find('span.mynimeku-mix-feed__type').text().trim().toUpperCase();
+    const status = $el.find('span.mynimeku-mix-feed__status').text().trim();
+    const type = (
+      typeRaw.includes('MANHWA')
+        ? 'Manhwa'
+        : typeRaw.includes('MANHUA')
+          ? 'Manhua'
+          : 'Manga'
+    ) as MynimekuRelease['type'];
+
+    const latestChapter =
+      $el
+        .find('span.mynimeku-mix-feed__latest-pill, .mynimeku-mix-feed__chapter')
+        .first()
+        .text()
+        .replace(/Chapter\s*/i, '')
+        .trim() || '?';
+
+    if (title && detailUrl) {
+      items.push({
+        title,
+        thumbnailUrl,
+        detailUrl: normalizeUrl(detailUrl),
+        type,
+        latestChapter,
+        concept: status,
+        shortDescription: '',
+        additionalInfo: type,
+      });
+    }
+  });
+
+  return items;
+}
+
+export async function getPopularMynimekuReleases(
+  page: number = 1,
+  signal?: AbortSignal,
+): Promise<MynimekuRelease[]> {
+  const basePath = '/full-list/mix/o:popular~t:MANGA,MANHUA,MANHWA,ONE-SHOT/';
+  const url = page <= 1 ? `${BASE_URL}${basePath}` : `${BASE_URL}${basePath}page/${page}/`;
+  const html = await fetchPage(url, signal);
+  const $ = cheerio.load(html);
+  return parseMixFeedCards($);
+}
+
+export async function getManhwaMynimekuReleases(
+  page: number = 1,
+  signal?: AbortSignal,
+): Promise<MynimekuRelease[]> {
+  const basePath = '/full-list/mix/t:MANHWA/';
+  const url = page <= 1 ? `${BASE_URL}${basePath}` : `${BASE_URL}${basePath}page/${page}/`;
+  const html = await fetchPage(url, signal);
+  const $ = cheerio.load(html);
+  return parseMixFeedCards($);
+}
+
 export interface MynimekuDetail {
   title: string;
   indonesianTitle: string;
@@ -210,11 +282,16 @@ export async function getMynimekuReading(
 
   const fullTitle = $('h1.post-title.entry-title, div.entry-hero h1').first().text().trim();
   const title = fullTitle
-    .replace(/ Chapter \d+.*/i, '')
-    .replace(/ Bahasa Indonesia$/i, '');
+    .replace(/\s*(?:Chapter|Ch\.?)\s*\d+.*$/i, '')
+    .replace(/ Bahasa Indonesia$/i, '')
+    .trim();
 
-  const chapMatch = fullTitle.match(/Chapter\s*\d+(\.\d+)?/i);
-  const chapter = chapMatch ? chapMatch[0] : fullTitle;
+  const chapMatch = fullTitle.match(/(?:Chapter|Ch\.?)\s*\d+(?:[.,]\d+)?/i);
+  let chapter = chapMatch ? chapMatch[0].replace(/^ch\.?\s*/i, 'Chapter ').replace(',', '.').trim() : '';
+  if (!chapter) {
+    const urlChapMatch = chapterUrl.match(/\/chapter\/(?:chapter[-_]?)?(\d+(?:[-.]\d+)?)/i) || chapterUrl.match(/chapter[-_]?(\d+(?:[-.]\d+)?)/i);
+    chapter = urlChapMatch?.[1] ? `Chapter ${urlChapMatch[1].replace('-', '.')}` : fullTitle || 'Chapter';
+  }
 
   const thumbnailUrl = normalizeUrl($('meta[property="og:image"]').attr('content') || '');
 
@@ -341,4 +418,46 @@ export async function getMynimekuByGenre(
   });
 
   return items;
+}
+
+export async function getMynimekuDetailUrlFromChapter(
+  chapterUrl: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const pathOnly = chapterUrl.replace(/^https?:\/\/[^/]+/i, '').split(/[?#]/)[0];
+  const initialSegs = pathOnly.split('/').filter(Boolean);
+  if (
+    initialSegs.length === 2 &&
+    initialSegs[0].toLowerCase() === 'komik' &&
+    initialSegs[1].toLowerCase() !== 'page'
+  ) {
+    return `${BASE_URL}/komik/${initialSegs[1]}/`;
+  }
+
+  const syncMatch = chapterUrl.match(/^(https?:\/\/[^/]+\/komik\/[^/?#]+)\/chapter(?:\/|$)/i);
+  if (syncMatch?.[1]) {
+    return `${syncMatch[1]}/`;
+  }
+
+  const html = await fetchPage(chapterUrl, signal);
+  const $ = cheerio.load(html);
+  const candidates: string[] = [];
+  $('.komik-chapter-nav__series a[href], .breadcrumb a[href], a[href*="/komik/"]').each(
+    (_i, el) => {
+      const href = $(el).attr('href');
+      if (href) candidates.push(href);
+    },
+  );
+  for (const href of candidates) {
+    const cleanPath = href.replace(/^https?:\/\/[^/]+/i, '').split(/[?#]/)[0];
+    const segs = cleanPath.split('/').filter(Boolean);
+    if (
+      segs.length === 2 &&
+      segs[0].toLowerCase() === 'komik' &&
+      !['page', 'hot', 'genre', 'genres'].includes(segs[1].toLowerCase())
+    ) {
+      return `${BASE_URL}/komik/${segs[1]}/`;
+    }
+  }
+  return null;
 }

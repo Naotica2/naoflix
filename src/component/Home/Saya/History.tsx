@@ -29,6 +29,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import URL from 'url';
 import useGlobalStyles, { darkText } from '../../../assets/style';
+import { useLanguage } from '../../../misc/LanguageContext';
 import { HistoryItemKey } from '../../../types/databaseTarget';
 import { HistoryJSON } from '../../../types/historyJSON';
 import { SayaDrawerNavigator } from '../../../types/navigation';
@@ -47,9 +48,17 @@ type Props = DrawerScreenProps<SayaDrawerNavigator, 'History'>;
 function History(props: Props) {
   const styles = useStyles();
   const globalStyles = useGlobalStyles();
+  const { t } = useLanguage();
   const data = useModifiedKeyValueIfFocused(
     'historyKeyCollectionsOrder',
-    state => JSON.parse(state) as HistoryItemKey[],
+    state => {
+      try {
+        const parsed = JSON.parse(state || '[]');
+        return Array.isArray(parsed) ? (parsed as HistoryItemKey[]) : [];
+      } catch {
+        return [] as HistoryItemKey[];
+      }
+    },
     [] as HistoryItemKey[],
   );
 
@@ -117,9 +126,11 @@ function History(props: Props) {
   );
 
   const deleteHistory = useCallback(async (key: HistoryItemKey) => {
-    const keyOrder: HistoryItemKey[] = JSON.parse(
-      DatabaseManager.getSync('historyKeyCollectionsOrder') ?? '[]',
-    );
+    let keyOrder: HistoryItemKey[] = [];
+    try {
+      const parsed = JSON.parse(DatabaseManager.getSync('historyKeyCollectionsOrder') ?? '[]');
+      if (Array.isArray(parsed)) keyOrder = parsed;
+    } catch {}
     const keyIndex = keyOrder.findIndex(z => z === key);
     if (keyIndex !== -1) {
       keyOrder.splice(keyIndex, 1);
@@ -153,12 +164,41 @@ function History(props: Props) {
     });
   }, []);
 
+  const headerComponent = useMemo(
+    () =>
+      data.length > 0 ? (
+        <View>
+          {searchKeywordDeferred !== '' && (
+            <Text style={[globalStyles.text, styles.searchKeywordText]}>
+              {t('lists.showingResultsCount', {
+                query: searchKeywordDeferred,
+                count: filteredData.length,
+              })}
+            </Text>
+          )}
+          <Text style={[globalStyles.text, { margin: 10 }]}>
+            {t('lists.historyCountLabel', { count: data.length })}
+          </Text>
+        </View>
+      ) : null,
+    [data.length, filteredData.length, globalStyles.text, searchKeywordDeferred, styles.searchKeywordText, t],
+  );
+
+  const emptyComponent = useMemo(
+    () => (
+      <View style={styles.noHistory}>
+        <Text style={[globalStyles.text]}>{t('lists.noHistoryYet')}</Text>
+      </View>
+    ),
+    [globalStyles.text, styles.noHistory, t],
+  );
+
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.searchInputView}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Cari judul anime..."
+          placeholder={t('lists.searchTitlePlaceholder')}
           placeholderTextColor={globalStyles.text.color}
           value={searchKeyword}
           onChangeText={setSearchKeyword}
@@ -177,34 +217,14 @@ function History(props: Props) {
       <View style={styles.historyContainer}>
         <AnimatedFlashList
           data={filteredData}
-          key={searchKeywordDeferred}
           ref={flatListRef}
+          drawDistance={350}
           keyExtractor={keyExtractor}
           onScroll={scrollHandler}
-          removeClippedSubviews={true}
           extraData={styles}
-          estimatedItemSize={150}
           renderItem={renderFlatList}
-          ListHeaderComponent={() =>
-            data.length > 0 && (
-              <View>
-                {searchKeywordDeferred !== '' && (
-                  <Text style={[globalStyles.text, styles.searchKeywordText]}>
-                    Menampilkan hasil untuk : {searchKeywordDeferred} ({filteredData.length})
-                  </Text>
-                )}
-                <Text style={[globalStyles.text, { margin: 10 }]}>
-                  Jumlah histori tontonan kamu:{' '}
-                  <Text style={{ fontWeight: 'bold' }}>{data.length}</Text>
-                </Text>
-              </View>
-            )
-          }
-          ListEmptyComponent={() => (
-            <View style={styles.noHistory}>
-              <Text style={[globalStyles.text]}>Tidak ada histori tontonan</Text>
-            </View>
-          )}
+          ListHeaderComponent={headerComponent}
+          ListEmptyComponent={emptyComponent}
         />
         <Animated.View
           style={[styles.scrollToTopView, buttonTransformStyle]}
@@ -233,6 +253,7 @@ const RenderList = memo(function RenderList({
   globalStyles: ReturnType<typeof useGlobalStyles>;
   deleteHistory: (key: HistoryItemKey) => Promise<void>;
 }) {
+  const { t } = useLanguage();
   const currentItem = useRef(keyItem);
   currentItem.current = keyItem;
   const [item, setItem] = useRecyclingState<HistoryJSON | undefined>(
@@ -244,19 +265,17 @@ const RenderList = memo(function RenderList({
     useCallback(() => {
       DatabaseManager.get(keyItem).then(value => {
         if (currentItem.current !== keyItem) return;
-        const historyDb = JSON.parse(value ?? '{}');
-        HistoryDatabaseCache.set(keyItem, historyDb);
-        // startTransition(() => {
-        setItem(historyDb);
+        try {
+          const historyDb = JSON.parse(value ?? '{}');
+          HistoryDatabaseCache.set(keyItem, historyDb);
+          setItem(historyDb);
+        } catch {}
       });
     }, [keyItem, setItem]),
   );
 
   return (
     <TouchableOpacity
-      // entering={FadeInRight}
-      // exiting={FadeOutLeft}
-      // layout={LinearTransition}
       style={styles.listContainerButton}
       disabled={!item}
       onPress={() => {
@@ -290,10 +309,9 @@ const RenderList = memo(function RenderList({
           <View style={styles.listWatchTime}>
             <Text style={[globalStyles.text, styles.listDateText]}>
               {item?.date &&
-                moment
+                `${moment
                   .duration(moment(Date.now()).diff(item.date, 'seconds'), 'seconds')
-                  .humanize() +
-                  moment(item.date).format('[ yang lalu] [\n]DD-MMMM-YYYY [pukul] HH:mm')}
+                  .humanize()}${t('lists.agoFormat')}\n${moment(item.date).format('DD-MMMM-YYYY')} ${t('lists.atClock')} ${moment(item.date).format('HH:mm')}`}
             </Text>
           </View>
 
@@ -304,15 +322,15 @@ const RenderList = memo(function RenderList({
               hitSlop={5}
               onPress={() => {
                 DialogManager.alert(
-                  'Yakin?',
-                  'Yakin kamu ingin menghapus "' + item?.title?.trim() + '" dari histori?',
+                  t('lists.confirmTitle'),
+                  t('lists.removeHistoryAsk', { title: item?.title?.trim() || '' }),
                   [
                     {
-                      text: 'Tidak',
+                      text: t('common.no'),
                       onPress: () => null,
                     },
                     {
-                      text: 'Ya',
+                      text: t('common.yes'),
                       onPress: () => deleteHistory(keyItem),
                     },
                   ],
@@ -342,7 +360,7 @@ const RenderList = memo(function RenderList({
                       styles.listEpisode,
                       { color: '#ffffff', fontWeight: 'bold', fontSize: 12 },
                     ]}>
-                    Komik
+                    {t('lists.comicTag')}
                   </Text>
                 </View>
               )}
@@ -359,7 +377,7 @@ const RenderList = memo(function RenderList({
                       styles.listEpisode,
                       { color: '#ffffff', fontWeight: 'bold', fontSize: 12 },
                     ]}>
-                    {(item?.link?.includes('se=') || (typeof item?.episode === 'string' && /S\d+E\d+/i.test(item.episode))) ? 'TV Series' : 'Movie'}
+                    {(item?.link?.includes('se=') || (typeof item?.episode === 'string' && /S\d+E\d+/i.test(item.episode))) ? t('lists.tvSeriesTag') : t('lists.movieTag')}
                   </Text>
                 </View>
               )}
@@ -376,7 +394,7 @@ const RenderList = memo(function RenderList({
                       styles.listEpisode,
                       { color: '#ffffff', fontWeight: 'bold', fontSize: 12 },
                     ]}>
-                    Novel
+                    {t('lists.novelTag')}
                   </Text>
                 </View>
               )}
@@ -393,7 +411,7 @@ const RenderList = memo(function RenderList({
                       styles.listEpisode,
                       { color: '#ffffff', fontWeight: 'bold', fontSize: 12 },
                     ]}>
-                    Movie
+                    {t('lists.movieTag')}
                   </Text>
                 </View>
               )}
@@ -401,12 +419,6 @@ const RenderList = memo(function RenderList({
                 <Text style={styles.listEpisode}>{item.episode}</Text>
               )}
             </View>
-            {/* this commented code is keep for historical reason (nostalgic lmao) */}
-            {/* {item?.part !== undefined && (
-                  <Text style={styles.listPart}>
-                    {' Part ' + (item?.part + 1)}
-                  </Text>
-                )} */}
           </View>
 
           {item?.lastDuration !== undefined && (
@@ -418,7 +430,7 @@ const RenderList = memo(function RenderList({
                   color={globalStyles.text.color}
                 />{' '}
                 {item?.isComics
-                  ? 'Halaman ' + (item?.lastDuration + 1)
+                  ? t('common.pageLabel', { page: item?.lastDuration + 1 })
                   : formatTimeFromSeconds(item?.lastDuration)}
               </Text>
             </View>
@@ -565,7 +577,7 @@ function useStyles() {
           textDecorationColor: globalStyles.text.color,
         },
       }),
-    [globalStyles.text.color, theme],
+    [globalStyles.text.color, isDark, theme],
   );
 }
 

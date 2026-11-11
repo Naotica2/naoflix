@@ -16,45 +16,52 @@ import { ActivityIndicator, Button } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackNavigator } from '../../types/navigation';
-import {
-  getLanguageOptions,
-  getPlayStreams,
-  getSeasonInfo,
-  hasIndonesian,
-  MovieboxSeason,
-  clearSeasonCache,
-} from '../../utils/scrapers/moviebox';
+import { FilmSearchItem, FilmSeason } from '../../types/film';
+import { FilmAPI } from '../../utils/FilmAPI';
+import { hasIndonesian, getLanguageOptions } from '../../utils/scrapers/lk21';
 import controlWatchLater from '../../utils/watchLaterControl';
 import { DatabaseManager } from '../../utils/DatabaseManager';
 import ImageLoading from '../misc/ImageLoading';
+import cleanSynopsis from '../../utils/cleanSynopsis';
+import { tSync, useLanguage } from '../../misc/LanguageContext';
+import { normalizeMediaKey } from '../../types/forum';
+import MediaForumSection from '../Forum/MediaForumSection';
 
 type Props = NativeStackScreenProps<RootStackNavigator, 'FilmDetail'>;
 
 function FilmDetail(props: Props) {
   const { data } = props.route.params;
+  const { t } = useLanguage();
   const styles = useStyles();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-
-  const isTV = data.subjectType === 2;
+  const isTV = data.subjectType == 2 || data.type === 'TV' || data.type === 'Series';
 
   const [inWatchLater, setInWatchLater] = useState(false);
+  const [showFullSynopsis, setShowFullSynopsis] = useState(false);
 
   useEffect(() => {
     const checkWatchLater = async () => {
       try {
+        const itemData = props.route.params.data as FilmSearchItem;
         const wlStr = await DatabaseManager.get('watchLater');
         if (wlStr) {
-          const wl: any[] = JSON.parse(wlStr);
-          const found = wl.some(item => item.link?.includes(data.subjectId));
+          const wl: any[] = (() => {
+            try {
+              return JSON.parse(wlStr);
+            } catch {
+              return [];
+            }
+          })();
+          const found = Array.isArray(wl) && wl.some(item => item.link?.includes(itemData.id));
           setInWatchLater(found);
         }
       } catch {}
     };
     checkWatchLater();
-  }, [data.subjectId]);
+  }, [data.id, props.route.params.data]);
 
   const langOptions = useMemo(() => getLanguageOptions(data), [data]);
   const [selectedLang, setSelectedLang] = useState(() => {
@@ -62,11 +69,25 @@ function FilmDetail(props: Props) {
     return id || langOptions[0];
   });
 
-  const [seasons, setSeasons] = useState<MovieboxSeason[]>([]);
-  const [selectedSeason, setSelectedSeason] = useState<MovieboxSeason | null>(null);
+  const [seasons, setSeasons] = useState<FilmSeason[] | null>(null);
+  const [selectedSeason, setSelectedSeason] = useState<FilmSeason | null>(null);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
   const [loadingSeasons, setLoadingSeasons] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [description, setDescription] = useState(data.description || '');
+
+  useEffect(() => {
+    if (!description) {
+      let cancelled = false;
+      const detailPath = selectedLang?.detailPath || data.id;
+      FilmAPI.getFilmDetails(data.source || 'lk21', data.id, detailPath).then(res => {
+        if (!cancelled && res?.description) {
+          setDescription(res.description);
+        }
+      }).catch(() => {});
+      return () => { cancelled = true; };
+    }
+  }, [data.id, data.source, selectedLang, description]);
 
   useEffect(() => {
     if (!isTV) return;
@@ -74,28 +95,33 @@ function FilmDetail(props: Props) {
     (async () => {
       setLoadingSeasons(true);
       try {
-        const dp = selectedLang?.detailPath || data.detailPath;
-        const result = await getSeasonInfo(data.subjectId, dp);
-        if (cancelled) return;
-        setSeasons(result);
-        if (result.length > 0) {
-          setSelectedSeason(result[0]);
-          setSelectedEpisode(1);
+        const detailPath = selectedLang?.detailPath || data.id;
+        if (data.type === 'TV' || data.type === 'Series') {
+          const res = await FilmAPI.getSeasonInfo(data.source || 'lk21', data.id, detailPath);
+          if (!cancelled) {
+            setSeasons(res);
+            if (res.length > 0) {
+              setSelectedSeason(res[0]);
+              setSelectedEpisode(1);
+            }
+          }
         }
-      } catch {}
-      if (!cancelled) setLoadingSeasons(false);
+      } catch {
+        if (!cancelled) setSeasons([]);
+      } finally {
+        if (!cancelled) setLoadingSeasons(false);
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [data.subjectId, data.detailPath, selectedLang, isTV]);
+  }, [data.id, selectedLang, isTV, data.type, data.source]);
 
   const handleRefreshSeasons = useCallback(async () => {
-    await clearSeasonCache(data.subjectId);
     setLoadingSeasons(true);
     try {
-      const dp = selectedLang?.detailPath || data.detailPath;
-      const result = await getSeasonInfo(data.subjectId, dp);
+      const detailPath = selectedLang?.detailPath || data.id;
+      const result = await FilmAPI.getSeasonInfo(data.source || 'lk21', data.id, detailPath);
       setSeasons(result);
       if (result.length > 0) {
         setSelectedSeason(result[0]);
@@ -103,47 +129,56 @@ function FilmDetail(props: Props) {
       }
     } catch {}
     setLoadingSeasons(false);
-  }, [data.subjectId, data.detailPath, selectedLang]);
+  }, [data.id, data.source, selectedLang]);
 
   useEffect(() => {
     setSelectedEpisode(1);
   }, [selectedSeason]);
 
-  const posterWidth = width * 0.35;
-  const posterHeight = posterWidth * 1.5;
+  const posterWidth = Math.min(130, width * 0.32);
+  const posterHeight = posterWidth * 1.48;
 
-  const genres = data.genre
-    ? data.genre
-        .split(',')
-        .map(g => g.trim())
-        .filter(Boolean)
-    : [];
+  const genres = useMemo(() => {
+    return data.genres
+      ? data.genres
+      : (data.genre
+          ? data.genre
+              .split(',')
+              .map((g: string) => g.trim())
+              .filter(Boolean)
+          : []);
+  }, [data.genres, data.genre]);
 
   const handleToggleWatchLater = useCallback(() => {
     if (inWatchLater) {
       const wlStr = DatabaseManager.getSync('watchLater');
       if (wlStr) {
-        const wl: any[] = JSON.parse(wlStr);
-        const idx = wl.findIndex(item => item.link?.includes(data.subjectId));
+        let wl: any[] = [];
+        try {
+          wl = JSON.parse(wlStr);
+        } catch {
+          wl = [];
+        }
+        const idx = Array.isArray(wl) ? wl.findIndex(item => item.link?.includes(data.id)) : -1;
         if (idx >= 0) {
           controlWatchLater('delete', idx);
           setInWatchLater(false);
-          ToastAndroid.show('Dihapus dari Tonton Nanti', ToastAndroid.SHORT);
+          ToastAndroid.show(tSync('detail.removedWatchLater'), ToastAndroid.SHORT);
         }
       }
     } else {
       controlWatchLater('add', {
-        link: `film://${data.subjectId}/${data.detailPath || ''}`,
+        link: `film://${data.id}/${data.id || ''}`,
         title: data.title,
-        rating: data.imdbRatingValue || '',
+        rating: String(data.imdbRatingValue || ''),
         releaseYear: data.releaseDate?.slice(0, 4) || '',
-        thumbnailUrl: data.cover?.url || '',
+        thumbnailUrl: data.poster || '',
         date: Date.now(),
         genre: genres,
         isMovie: !isTV,
       });
       setInWatchLater(true);
-      ToastAndroid.show('Ditambahkan ke Tonton Nanti', ToastAndroid.SHORT);
+      ToastAndroid.show(tSync('detail.addedWatchLater'), ToastAndroid.SHORT);
     }
   }, [data, genres, inWatchLater, isTV]);
 
@@ -152,18 +187,20 @@ function FilmDetail(props: Props) {
     const s = selectedSeason?.se ?? 1;
     const e = selectedEpisode;
     try {
-      const detailPath = selectedLang?.detailPath || data.detailPath;
+      const detailPath = selectedLang?.detailPath || data.id;
       
-      let streams = await getPlayStreams(
-        data.subjectId,
+      let streams = await FilmAPI.getPlayStreams(
+        data.source || 'lk21',
+        data.id,
         detailPath,
         isTV ? s : undefined,
         isTV ? e : undefined,
       );
 
       if (!streams.length && !isTV) {
-        streams = await getPlayStreams(
-          data.subjectId,
+        streams = await FilmAPI.getPlayStreams(
+          data.source || 'lk21',
+          data.id,
           detailPath,
           1,
           1,
@@ -171,18 +208,20 @@ function FilmDetail(props: Props) {
       }
 
       if (!streams.length) {
-        if (detailPath !== data.detailPath) {
-          let fallbackStreams = await getPlayStreams(
-            data.subjectId,
-            data.detailPath,
+        if (detailPath !== data.id) {
+          let fallbackStreams = await FilmAPI.getPlayStreams(
+            data.source || 'lk21',
+            data.id,
+            data.id,
             isTV ? s : undefined,
             isTV ? e : undefined,
           );
           
           if (!fallbackStreams.length && !isTV) {
-            fallbackStreams = await getPlayStreams(
-              data.subjectId,
-              data.detailPath,
+            fallbackStreams = await FilmAPI.getPlayStreams(
+              data.source || 'lk21',
+              data.id,
+              data.id,
               1,
               1,
             );
@@ -192,20 +231,21 @@ function FilmDetail(props: Props) {
             props.navigation.navigate('FilmPlayer', {
               streams: fallbackStreams,
               title: isTV ? `${data.title} S${s}E${e}` : data.title,
-              subjectId: data.subjectId,
-              detailPath: data.detailPath,
+              subjectId: data.id,
+              detailPath: data.id,
               type: isTV ? 'tv' : 'movie',
               season: isTV ? s : undefined,
               episode: isTV ? e : undefined,
-              seasons: isTV ? seasons : undefined,
-              poster: data.cover?.url,
+              seasons: isTV ? (seasons || undefined) : undefined,
+              poster: data.poster || data.cover,
               language: selectedLang?.label,
+              source: data.source || 'lk21',
             });
             setIsLoading(false);
             return;
           }
         }
-        ToastAndroid.show('Video tidak tersedia untuk episode ini', ToastAndroid.LONG);
+        ToastAndroid.show(tSync('detail.noEpisodeVideo'), ToastAndroid.LONG);
         setIsLoading(false);
         return;
       }
@@ -213,221 +253,222 @@ function FilmDetail(props: Props) {
       props.navigation.navigate('FilmPlayer', {
         streams,
         title: isTV ? `${data.title} S${s}E${e}` : data.title,
-        subjectId: data.subjectId,
+        subjectId: data.id,
         detailPath,
         type: isTV ? 'tv' : 'movie',
         season: isTV ? s : undefined,
         episode: isTV ? e : undefined,
-        seasons: isTV ? seasons : undefined,
-        poster: data.cover?.url,
+        seasons: isTV ? (seasons || undefined) : undefined,
+        poster: data.poster || data.cover,
         language: selectedLang?.label,
+        source: data.source || 'lk21',
       });
     } catch (e: any) {
-      ToastAndroid.show(e.message || 'Gagal memuat video', ToastAndroid.LONG);
+      ToastAndroid.show(e.message || tSync('detail.failedLoadVideo'), ToastAndroid.LONG);
     } finally {
       setIsLoading(false);
     }
   }, [data, selectedSeason, selectedEpisode, isTV, props.navigation, selectedLang, seasons]);
 
+  const cleanedDescription = useMemo(() => {
+    return cleanSynopsis(description);
+  }, [description]);
+
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: isDark ? '#0f0f0f' : '#fafafa' }}
-      contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+      style={{ flex: 1, backgroundColor: isDark ? '#0B0E14' : '#F8FAFC' }}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
       showsVerticalScrollIndicator={false}>
-      {/* Backdrop Header */}
-      <View style={{ width: '100%', height: 220 }}>
+      <View style={{ width: '100%', height: 240, overflow: 'hidden' }}>
         <ImageLoading
-          source={{ uri: data.cover?.url }}
+          source={{ uri: data.poster }}
+          fallbackSearchTitle={data.title}
           style={{ width: '100%', height: '100%' }}
+          blurRadius={12}
           resizeMode="cover"
         />
         <LinearGradient
-          colors={['transparent', isDark ? '#0f0f0f' : '#fafafa']}
-          style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80 }}
+          colors={['rgba(11,14,20,0.1)', 'rgba(11,14,20,0.7)', isDark ? '#0B0E14' : '#F8FAFC']}
+          style={StyleSheet.absoluteFillObject}
         />
       </View>
 
-      {/* Content */}
-      <View style={{ paddingHorizontal: 16, marginTop: -60, flexDirection: 'row', gap: 14 }}>
-        {/* Poster */}
-        <View
-          style={{
-            width: posterWidth,
-            height: posterHeight,
-            borderRadius: 10,
-            elevation: 6,
-            overflow: 'hidden',
-            backgroundColor: isDark ? '#1a1a1a' : '#ddd',
-          }}>
+      <View style={[styles.heroRow, { marginTop: -posterHeight * 0.45 }]}>
+        <View style={[styles.posterWrapper, { width: posterWidth, height: posterHeight }]}>
           <ImageLoading
-            source={{ uri: data.cover?.url }}
+            source={{ uri: data.poster }}
+            fallbackSearchTitle={data.title}
             style={{ width: '100%', height: '100%' }}
             resizeMode="cover"
           />
         </View>
 
-        {/* Info */}
-        <View style={{ flex: 1, paddingTop: 64 }}>
-          {/* Type badge */}
-          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-            <View
-              style={{
-                backgroundColor: isTV ? '#f59e0b' : '#3b82f6',
-                paddingHorizontal: 8,
-                paddingVertical: 3,
-                borderRadius: 4,
-              }}>
-              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 11 }}>
-                {isTV ? 'TV Series' : 'Movie'}
-              </Text>
+        <View style={styles.heroDetails}>
+          <View style={styles.badgeRow}>
+            <View style={[styles.typeBadge, { backgroundColor: isTV ? '#F59E0B' : '#3B82F6' }]}>
+              <Text style={styles.typeBadgeText}>{isTV ? t('detail.tvSeriesBadge') : t('detail.movieBadge')}</Text>
             </View>
             {hasIndonesian(data) && (
-              <View
-                style={{
-                  backgroundColor: '#ef4444',
-                  paddingHorizontal: 8,
-                  paddingVertical: 3,
-                  borderRadius: 4,
-                }}>
-                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 11 }}>Indonesian</Text>
+              <View style={[styles.typeBadge, { backgroundColor: '#EF4444' }]}>
+                <Text style={styles.typeBadgeText}>Sub Indo</Text>
               </View>
             )}
+            {data.imdbRatingValue ? (
+              <View style={styles.ratingBadge}>
+                <Icon name="star" size={11} color="#F5C518" />
+                <Text style={styles.ratingBadgeText}>{data.imdbRatingValue}</Text>
+              </View>
+            ) : null}
           </View>
 
-          <Text style={[styles.title, { color: isDark ? '#f0f0f0' : '#111' }]} numberOfLines={3}>
+          <Text style={[styles.heroTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]} numberOfLines={3}>
             {data.title}
           </Text>
 
-          <View
-            style={{
-              flexDirection: 'row',
-              gap: 10,
-              marginTop: 6,
-              flexWrap: 'wrap',
-              alignItems: 'center',
-            }}>
+          <View style={styles.metaRow}>
             {data.releaseDate ? (
-              <Text style={[styles.meta, { color: isDark ? '#aaa' : '#666' }]}>
-                <Icon name="calendar" size={12} color={isDark ? '#aaa' : '#666'} />{' '}
-                {data.releaseDate.slice(0, 4)}
-              </Text>
-            ) : null}
-            {data.imdbRatingValue ? (
-              <Text style={[styles.meta, { color: '#f5c518' }]}>
-                <Icon name="star" size={12} color="#f5c518" /> {data.imdbRatingValue}
+              <Text style={[styles.metaText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                <Icon name="calendar" size={11} color="#3B82F6" /> {data.releaseDate.slice(0, 4)}
               </Text>
             ) : null}
             {data.countryName ? (
-              <Text style={[styles.meta, { color: isDark ? '#888' : '#999', fontSize: 11 }]}>
-                {data.countryName}
+              <Text style={[styles.metaText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                <Icon name="globe" size={11} color="#10B981" /> {data.countryName}
               </Text>
             ) : null}
           </View>
-
-          {/* Genres */}
-          {genres.length > 0 && (
-            <View style={{ flexDirection: 'row', gap: 4, marginTop: 8, flexWrap: 'wrap' }}>
-              {genres.slice(0, 4).map(g => (
-                <View
-                  key={g}
-                  style={{
-                    backgroundColor: isDark ? '#222' : '#eee',
-                    paddingHorizontal: 6,
-                    paddingVertical: 2,
-                    borderRadius: 4,
-                  }}>
-                  <Text style={{ fontSize: 10, color: isDark ? '#aaa' : '#666' }}>{g}</Text>
-                </View>
-              ))}
-            </View>
-          )}
         </View>
       </View>
 
-      {/* Synopsis */}
-      {data.description ? (
-        <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
-          <Text style={[styles.sectionTitle, { color: isDark ? '#f0f0f0' : '#111' }]}>
-            Synopsis
+      <View style={styles.actionRow}>
+        <TouchableOpacity
+          style={styles.primaryPlayButton}
+          activeOpacity={0.8}
+          disabled={isLoading}
+          onPress={handlePlay}>
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+          ) : (
+            <Icon name="play" size={15} color="#FFFFFF" style={{ marginRight: 8 }} />
+          )}
+          <Text style={styles.primaryPlayButtonText}>
+            {isLoading
+              ? t('common.loading')
+              : isTV
+                ? t('detail.watchSeriesEp', { season: selectedSeason?.se ?? 1, ep: selectedEpisode })
+                : t('detail.watchNow')}
           </Text>
-          <Text style={[styles.synopsis, { color: isDark ? '#bbb' : '#444' }]}>
-            {data.description}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.secondaryActionButton, inWatchLater && styles.secondaryActionButtonActive]}
+          activeOpacity={0.8}
+          onPress={handleToggleWatchLater}>
+          <Icon
+            name={inWatchLater ? 'check' : 'bookmark-o'}
+            size={15}
+            color={inWatchLater ? '#3B82F6' : (isDark ? '#E2E8F0' : '#1E293B')}
+            style={{ marginRight: 6 }}
+          />
+          <Text style={[styles.secondaryActionText, inWatchLater && { color: '#3B82F6', fontWeight: '700' }]}>
+            {inWatchLater ? t('detail.savedBtn') : t('detail.laterBtn')}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {genres.length > 0 && (
+        <View style={styles.genreRow}>
+          {genres.map((g: string) => (
+            <View key={g} style={styles.genrePill}>
+              <Text style={styles.genrePillText}>{g}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      <View style={styles.synopsisCard}>
+        <View style={styles.sectionHeaderLine}>
+          <View style={styles.sectionAccentDot} />
+          <Text style={[styles.sectionTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>
+            {t('detail.synopsis')}
           </Text>
         </View>
-      ) : null}
+        <Text
+          style={[styles.synopsisParagraph, { color: isDark ? '#94A3B8' : '#475569' }]}
+          numberOfLines={showFullSynopsis ? undefined : 3}>
+          {cleanedDescription}
+        </Text>
+        {cleanedDescription.length > 130 && (
+          <TouchableOpacity
+            onPress={() => setShowFullSynopsis(!showFullSynopsis)}
+            style={styles.expandSynopsisBtn}
+            activeOpacity={0.7}>
+            <Text style={styles.expandSynopsisText}>
+              {showFullSynopsis ? t('detail.showLess') : t('detail.showMore')}
+            </Text>
+            <Icon
+              name={showFullSynopsis ? 'angle-up' : 'angle-down'}
+              size={14}
+              color="#3B82F6"
+              style={{ marginLeft: 4 }}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
 
-      {/* Language Picker */}
       {langOptions.length > 1 && (
-        <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
-          <Text style={[styles.sectionTitle, { color: isDark ? '#f0f0f0' : '#111' }]}>Bahasa</Text>
-          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-            {langOptions.map(lang => (
-              <TouchableOpacity
-                key={lang.detailPath}
-                onPress={() => setSelectedLang(lang)}
-                style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 8,
-                  backgroundColor:
-                    selectedLang?.detailPath === lang.detailPath
-                      ? '#3b82f6'
-                      : isDark
-                        ? '#1a1a1a'
-                        : '#f0f0f0',
-                  borderWidth: 1,
-                  borderColor:
-                    selectedLang?.detailPath === lang.detailPath
-                      ? '#3b82f6'
-                      : isDark
-                        ? '#333'
-                        : '#ddd',
-                }}>
-                <Text
-                  style={{
-                    fontWeight: '600',
-                    fontSize: 13,
-                    color:
-                      selectedLang?.detailPath === lang.detailPath
-                        ? '#fff'
-                        : isDark
-                          ? '#ccc'
-                          : '#444',
-                  }}>
-                  {lang.isIndonesian ? '🇮🇩 ' : ''}
-                  {lang.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+        <View style={{ paddingHorizontal: 16, marginTop: 14 }}>
+          <View style={styles.sectionHeaderLine}>
+            <View style={[styles.sectionAccentDot, { backgroundColor: '#8B5CF6' }]} />
+            <Text style={[styles.sectionTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>{t('detail.languageOptions')}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+            {langOptions.map(lang => {
+              const active = selectedLang?.detailPath === lang.detailPath;
+              return (
+                <TouchableOpacity
+                  key={lang.detailPath}
+                  onPress={() => setSelectedLang(lang)}
+                  activeOpacity={0.7}
+                  style={[
+                    styles.langPill,
+                    active && styles.langPillActive,
+                  ]}>
+                  <Text style={[styles.langPillText, active && styles.langPillTextActive]}>
+                    {lang.isIndonesian ? t('detail.indonesianLang') : lang.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       )}
 
-      {/* TV Season/Episode Picker */}
       {isTV && (
         <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={[styles.sectionTitle, { color: isDark ? '#f0f0f0' : '#111', marginBottom: 0 }]}>
-              Season & Episode
-            </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <View style={styles.sectionHeaderLine}>
+              <View style={[styles.sectionAccentDot, { backgroundColor: '#10B981' }]} />
+              <Text style={[styles.sectionTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>
+                {t('detail.seasonEpisodeHeader')}
+              </Text>
+            </View>
             <TouchableOpacity 
               onPress={handleRefreshSeasons}
               disabled={loadingSeasons}
               style={{ padding: 4 }}>
-              <Icon name="refresh" size={16} color={isDark ? '#888' : '#666'} />
+              <Icon name="refresh" size={14} color={isDark ? '#8E95A5' : '#64748B'} />
             </TouchableOpacity>
           </View>
-          <View style={{ height: 8 }} />
 
           {loadingSeasons ? (
-            <ActivityIndicator size="small" color="#3b82f6" style={{ marginVertical: 12 }} />
-          ) : seasons.length === 0 ? (
-            <Text style={{ color: isDark ? '#666' : '#999', fontSize: 13 }}>
-              Gagal memuat daftar episode
+            <ActivityIndicator size="small" color="#3B82F6" style={{ marginVertical: 14 }} />
+          ) : !seasons || seasons.length === 0 ? (
+            <Text style={{ color: isDark ? '#64748B' : '#94A3B8', fontSize: 13 }}>
+              {t('detail.loadingEpsFailed')}
             </Text>
           ) : (
             <>
-              {/* Season Pills */}
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -438,28 +479,19 @@ function FilmDetail(props: Props) {
                     <TouchableOpacity
                       key={s.se}
                       onPress={() => setSelectedSeason(s)}
+                      activeOpacity={0.7}
                       style={[
                         styles.seasonPill,
-                        {
-                          backgroundColor: active ? '#3b82f6' : isDark ? '#1a1a1a' : '#f0f0f0',
-                          borderColor: active ? '#3b82f6' : isDark ? '#333' : '#ddd',
-                        },
+                        active && styles.seasonPillActive,
                       ]}>
-                      <Text
-                        style={[
-                          styles.seasonPillText,
-                          {
-                            color: active ? '#fff' : isDark ? '#ccc' : '#444',
-                          },
-                        ]}>
-                        S{s.se}
+                      <Text style={[styles.seasonPillText, active && styles.seasonPillTextActive]}>
+                        {t('detail.seasonLabel', { season: s.se ?? s.seasonNumber ?? 1 })}
                       </Text>
                     </TouchableOpacity>
                   );
                 })}
               </ScrollView>
 
-              {/* Episode Grid */}
               <View style={{ marginTop: 10 }}>
                 <EpisodeGrid
                   maxEp={selectedSeason?.maxEp ?? 1}
@@ -473,77 +505,260 @@ function FilmDetail(props: Props) {
         </View>
       )}
 
-      {/* Play + Watch Later Buttons */}
-      <View style={{ paddingHorizontal: 16, marginTop: 20, gap: 10 }}>
-        <Button
-          mode="contained"
-          buttonColor="#3b82f6"
-          textColor="#fff"
-          icon="play"
-          style={{ borderRadius: 10, paddingVertical: 4 }}
-          labelStyle={{ fontSize: 16, fontWeight: '700' }}
-          onPress={handlePlay}
-          disabled={isLoading}>
-          {isLoading
-            ? 'Memuat...'
-            : isTV
-              ? `Tonton S${selectedSeason?.se ?? 1} E${selectedEpisode}`
-              : 'Tonton Sekarang'}
-        </Button>
-
-        <Button
-          mode={inWatchLater ? 'contained-tonal' : 'outlined'}
-          icon={inWatchLater ? 'check' : 'bookmark-plus-outline'}
-          style={{ borderRadius: 10 }}
-          labelStyle={{ fontSize: 14, fontWeight: '600' }}
-          onPress={handleToggleWatchLater}>
-          {inWatchLater ? 'Tersimpan di Tonton Nanti' : 'Tonton Nanti'}
-        </Button>
-
-        {isLoading && <ActivityIndicator size="small" color="#3b82f6" style={{ marginTop: 4 }} />}
-      </View>
-
-      {/* Subtitles info */}
-      {data.subtitles && (
-        <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
-          <Text style={[styles.meta, { color: isDark ? '#666' : '#999', fontSize: 11 }]}>
-            <Icon name="language" size={10} color={isDark ? '#666' : '#999'} /> Subtitle:{' '}
-            {data.subtitles}
-          </Text>
-        </View>
-      )}
+      <MediaForumSection
+        navigation={props.navigation}
+        defaultCategory="film"
+        linkedMedia={{
+          media_key: normalizeMediaKey('film', `${data.source || 'lk21'}:${data.id}`),
+          type: 'film',
+          title: data.title,
+          poster_url: data.poster || data.cover || null,
+          link: `film://${data.id}`,
+          source: data.source || 'lk21',
+          film_item: {
+            id: data.id,
+            title: data.title,
+            poster: data.poster || data.cover || '',
+            type: data.type,
+            source: data.source || 'lk21',
+            subjectType: data.subjectType,
+            releaseDate: data.releaseDate,
+            rating: data.imdbRatingValue != null ? String(data.imdbRatingValue) : undefined,
+            description,
+          },
+        }}
+      />
     </ScrollView>
   );
 }
 
 function useStyles() {
-  const { width } = useWindowDimensions();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   return useMemo(
     () =>
       StyleSheet.create({
-        title: { fontSize: 20, fontWeight: '800', lineHeight: 26 },
-        meta: { fontSize: 13, fontWeight: '500' },
-        sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
-        synopsis: { fontSize: 14, lineHeight: 22 },
-        seasonPill: {
+        heroRow: {
+          flexDirection: 'row',
           paddingHorizontal: 16,
-          paddingVertical: 8,
+          gap: 14,
+        },
+        posterWrapper: {
+          borderRadius: 12,
+          overflow: 'hidden',
+          backgroundColor: isDark ? '#161A23' : '#E2E8F0',
+          borderWidth: 1.5,
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.08)',
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.35,
+          shadowRadius: 8,
+        },
+        heroDetails: {
+          flex: 1,
+          justifyContent: 'flex-end',
+          paddingBottom: 4,
+          gap: 4,
+        },
+        badgeRow: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 6,
+          alignItems: 'center',
+          marginBottom: 2,
+        },
+        typeBadge: {
+          paddingHorizontal: 7,
+          paddingVertical: 2.5,
+          borderRadius: 5,
+        },
+        typeBadgeText: {
+          color: '#FFFFFF',
+          fontSize: 10.5,
+          fontWeight: '700',
+          letterSpacing: 0.3,
+        },
+        ratingBadge: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          backgroundColor: 'rgba(245, 197, 24, 0.15)',
+          paddingHorizontal: 7,
+          paddingVertical: 2.5,
+          borderRadius: 5,
+          borderWidth: 1,
+          borderColor: 'rgba(245, 197, 24, 0.35)',
+        },
+        ratingBadgeText: {
+          color: isDark ? '#FDE047' : '#B45309',
+          fontSize: 11,
+          fontWeight: '700',
+        },
+        heroTitle: {
+          fontSize: 18,
+          fontWeight: '800',
+          lineHeight: 24,
+          letterSpacing: -0.2,
+        },
+        metaRow: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 10,
+          marginTop: 2,
+        },
+        metaText: {
+          fontSize: 11.5,
+          fontWeight: '500',
+        },
+        actionRow: {
+          flexDirection: 'row',
+          paddingHorizontal: 16,
+          gap: 10,
+          marginTop: 14,
+        },
+        primaryPlayButton: {
+          flex: 2,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#3B82F6',
+          borderRadius: 10,
+          paddingVertical: 12,
+          elevation: 4,
+          shadowColor: '#3B82F6',
+          shadowOffset: { width: 0, height: 3 },
+          shadowOpacity: 0.35,
+          shadowRadius: 6,
+        },
+        primaryPlayButtonText: {
+          color: '#FFFFFF',
+          fontSize: 14,
+          fontWeight: '700',
+        },
+        secondaryActionButton: {
+          flex: 1,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+          borderRadius: 10,
+          paddingVertical: 12,
+          borderWidth: 1,
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+        },
+        secondaryActionButtonActive: {
+          backgroundColor: isDark ? 'rgba(59, 130, 246, 0.16)' : 'rgba(59, 130, 246, 0.12)',
+          borderColor: 'rgba(59, 130, 246, 0.35)',
+        },
+        secondaryActionText: {
+          fontSize: 13,
+          fontWeight: '600',
+          color: isDark ? '#E2E8F0' : '#1E293B',
+        },
+        genreRow: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 6,
+          paddingHorizontal: 16,
+          marginTop: 14,
+        },
+        genrePill: {
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
+          borderWidth: 1,
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.09)' : 'rgba(0, 0, 0, 0.07)',
+          borderRadius: 6,
+          paddingHorizontal: 9,
+          paddingVertical: 4,
+        },
+        genrePillText: {
+          fontSize: 11,
+          fontWeight: '600',
+          color: isDark ? '#94A3B8' : '#475569',
+        },
+        synopsisCard: {
+          marginHorizontal: 16,
+          marginTop: 14,
+          padding: 14,
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.035)' : '#FFFFFF',
+          borderWidth: 1,
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.06)',
+          borderRadius: 12,
+        },
+        sectionHeaderLine: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+        },
+        sectionAccentDot: {
+          width: 3.5,
+          height: 14,
+          borderRadius: 2,
+          backgroundColor: '#3B82F6',
+        },
+        sectionTitle: {
+          fontSize: 14,
+          fontWeight: '700',
+        },
+        synopsisParagraph: {
+          fontSize: 13,
+          lineHeight: 21,
+          marginTop: 6,
+        },
+        expandSynopsisBtn: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginTop: 6,
+        },
+        expandSynopsisText: {
+          color: '#3B82F6',
+          fontSize: 12.5,
+          fontWeight: '700',
+        },
+        langPill: {
+          paddingHorizontal: 12,
+          paddingVertical: 7,
+          borderRadius: 8,
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
+          borderWidth: 1,
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+        },
+        langPillActive: {
+          backgroundColor: '#3B82F6',
+          borderColor: '#3B82F6',
+        },
+        langPillText: {
+          fontWeight: '600',
+          fontSize: 12,
+          color: isDark ? '#CBD5E1' : '#475569',
+        },
+        langPillTextActive: {
+          color: '#FFFFFF',
+        },
+        seasonPill: {
+          paddingHorizontal: 14,
+          paddingVertical: 7,
           borderRadius: 8,
           borderWidth: 1,
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
         },
-        seasonPillText: { fontSize: 14, fontWeight: '700' },
-        episodeBox: {
-          borderRadius: 8,
-          justifyContent: 'center',
-          alignItems: 'center',
-          aspectRatio: 1,
+        seasonPillActive: {
+          backgroundColor: '#3B82F6',
+          borderColor: '#3B82F6',
         },
-        episodeBoxText: { fontSize: 14, fontWeight: '700' },
+        seasonPillText: {
+          fontSize: 12.5,
+          fontWeight: '700',
+          color: isDark ? '#CBD5E1' : '#475569',
+        },
+        seasonPillTextActive: {
+          color: '#FFFFFF',
+        },
       }),
-    [width],
+    [isDark],
   );
 }
-
 
 const EpisodeGrid = memo(
   ({
@@ -558,10 +773,10 @@ const EpisodeGrid = memo(
     isDark: boolean;
   }) => {
     const { width: screenWidth } = useWindowDimensions();
-    const cols = screenWidth < 400 ? 5 : screenWidth < 600 ? 6 : 7;
+    const cols = screenWidth < 380 ? 5 : screenWidth < 520 ? 6 : screenWidth < 768 ? 7 : 9;
     const gap = 8;
     const padding = 32;
-    const boxSize = (screenWidth - padding - (cols - 1) * gap) / cols;
+    const boxSize = Math.floor((screenWidth - padding - (cols - 1) * gap) / cols);
 
     const data = useMemo(() => {
       const arr: number[] = [];
@@ -575,21 +790,30 @@ const EpisodeGrid = memo(
         return (
           <TouchableOpacity
             onPress={() => onSelect(item)}
+            activeOpacity={0.75}
             style={{
               width: boxSize,
               height: boxSize,
               borderRadius: 8,
               justifyContent: 'center',
               alignItems: 'center',
-              backgroundColor: active ? '#3b82f6' : isDark ? '#1a1a1a' : '#f0f0f0',
-              borderWidth: active ? 2 : 1,
-              borderColor: active ? '#3b82f6' : isDark ? '#333' : '#ddd',
+              backgroundColor: active
+                ? '#3B82F6'
+                : isDark
+                  ? 'rgba(255, 255, 255, 0.06)'
+                  : '#FFFFFF',
+              borderWidth: 1,
+              borderColor: active
+                ? '#3B82F6'
+                : isDark
+                  ? 'rgba(255, 255, 255, 0.1)'
+                  : 'rgba(0, 0, 0, 0.08)',
             }}>
             <Text
               style={{
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: '700',
-                color: active ? '#fff' : isDark ? '#ccc' : '#444',
+                color: active ? '#FFFFFF' : isDark ? '#E2E8F0' : '#1E293B',
               }}>
               {item}
             </Text>

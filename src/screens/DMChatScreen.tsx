@@ -1,4 +1,4 @@
-import React, { memo, useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { memo, useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,8 @@ import {
   FlatList,
   useColorScheme,
   ActivityIndicator,
+  InteractionManager,
   ToastAndroid,
-  Image,
   Alert,
   Linking,
 } from 'react-native';
@@ -20,7 +20,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { RootStackNavigator } from '../types/navigation';
 import { supabase } from '../config/supabaseClient';
 import { useAuth } from '../misc/AuthContext';
+import { tSync, useLanguage } from '../misc/LanguageContext';
+import { markDmInboxDirty } from '../utils/dmCache';
+import ForumImage from '../component/Forum/ForumImage';
 import moment from 'moment';
+
+const DM_MESSAGE_COLUMNS = 'id, channel_id, user_id, text, media_type, media_metadata, created_at, is_read';
+const DM_PAGE_SIZE = 60;
 
 const EMOJI_RE = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/u;
 
@@ -28,8 +34,20 @@ function isEmojiOnly(text: string): boolean {
   return EMOJI_RE.test(text) && text.replace(EMOJI_RE, '').trim().length === 0;
 }
 
-const renderFormattedText = (text: string, isMe: boolean) => {
-  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|_.*?_|https?:\/\/[^\s]+)/g);
+function extractNobarRoomId(url: string): string | null {
+  if (!/^(?:naoflix|aniflix):\/\/nobar/i.test(url)) return null;
+  const queryMatch = url.match(/[?&](?:room|roomId)=([A-Za-z0-9_-]+)/i);
+  if (queryMatch?.[1]) return queryMatch[1].toUpperCase();
+  const pathMatch = url.match(/(?:naoflix|aniflix):\/\/nobar\/([A-Za-z0-9_-]+)/i);
+  return pathMatch?.[1] ? pathMatch[1].toUpperCase() : null;
+}
+
+const renderFormattedText = (
+  text: string,
+  isMe: boolean,
+  onJoinNobar?: (roomId: string) => void,
+) => {
+  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|_.*?_|https?:\/\/[^\s]+|(?:naoflix|aniflix):\/\/[^\s]+)/g);
   return parts.map((part, i) => {
     if (!part) return null;
     if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
@@ -38,12 +56,19 @@ const renderFormattedText = (text: string, isMe: boolean) => {
     if (((part.startsWith('*') && part.endsWith('*')) || (part.startsWith('_') && part.endsWith('_'))) && part.length > 2) {
       return <Text key={i} style={{ fontStyle: 'italic' }}>{part.slice(1, -1)}</Text>;
     }
-    if (part.match(/^https?:\/\/[^\s]+/)) {
+    if (part.match(/^(?:https?:\/\/|(?:naoflix|aniflix):\/\/)[^\s]+/)) {
       return (
         <Text 
           key={i} 
           style={{ textDecorationLine: 'underline', color: isMe ? '#e0e0e0' : '#3b82f6' }}
-          onPress={() => Linking.openURL(part).catch(() => ToastAndroid.show('Tidak dapat membuka link', ToastAndroid.SHORT))}
+          onPress={() => {
+            const roomCode = extractNobarRoomId(part);
+            if (roomCode && onJoinNobar) {
+              onJoinNobar(roomCode);
+              return;
+            }
+            Linking.openURL(part).catch(() => ToastAndroid.show(tSync('common.cannotOpenLink'), ToastAndroid.SHORT));
+          }}
         >
           {part}
         </Text>
@@ -66,14 +91,15 @@ interface Message {
 }
 
 const DateSeparator = memo(({ date, isDark }: { date: string; isDark: boolean }) => {
+  const { t } = useLanguage();
   const today = moment().startOf('day');
   const msgDate = moment(date).startOf('day');
   let label: string;
 
   if (msgDate.isSame(today)) {
-    label = 'Hari Ini';
+    label = t('common.today');
   } else if (msgDate.isSame(today.clone().subtract(1, 'day'))) {
-    label = 'Kemarin';
+    label = t('common.yesterday');
   } else if (msgDate.isAfter(today.clone().subtract(7, 'days'))) {
     label = msgDate.format('dddd');
   } else {
@@ -95,17 +121,237 @@ const dateSepStyles = StyleSheet.create({
   text: { fontSize: 12, fontWeight: '600' },
 });
 
+const EMPTY_PATTERN_POSITIONS = Array.from({ length: 20 }, (_, i) => ({
+  key: i,
+  left: `${(i * 17 + 7) % 90}%`,
+  top: `${(i * 23 + 11) % 85}%`,
+}));
+
+const DMMessageRow = memo(function DMMessageRow({
+  item,
+  showDate,
+  showAvatar,
+  isMe,
+  isDark,
+  isSupportBot,
+  receiverAvatar,
+  username,
+  replySenderName,
+  onLongPressItem,
+  onJoinNobar,
+}: {
+  item: Message;
+  showDate: boolean;
+  showAvatar: boolean;
+  isMe: boolean;
+  isDark: boolean;
+  isSupportBot: boolean;
+  receiverAvatar: string | null;
+  username: string;
+  replySenderName: string;
+  onLongPressItem: (item: Message, isMe: boolean) => void;
+  onJoinNobar: (roomId: string) => void;
+}) {
+  const { t } = useLanguage();
+  const replyTo = item.media_metadata?.replyTo;
+  const nobarInvite = item.media_metadata?.nobarInvite;
+  const emojiOnly = !nobarInvite && isEmojiOnly(item.text);
+
+  return (
+    <>
+      {showDate && <DateSeparator date={item.created_at} isDark={isDark} />}
+      <View style={[styles.messageRow, isMe ? styles.messageRowMe : styles.messageRowThem]}>
+        {!isMe && (
+          <View style={styles.avatarSlot}>
+            {showAvatar ? (
+              <View style={{ position: 'relative' }}>
+                {isSupportBot ? (
+                  <View
+                    style={[
+                      styles.miniAvatar,
+                      styles.miniAvatarPlaceholder,
+                      { backgroundColor: isDark ? '#1a1a1a' : '#ddd' },
+                    ]}>
+                    <MaterialIcons name="support-agent" size={16} color={isDark ? '#fff' : '#111'} />
+                  </View>
+                ) : receiverAvatar ? (
+                  <ForumImage
+                    uri={receiverAvatar}
+                    recyclingKey={receiverAvatar}
+                    style={styles.miniAvatar}
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.miniAvatar,
+                      styles.miniAvatarPlaceholder,
+                      { backgroundColor: isDark ? '#333' : '#ddd' },
+                    ]}>
+                    <Text style={{ color: isDark ? '#aaa' : '#666', fontSize: 11, fontWeight: '700' }}>
+                      {(username || '?').charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ) : null}
+          </View>
+        )}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onLongPress={() => onLongPressItem(item, isMe)}
+          style={[
+            styles.messageBubble,
+            isMe
+              ? { backgroundColor: '#3b82f6', borderBottomRightRadius: 4 }
+              : { backgroundColor: isDark ? '#1c1c1e' : '#e5e7eb', borderBottomLeftRadius: 4 },
+            emojiOnly && { backgroundColor: 'transparent', paddingHorizontal: 0, paddingVertical: 0 },
+          ]}>
+          {replyTo && !emojiOnly && (
+            <View
+              style={[
+                styles.replyBox,
+                {
+                  backgroundColor: isMe
+                    ? 'rgba(0,0,0,0.15)'
+                    : isDark
+                      ? 'rgba(255,255,255,0.05)'
+                      : 'rgba(0,0,0,0.05)',
+                },
+              ]}>
+              <Text
+                style={[styles.replyUser, { color: isMe ? 'rgba(255,255,255,0.8)' : '#3b82f6' }]}
+                numberOfLines={1}>
+                {replySenderName}
+              </Text>
+              <Text
+                style={[styles.replyText, { color: isMe ? 'rgba(255,255,255,0.7)' : isDark ? '#999' : '#555' }]}
+                numberOfLines={1}>
+                {replyTo.text}
+              </Text>
+            </View>
+          )}
+          {emojiOnly ? (
+            <Text
+              style={[
+                styles.messageText,
+                { color: isMe ? '#fff' : isDark ? '#f0f0f0' : '#111' },
+                { fontSize: 40, lineHeight: 48 },
+              ]}>
+              {item.text}
+            </Text>
+          ) : (
+            <Text style={[styles.messageText, { color: isMe ? '#fff' : isDark ? '#f0f0f0' : '#111' }]}>
+              {renderFormattedText(item.text, isMe, onJoinNobar)}
+            </Text>
+          )}
+          {nobarInvite?.roomId && (
+            <View
+              style={[
+                styles.nobarInviteCard,
+                {
+                  backgroundColor: isMe
+                    ? 'rgba(0,0,0,0.22)'
+                    : isDark
+                      ? '#111827'
+                      : '#f8fafc',
+                  borderColor: isMe
+                    ? 'rgba(255,255,255,0.25)'
+                    : isDark
+                      ? '#312e81'
+                      : '#c7d2fe',
+                },
+              ]}>
+              <Text
+                style={{
+                  fontSize: 10,
+                  fontWeight: '800',
+                  color: isMe ? '#c7d2fe' : '#6366f1',
+                  letterSpacing: 0.6,
+                }}>
+                {t('nobar.dmCardBadge')}
+              </Text>
+              <Text
+                style={{
+                  fontSize: 13.5,
+                  fontWeight: '700',
+                  color: isMe ? '#fff' : isDark ? '#f4f4f6' : '#111827',
+                  marginTop: 2,
+                }}
+                numberOfLines={2}>
+                {nobarInvite.title || t('nobar.dmCardTitleFallback')}
+              </Text>
+              <View style={styles.nobarInviteFooter}>
+                <Text
+                  style={{
+                    fontSize: 11.5,
+                    fontWeight: '700',
+                    color: isMe ? 'rgba(255,255,255,0.85)' : isDark ? '#a5b4fc' : '#4f46e5',
+                  }}>
+                  Room: {nobarInvite.roomId}
+                </Text>
+                <TouchableOpacity
+                  style={styles.nobarJoinPill}
+                  activeOpacity={0.8}
+                  onPress={() => onJoinNobar(nobarInvite.roomId)}>
+                  <MaterialIcons name="live-tv" size={14} color="#fff" />
+                  <Text style={styles.nobarJoinPillText}>{t('nobar.joinButton')}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+          {!emojiOnly && (
+            <Text
+              style={[
+                styles.timeText,
+                { color: isMe ? 'rgba(255,255,255,0.6)' : isDark ? '#666' : '#999' },
+              ]}>
+              {moment(item.created_at).format('HH:mm')}
+            </Text>
+          )}
+
+          {item.media_type === 'contact_buttons' && (
+            <View style={{ marginTop: 10, gap: 8 }}>
+              <TouchableOpacity
+                style={{ backgroundColor: '#25D366', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+                onPress={() => Linking.openURL('https://wa.me/6285794044267')}>
+                <MaterialIcons name="chat" size={18} color="#fff" style={{ marginRight: 6 }} />
+                <Text style={{ color: '#fff', fontWeight: 'bold' }}>WhatsApp</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ backgroundColor: '#0088cc', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+                onPress={() => Linking.openURL('https://t.me/+6285794044267')}>
+                <MaterialIcons name="send" size={18} color="#fff" style={{ marginRight: 6 }} />
+                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Telegram</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ backgroundColor: '#EA4335', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+                onPress={() => Linking.openURL('mailto:rashyaygmi@gmail.com')}>
+                <MaterialIcons name="email" size={18} color="#fff" style={{ marginRight: 6 }} />
+                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Email</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+    </>
+  );
+});
+
 function DMChatScreen({ route, navigation }: Props) {
   const isDark = useColorScheme() === 'dark';
   const { channelId, username, receiverId } = route.params;
   const { user, profile } = useAuth();
+  const { t } = useLanguage();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
-  const [receiverAvatar, setReceiverAvatar] = useState<string | null>(null);
-  const [receiverIsVip, setReceiverIsVip] = useState<boolean>(false);
+  const [receiverAvatar, setReceiverAvatar] = useState<string | null>(
+    route.params.partnerAvatar ?? null,
+  );
   const [botIsProcessing, setBotIsProcessing] = useState(false);
   const [showWarning, setShowWarning] = useState(true);
   const [isPendingState, setIsPendingState] = useState(route.params.isPending || false);
@@ -115,30 +361,45 @@ function DMChatScreen({ route, navigation }: Props) {
   const isSupportBot = channelId === 'naoflix-support';
 
   useEffect(() => {
-    if (receiverId) {
+    if (route.params.partnerAvatar !== undefined) {
+      setReceiverAvatar(route.params.partnerAvatar ?? null);
+      return;
+    }
+    if (receiverId && !isSupportBot) {
       supabase
         .from('profiles')
-        .select('avatar_url, is_vip')
+        .select('avatar_url')
         .eq('id', receiverId)
         .single()
         .then(({ data }) => {
           if (data?.avatar_url) setReceiverAvatar(data.avatar_url);
-          if (data?.is_vip) setReceiverIsVip(data.is_vip);
         });
     }
-  }, [receiverId]);
-  const markMessagesAsRead = useCallback(async () => {
-    if (!user || isSupportBot) return;
-    try {
-      await supabase
-        .from('dm_messages')
-        .update({ is_read: true })
-        .eq('channel_id', channelId)
-        .eq('is_read', false)
-        .neq('user_id', user.id);
-    } catch (e) {
-    }
-  }, [channelId, user]);
+  }, [receiverId, isSupportBot, route.params.partnerAvatar]);
+
+  const markMessagesAsRead = useCallback(
+    async (singleMessageId?: string) => {
+      if (!user || isSupportBot) return;
+      try {
+        if (singleMessageId) {
+          await supabase
+            .from('dm_messages')
+            .update({ is_read: true })
+            .eq('id', singleMessageId)
+            .eq('is_read', false);
+        } else {
+          await supabase
+            .from('dm_messages')
+            .update({ is_read: true })
+            .eq('channel_id', channelId)
+            .eq('is_read', false)
+            .neq('user_id', user.id);
+        }
+        markDmInboxDirty(user.id);
+      } catch {}
+    },
+    [channelId, user, isSupportBot],
+  );
 
   const fetchMessages = useCallback(async () => {
     if (isSupportBot) {
@@ -147,12 +408,13 @@ function DMChatScreen({ route, navigation }: Props) {
           id: 'msg-bot-1',
           channel_id: 'naoflix-support',
           user_id: 'naoflix-support',
-          text: 'Halo! Saya adalah AI NaoFlix Support. Tanya AI apa pun seputar NaoFlix, anime, film, novel atau komik di sini!\n\nKetik .contact untuk bantuan langsung dari tim developer.\nKetik .voucher untuk promo diskon VIP.\nKetik .help untuk bantuan perintah dasar.',
+          text: tSync('messages.supportWelcomeFull'),
           media_type: 'text',
           media_metadata: null,
           created_at: new Date().toISOString(),
         }
       ]);
+      setHasMore(false);
       setLoading(false);
       return;
     }
@@ -160,19 +422,56 @@ function DMChatScreen({ route, navigation }: Props) {
     try {
       const { data, error } = await supabase
         .from('dm_messages')
-        .select('*')
+        .select(DM_MESSAGE_COLUMNS)
         .eq('channel_id', channelId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(DM_PAGE_SIZE);
 
       if (error) throw error;
-      setMessages(data || []);
-      markMessagesAsRead();
+      const rows = (data || []) as (Message & { is_read?: boolean })[];
+      setMessages(rows);
+      setHasMore(rows.length === DM_PAGE_SIZE);
+      if (user && rows.some(m => m.user_id !== user.id && m.is_read === false)) {
+        markMessagesAsRead();
+      }
     } catch (e) {
       console.warn('Error fetching messages:', e);
     } finally {
       setLoading(false);
     }
-  }, [channelId, markMessagesAsRead]);
+  }, [channelId, markMessagesAsRead, isSupportBot, user]);
+
+  const loadOlderMessages = useCallback(async () => {
+    if (isSupportBot || loading || loadingOlder || !hasMore || messages.length === 0) return;
+    const oldestCreatedAt = messages[messages.length - 1]?.created_at;
+    if (!oldestCreatedAt) return;
+
+    setLoadingOlder(true);
+    try {
+      const { data, error } = await supabase
+        .from('dm_messages')
+        .select(DM_MESSAGE_COLUMNS)
+        .eq('channel_id', channelId)
+        .lt('created_at', oldestCreatedAt)
+        .order('created_at', { ascending: false })
+        .limit(40);
+
+      if (error) throw error;
+      const older = (data || []) as Message[];
+      setHasMore(older.length === 40);
+      if (older.length > 0) {
+        setMessages(prev => {
+          const seen = new Set(prev.map(m => m.id));
+          const uniqueOlder = older.filter(m => !seen.has(m.id));
+          return uniqueOlder.length > 0 ? [...prev, ...uniqueOlder] : prev;
+        });
+      }
+    } catch (e) {
+      console.warn('Error loading older messages:', e);
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [isSupportBot, loading, loadingOlder, hasMore, messages, channelId]);
 
   const handleAcceptRequest = async () => {
     try {
@@ -182,9 +481,10 @@ function DMChatScreen({ route, navigation }: Props) {
         .eq('id', channelId);
       if (error) throw error;
       setIsPendingState(false);
-      ToastAndroid.show('Permintaan diterima', ToastAndroid.SHORT);
+      markDmInboxDirty(user?.id);
+      ToastAndroid.show(tSync('messages.requestAccepted'), ToastAndroid.SHORT);
     } catch (e: any) {
-      ToastAndroid.show('Gagal menerima', ToastAndroid.SHORT);
+      ToastAndroid.show(tSync('messages.acceptFailed'), ToastAndroid.SHORT);
     }
   };
 
@@ -195,43 +495,57 @@ function DMChatScreen({ route, navigation }: Props) {
         .update({ status: 'rejected' })
         .eq('id', channelId);
       if (error) throw error;
-      ToastAndroid.show('Permintaan ditolak', ToastAndroid.SHORT);
+      markDmInboxDirty(user?.id);
+      ToastAndroid.show(tSync('messages.requestRejected'), ToastAndroid.SHORT);
       navigation.goBack();
     } catch (e: any) {
-      ToastAndroid.show('Gagal menolak', ToastAndroid.SHORT);
+      ToastAndroid.show(tSync('messages.rejectFailed'), ToastAndroid.SHORT);
     }
   };
 
   useEffect(() => {
-    fetchMessages();
+    let cancelled = false;
+    let messageSub: ReturnType<typeof supabase.channel> | null = null;
 
-    if (isSupportBot) return;
+    const task = InteractionManager.runAfterInteractions(() => {
+      if (cancelled) return;
+      fetchMessages();
 
-    const messageSub = supabase
-      .channel(`public:dm_messages:${channelId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'dm_messages', filter: `channel_id=eq.${channelId}` },
-        (payload) => {
-          setMessages((prev) => [payload.new as Message, ...prev]);
-          if (payload.new.user_id !== user?.id) {
-            markMessagesAsRead();
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'dm_messages', filter: `channel_id=eq.${channelId}` },
-        (payload) => {
-          setMessages((prev) => prev.filter(m => m.id !== payload.old.id));
-        }
-      )
-      .subscribe();
+      if (isSupportBot) return;
+
+      messageSub = supabase
+        .channel(`public:dm_messages:${channelId}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'dm_messages', filter: `channel_id=eq.${channelId}` },
+          payload => {
+            const incoming = payload.new as Message & { is_read?: boolean };
+            setMessages(prev =>
+              prev.some(m => m.id === incoming.id) ? prev : [incoming, ...prev],
+            );
+            if (incoming.user_id !== user?.id && incoming.is_read === false) {
+              markMessagesAsRead(incoming.id);
+            }
+          },
+        )
+        .on(
+          'postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'dm_messages', filter: `channel_id=eq.${channelId}` },
+          payload => {
+            setMessages(prev => prev.filter(m => m.id !== payload.old.id));
+          },
+        )
+        .subscribe();
+    });
 
     return () => {
-      supabase.removeChannel(messageSub);
+      cancelled = true;
+      task.cancel();
+      if (messageSub) {
+        supabase.removeChannel(messageSub);
+      }
     };
-  }, [fetchMessages, channelId]);
+  }, [fetchMessages, channelId, isSupportBot, user?.id, markMessagesAsRead]);
 
   const sendMessage = async () => {
     if (!inputText.trim() || !user) return;
@@ -249,13 +563,13 @@ function DMChatScreen({ route, navigation }: Props) {
 
     if (isSupportBot) {
       if (botIsProcessing) {
-        ToastAndroid.show('Tunggu sebentar, bot sedang mengetik...', ToastAndroid.SHORT);
+        ToastAndroid.show(tSync('messages.botTypingWait'), ToastAndroid.SHORT);
         return;
       }
-      
+
       const now = Date.now();
-      if (now - lastMessageTime.current < 4000) { // Cooldown 4 detik
-        ToastAndroid.show('Tolong jangan spam pesan ya! 😅', ToastAndroid.SHORT);
+      if (now - lastMessageTime.current < 4000) {
+        ToastAndroid.show(tSync('messages.noSpam'), ToastAndroid.SHORT);
         return;
       }
       lastMessageTime.current = now;
@@ -273,23 +587,14 @@ function DMChatScreen({ route, navigation }: Props) {
       setMessages(prev => [userMsg, ...prev]);
 
       setTimeout(async () => {
-        let botResponseText = 'Maaf, saya tidak mengerti perintah tersebut. Ketik .help untuk bantuan.';
+        let botResponseText = tSync('messages.botUnknownCmd');
         let botMediaType = 'text';
 
         if (textToSend.toLowerCase() === '.contact') {
-          botResponseText = 'Silakan pilih metode kontak NaoFlix di bawah ini:';
+          botResponseText = tSync('messages.botContactPrompt');
           botMediaType = 'contact_buttons';
-        } else if (textToSend.toLowerCase() === '.voucher') {
-          const { data, error } = await supabase.from('vouchers').select('code, discount_percent').eq('is_active', true);
-          const vData = data as any[];
-          if (!error && vData && vData.length > 0) {
-            const voucherList = vData.map((v, i) => `${i+1}. ${v.code} (Diskon ${v.discount_percent}%)`).join('\n');
-            botResponseText = `Kode Voucher Aktif:\n${voucherList}\n\n*Syarat dan ketentuan berlaku. Masukkan kode voucher di halaman pembayaran VIP.`;
-          } else {
-            botResponseText = 'Maaf, saat ini belum ada kode voucher yang aktif.';
-          }
         } else if (textToSend.toLowerCase() === '.help') {
-          botResponseText = 'Daftar Perintah Spesial:\n.contact - Informasi kontak\n.voucher - Kode diskon\n.help - Bantuan ini\n\nUntuk pertanyaan lainnya, kamu bebas tanya apa saja kepadaku! 🤖🍿';
+          botResponseText = tSync('messages.botHelpList');
         } else {
           try {
             const isFirstMessage = messages.filter(m => m.user_id !== 'naoflix-support').length === 0;
@@ -311,13 +616,13 @@ function DMChatScreen({ route, navigation }: Props) {
             
             const aiData = await res.json();
             if (aiData && aiData.status) {
-              botResponseText = aiData.data?.result || 'Maaf, sepertinya saya sedang ngantuk (Sistem Error).';
+              botResponseText = aiData.data?.result || tSync('messages.aiSleepError');
             } else {
-              botResponseText = 'Waduh, koneksi ke otak AI saya sedang terputus nih. Coba lagi nanti ya!';
+              botResponseText = tSync('messages.aiDisconnectedError');
             }
           } catch (aiErr) {
             console.warn('AI Error:', aiErr);
-            botResponseText = 'Aduh, jaringan NaoFlix Support lagi gangguan nih. Maaf ya!';
+            botResponseText = tSync('messages.aiNetworkError');
           }
         }
         
@@ -348,149 +653,98 @@ function DMChatScreen({ route, navigation }: Props) {
       if (error) throw error;
       
       await supabase.from('dm_channels').update({ updated_at: new Date().toISOString() }).eq('id', channelId);
+      markDmInboxDirty(user.id);
     } catch (e: any) {
       console.warn('Error sending message:', e);
-      ToastAndroid.show(e.message || 'Gagal mengirim pesan', ToastAndroid.SHORT);
+      ToastAndroid.show(e.message || tSync('messages.sendFailed'), ToastAndroid.SHORT);
     }
   };
 
-  const deleteMessage = async (messageId: string) => {
-    if (isSupportBot) {
-      ToastAndroid.show('Tidak dapat menghapus pesan bot', ToastAndroid.SHORT);
-      return;
-    }
-    try {
-      const { error } = await supabase.from('dm_messages').delete().eq('id', messageId);
-      if (error) throw error;
-      setMessages(prev => prev.filter(m => m.id !== messageId));
-    } catch (e: any) {
-      ToastAndroid.show('Gagal menghapus pesan: ' + (e.message || ''), ToastAndroid.SHORT);
-    }
-  };
+  const deleteMessage = useCallback(
+    async (messageId: string) => {
+      if (isSupportBot) {
+        ToastAndroid.show(tSync('messages.cannotDeleteBotMsg'), ToastAndroid.SHORT);
+        return;
+      }
+      try {
+        const { error } = await supabase.from('dm_messages').delete().eq('id', messageId);
+        if (error) throw error;
+        setMessages(prev => prev.filter(m => m.id !== messageId));
+        markDmInboxDirty(user?.id);
+      } catch (e: any) {
+        ToastAndroid.show(`${tSync('messages.deleteMsgFailed')}: ${e.message || ''}`, ToastAndroid.SHORT);
+      }
+    },
+    [isSupportBot, user?.id],
+  );
 
-  const shouldShowDate = useCallback((index: number) => {
-    if (index >= messages.length - 1) return true; // Last message (oldest) always shows date
-    const current = moment(messages[index].created_at).startOf('day');
-    const next = moment(messages[index + 1].created_at).startOf('day');
-    return !current.isSame(next);
-  }, [messages]);
+  const handleLongPressMessage = useCallback(
+    (item: Message, isMe: boolean) => {
+      if (isMe) {
+        Alert.alert(t('common.confirm'), undefined, [
+          { text: t('comments.reply'), onPress: () => setReplyingTo(item) },
+          { text: t('common.delete'), style: 'destructive', onPress: () => deleteMessage(item.id) },
+          { text: t('common.cancel'), style: 'cancel' },
+        ]);
+      } else {
+        setReplyingTo(item);
+      }
+    },
+    [deleteMessage, t],
+  );
 
-  const renderMessage = ({ item, index }: { item: Message; index: number }) => {
-    const isMe = item.user_id === user?.id;
-    const replyTo = item.media_metadata?.replyTo;
-    const emojiOnly = isEmojiOnly(item.text);
-    const showDate = shouldShowDate(index);
-    const showAvatar = !isMe && (index === 0 || messages[index - 1]?.user_id === user?.id);
+  const messageKeyExtractor = useCallback((item: Message) => item.id, []);
 
-    return (
-      <>
-        {showDate && <DateSeparator date={item.created_at} isDark={isDark} />}
-        <View style={[styles.messageRow, isMe ? styles.messageRowMe : styles.messageRowThem]}>
-          {!isMe && (
-            <View style={styles.avatarSlot}>
-              {showAvatar ? (
-                <View style={{ position: 'relative' }}>
-                  {isSupportBot ? (
-                    <View style={[styles.miniAvatar, styles.miniAvatarPlaceholder, { backgroundColor: isDark ? '#1a1a1a' : '#ddd' }]}>
-                      <MaterialIcons name="support-agent" size={16} color={isDark ? '#fff' : '#111'} />
-                    </View>
-                  ) : receiverAvatar ? (
-                    <Image source={{ uri: receiverAvatar }} style={[styles.miniAvatar, receiverIsVip && styles.avatarVIP]} />
-                  ) : (
-                    <View style={[styles.miniAvatar, styles.miniAvatarPlaceholder, { backgroundColor: isDark ? '#333' : '#ddd' }, receiverIsVip && styles.avatarVIP]}>
-                      <Text style={{ color: isDark ? '#aaa' : '#666', fontSize: 11, fontWeight: '700' }}>
-                        {(username || '?').charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
-                  )}
-                  {receiverIsVip && (
-                    <View style={styles.vipBadgeContainerSmall}>
-                      <MaterialIcons name="workspace-premium" size={8} color="#FFD700" />
-                    </View>
-                  )}
-                </View>
-              ) : null}
-            </View>
-          )}
-          <TouchableOpacity 
-            activeOpacity={0.8}
-            onLongPress={() => {
-              if (isMe) {
-                Alert.alert('Opsi Pesan', 'Pilih aksi untuk pesan ini', [
-                  { text: 'Balas', onPress: () => setReplyingTo(item) },
-                  { text: 'Hapus', style: 'destructive', onPress: () => deleteMessage(item.id) },
-                  { text: 'Batal', style: 'cancel' }
-                ]);
-              } else {
-                setReplyingTo(item);
-              }
-            }}
-            style={[
-              styles.messageBubble,
-              isMe 
-                ? { backgroundColor: '#3b82f6', borderBottomRightRadius: 4 }
-                : { backgroundColor: isDark ? '#1c1c1e' : '#e5e7eb', borderBottomLeftRadius: 4 },
-              emojiOnly && { backgroundColor: 'transparent', paddingHorizontal: 0, paddingVertical: 0 }
-            ]}>
-            {replyTo && !emojiOnly && (
-              <View style={[styles.replyBox, { backgroundColor: isMe ? 'rgba(0,0,0,0.15)' : isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
-                <Text style={[styles.replyUser, { color: isMe ? 'rgba(255,255,255,0.8)' : '#3b82f6' }]} numberOfLines={1}>
-                  {replyTo.user_id === user?.id ? 'Kamu' : username}
-                </Text>
-                <Text style={[styles.replyText, { color: isMe ? 'rgba(255,255,255,0.7)' : isDark ? '#999' : '#555' }]} numberOfLines={1}>
-                  {replyTo.text}
-                </Text>
-              </View>
-            )}
-            {emojiOnly ? (
-              <Text style={[
-                styles.messageText, 
-                { color: isMe ? '#fff' : isDark ? '#f0f0f0' : '#111' },
-                { fontSize: 40, lineHeight: 48 }
-              ]}>
-                {item.text}
-              </Text>
-            ) : (
-              <Text style={[styles.messageText, { color: isMe ? '#fff' : isDark ? '#f0f0f0' : '#111' }]}>
-                {renderFormattedText(item.text, isMe)}
-              </Text>
-            )}
-            {!emojiOnly && (
-              <Text style={[styles.timeText, { color: isMe ? 'rgba(255,255,255,0.6)' : isDark ? '#666' : '#999' }]}>
-                {moment(item.created_at).format('HH:mm')}
-              </Text>
-            )}
-            
-            {item.media_type === 'contact_buttons' && (
-              <View style={{ marginTop: 10, gap: 8 }}>
-                <TouchableOpacity 
-                  style={{ backgroundColor: '#25D366', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
-                  onPress={() => Linking.openURL('https://wa.me/6285794044267')}
-                >
-                  <MaterialIcons name="chat" size={18} color="#fff" style={{ marginRight: 6 }} />
-                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>WhatsApp</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={{ backgroundColor: '#0088cc', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
-                  onPress={() => Linking.openURL('https://t.me/+6285794044267')}
-                >
-                  <MaterialIcons name="send" size={18} color="#fff" style={{ marginRight: 6 }} />
-                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>Telegram</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={{ backgroundColor: '#EA4335', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
-                  onPress={() => Linking.openURL('mailto:rashyaygmi@gmail.com')}
-                >
-                  <MaterialIcons name="email" size={18} color="#fff" style={{ marginRight: 6 }} />
-                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>Email</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-      </>
-    );
-  };
+  const handleJoinNobarFromDM = useCallback(
+    (nobarRoomId: string) => {
+      navigation.navigate('JoinNobar', { roomId: nobarRoomId });
+    },
+    [navigation],
+  );
+
+  const renderMessage = useCallback(
+    ({ item, index }: { item: Message; index: number }) => {
+      const isMe = item.user_id === user?.id;
+      const showDate =
+        index >= messages.length - 1
+          ? true
+          : !moment(messages[index].created_at)
+              .startOf('day')
+              .isSame(moment(messages[index + 1].created_at).startOf('day'));
+      const showAvatar = !isMe && (index === 0 || messages[index - 1]?.user_id === user?.id);
+      const replyTo = item.media_metadata?.replyTo;
+      const replySenderName =
+        replyTo?.user_id === user?.id ? profile?.username || t('common.user') : username;
+
+      return (
+        <DMMessageRow
+          item={item}
+          showDate={showDate}
+          showAvatar={showAvatar}
+          isMe={isMe}
+          isDark={isDark}
+          isSupportBot={isSupportBot}
+          receiverAvatar={receiverAvatar}
+          username={username}
+          replySenderName={replySenderName}
+          onLongPressItem={handleLongPressMessage}
+          onJoinNobar={handleJoinNobarFromDM}
+        />
+      );
+    },
+    [
+      handleJoinNobarFromDM,
+      handleLongPressMessage,
+      isDark,
+      isSupportBot,
+      messages,
+      profile?.username,
+      receiverAvatar,
+      t,
+      user?.id,
+      username,
+    ],
+  );
 
   const renderContent = () => {
     if (loading) {
@@ -504,14 +758,19 @@ function DMChatScreen({ route, navigation }: Props) {
     if (messages.length === 0) {
       return (
         <View style={styles.emptyWrapper}>
-          {/* Chat background pattern dots */}
           <View style={styles.patternBg}>
-            {Array.from({ length: 20 }).map((_, i) => (
-              <View key={i} style={[styles.patternDot, { 
-                opacity: isDark ? 0.03 : 0.04,
-                left: `${(i * 17 + 7) % 90}%` as any,
-                top: `${(i * 23 + 11) % 85}%` as any,
-              }]} />
+            {EMPTY_PATTERN_POSITIONS.map(dot => (
+              <View
+                key={dot.key}
+                style={[
+                  styles.patternDot,
+                  {
+                    opacity: isDark ? 0.03 : 0.04,
+                    left: dot.left as any,
+                    top: dot.top as any,
+                  },
+                ]}
+              />
             ))}
           </View>
           <View style={styles.emptyContainer}>
@@ -519,15 +778,15 @@ function DMChatScreen({ route, navigation }: Props) {
               <MaterialIcons name="lock" size={32} color={isDark ? '#3b82f6' : '#6366f1'} />
             </View>
             <Text style={[styles.emptyTitle, { color: isDark ? '#e0e0e0' : '#333' }]}>
-              Pesan Terenkripsi E2EE
+              {t('messages.e2eeTitle')}
             </Text>
             <Text style={[styles.emptySubtitle, { color: isDark ? '#777' : '#999' }]}>
-              Komunikasi dienkripsi secara end-to-end. Namun harap tetap berhati-hati dan jangan bagikan informasi pribadi seperti password atau data rekening kepada siapapun.
+              {t('messages.e2eePrivacyNote')}
             </Text>
             <View style={[styles.emptyHint, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }]}>
               <MaterialIcons name="emoji-emotions" size={16} color={isDark ? '#666' : '#aaa'} />
               <Text style={{ color: isDark ? '#666' : '#aaa', fontSize: 12, marginLeft: 6 }}>
-                Mulai percakapan dengan mengirim pesan pertamamu!
+                {t('messages.e2eeFirstMsgHint')}
               </Text>
             </View>
           </View>
@@ -539,10 +798,21 @@ function DMChatScreen({ route, navigation }: Props) {
       <FlatList
         ref={flatListRef}
         data={messages}
-        keyExtractor={(item) => item.id}
+        keyExtractor={messageKeyExtractor}
         renderItem={renderMessage}
         inverted
+        removeClippedSubviews
+        initialNumToRender={16}
+        maxToRenderPerBatch={10}
+        windowSize={7}
         contentContainerStyle={styles.listContent}
+        onEndReached={loadOlderMessages}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={
+          loadingOlder ? (
+            <ActivityIndicator size="small" color="#3b82f6" style={{ marginVertical: 12 }} />
+          ) : null
+        }
         ListHeaderComponent={
           botIsProcessing ? (
             <View style={[styles.messageRow, styles.messageRowThem]}>
@@ -553,7 +823,7 @@ function DMChatScreen({ route, navigation }: Props) {
               </View>
               <View style={[styles.messageBubble, { backgroundColor: isDark ? '#1c1c1e' : '#e5e7eb', borderBottomLeftRadius: 4, minWidth: 100 }]}>
                 <Text style={[styles.messageText, { color: isDark ? '#fff' : '#111', fontStyle: 'italic', fontSize: 13 }]}>
-                  Mikir dulu...
+                  {t('messages.botThinking')}
                 </Text>
               </View>
             </View>
@@ -565,7 +835,6 @@ function DMChatScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#000' : '#fff' }]}>
-      {/* Header */}
       <View style={[styles.header, { borderBottomColor: isDark ? '#1a1a1a' : '#eee', backgroundColor: isDark ? '#0a0a0a' : '#fff' }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back" size={24} color={isDark ? '#fff' : '#111'} />
@@ -577,34 +846,35 @@ function DMChatScreen({ route, navigation }: Props) {
                 <MaterialIcons name="support-agent" size={20} color={isDark ? '#fff' : '#111'} />
               </View>
             ) : receiverAvatar ? (
-              <Image source={{ uri: receiverAvatar }} style={[styles.headerAvatar, receiverIsVip && styles.avatarVIP]} />
+              <ForumImage
+                uri={receiverAvatar}
+                recyclingKey={receiverAvatar}
+                style={styles.headerAvatar}
+              />
             ) : (
-              <View style={[styles.headerAvatar, { backgroundColor: isDark ? '#333' : '#ddd', justifyContent: 'center', alignItems: 'center' }, receiverIsVip && styles.avatarVIP]}>
+              <View style={[styles.headerAvatar, { backgroundColor: isDark ? '#333' : '#ddd', justifyContent: 'center', alignItems: 'center' }]}>
                 <Text style={{ color: isDark ? '#aaa' : '#666', fontSize: 14, fontWeight: '700' }}>
                   {(username || '?').charAt(0).toUpperCase()}
                 </Text>
               </View>
             )}
-            {receiverIsVip && (
-              <View style={[styles.vipBadgeContainerSmall, { bottom: -2, right: -4 }]}>
-                <MaterialIcons name="workspace-premium" size={10} color="#FFD700" />
-              </View>
-            )}
           </View>
           <View>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#111' }, receiverIsVip && styles.usernameVIP]} numberOfLines={1}>
+              <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#111' }]} numberOfLines={1}>
                 {username}
               </Text>
-              {receiverIsVip && <MaterialIcons name="verified" size={12} color="#F59E0B" style={{ marginLeft: 4 }} />}
+              {isSupportBot && <MaterialIcons name="verified" size={13} color="#3b82f6" style={{ marginLeft: 4 }} />}
             </View>
-            <Text style={{ fontSize: 11, color: isDark ? '#666' : '#aaa' }}>Direct Message</Text>
+            <Text style={{ fontSize: 11, color: isDark ? '#666' : '#aaa' }}>
+              {isSupportBot ? t('messages.officialSupport') : t('messages.directMessage')}
+            </Text>
           </View>
         </View>
       </View>
 
-      <KeyboardAvoidingView 
-        style={styles.keyboardAvoid} 
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
         behavior="padding"
       >
         {isSupportBot && showWarning && (
@@ -612,7 +882,7 @@ function DMChatScreen({ route, navigation }: Props) {
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 8 }}>
               <MaterialIcons name="info-outline" size={16} color="#EF4444" style={{ marginRight: 6 }} />
               <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: 'bold', flex: 1 }}>
-                Obrolan dengan AI tidak disimpan ke database. Riwayat akan hilang jika kamu keluar dari halaman ini.
+                {t('messages.aiHistoryWarning')}
               </Text>
             </View>
             <TouchableOpacity onPress={() => setShowWarning(false)} style={{ padding: 4 }}>
@@ -620,14 +890,14 @@ function DMChatScreen({ route, navigation }: Props) {
             </TouchableOpacity>
           </View>
         )}
-        
+
         {renderContent()}
 
         {replyingTo && !isPendingState && (
           <View style={[styles.replyBanner, { backgroundColor: isDark ? '#1a1a1a' : '#f5f5f5', borderTopColor: isDark ? '#222' : '#e0e0e0' }]}>
             <View style={styles.replyBannerContent}>
               <Text style={[styles.replyUser, { color: '#3b82f6' }]}>
-                Membalas {replyingTo.user_id === user?.id ? 'Kamu' : username}
+                {t('comments.replyingTo', { username: replyingTo.user_id === user?.id ? (profile?.username || t('common.user')) : username })}
               </Text>
               <Text style={[styles.replyText, { color: isDark ? '#aaa' : '#555' }]} numberOfLines={1}>
                 {replyingTo.text}
@@ -642,20 +912,20 @@ function DMChatScreen({ route, navigation }: Props) {
         {isPendingState ? (
           <View style={{ padding: 16, backgroundColor: isDark ? '#1a1a1a' : '#fff', borderTopWidth: 1, borderTopColor: isDark ? '#222' : '#eee' }}>
             <Text style={{ color: isDark ? '#ddd' : '#333', textAlign: 'center', marginBottom: 12, fontSize: 13 }}>
-              {username} ingin mengirimkan pesan kepadamu.
+              {t('messages.acceptRequestDesc')} ({username})
             </Text>
             <View style={{ flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={{ flex: 1, backgroundColor: isDark ? '#333' : '#e5e7eb', paddingVertical: 12, borderRadius: 8, alignItems: 'center' }}
                 onPress={handleRejectRequest}
               >
-                <Text style={{ color: isDark ? '#fff' : '#111', fontWeight: 'bold' }}>Tolak</Text>
+                <Text style={{ color: isDark ? '#fff' : '#111', fontWeight: 'bold' }}>{t('messages.decline')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={{ flex: 1, backgroundColor: '#3b82f6', paddingVertical: 12, borderRadius: 8, alignItems: 'center' }}
                 onPress={handleAcceptRequest}
               >
-                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Terima</Text>
+                <Text style={{ color: '#fff', fontWeight: 'bold' }}>{t('messages.accept')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -663,7 +933,11 @@ function DMChatScreen({ route, navigation }: Props) {
           <View style={[styles.inputContainer, { borderTopColor: isDark ? '#1a1a1a' : '#eee', backgroundColor: isDark ? '#0a0a0a' : '#fff' }]}>
             <TextInput
               style={[styles.input, { color: isDark ? '#fff' : '#111', backgroundColor: isDark ? '#1c1c1e' : '#f3f4f6' }]}
-              placeholder={botIsProcessing ? "Bot sedang mengetik..." : "Ketik pesan..."}
+              placeholder={
+                botIsProcessing
+                  ? t('messages.botTypingPlaceholder')
+                  : t('messages.typeMessage')
+              }
               placeholderTextColor={isDark ? '#666' : '#999'}
               value={inputText}
               onChangeText={setInputText}
@@ -870,24 +1144,33 @@ const styles = StyleSheet.create({
   sendBtnActive: {
     opacity: 1,
   },
-  avatarVIP: {
-    borderColor: '#F59E0B',
-    borderWidth: 1.5,
+  nobarInviteCard: {
+    marginTop: 8,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
   },
-  vipBadgeContainerSmall: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    backgroundColor: '#111',
-    borderRadius: 6,
-    padding: 2,
-    borderWidth: 0.5,
-    borderColor: '#F59E0B',
+  nobarInviteFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginTop: 8,
   },
-  usernameVIP: {
-    color: '#F59E0B',
-    fontWeight: '800',
-  }
+  nobarJoinPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#6366f1',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  nobarJoinPillText: {
+    color: '#fff',
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
 });
 
 export default memo(DMChatScreen);

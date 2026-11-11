@@ -13,6 +13,7 @@ type SeekBarProps = {
   progress: SharedValue<number>;
   onProgressChange: (value: number) => void;
   onProgressChangeEnd: (lastValue: number) => void;
+  disabled?: boolean;
   style?: Omit<
     ViewStyle,
     | 'margin'
@@ -40,6 +41,7 @@ export default function SeekBar({
   progress,
   onProgressChange,
   onProgressChangeEnd,
+  disabled = false,
   style,
 }: SeekBarProps) {
   const parentWidth = useSharedValue(0);
@@ -52,8 +54,10 @@ export default function SeekBar({
   const gesture = useMemo(
     () =>
       Gesture.Pan()
+        .enabled(!disabled)
         .onBegin(e => {
           'worklet';
+          if (disabled) return;
           isScrubbing.value = true;
           const width = parentWidth.get();
           const newProgress = clampNumber(e.x / width, 0, 1);
@@ -61,18 +65,20 @@ export default function SeekBar({
         })
         .onUpdate(e => {
           'worklet';
+          if (disabled) return;
           const width = parentWidth.get();
           const newProgress = clampNumber(e.x / width, 0, 1);
           onProgressChange(newProgress);
         })
         .onFinalize(e => {
           'worklet';
+          if (disabled) return;
           isScrubbing.value = false;
           const width = parentWidth.get();
           const newProgress = clampNumber(e.x / width, 0, 1);
           onProgressChangeEnd(newProgress);
         }),
-    [isScrubbing, onProgressChange, onProgressChangeEnd, parentWidth],
+    [disabled, isScrubbing, onProgressChange, onProgressChangeEnd, parentWidth],
   );
 
   const coveredAreaStyles = useAnimatedStyle(() => ({
@@ -101,11 +107,6 @@ export default function SeekBar({
     [parentWidth],
   );
 
-  // const { width } = useWindowDimensions();
-
-  // useLayoutEffect(() => {
-  //     if (measuredWidth > 1) {
-
   return (
     <View style={[style, styles.container]} onLayout={onLayout}>
       <GestureDetector gesture={gesture}>
@@ -124,7 +125,7 @@ export default function SeekBar({
               },
               thumbPositionStyle,
             ]}>
-            <Reanimated.View style={[styles.thumb, thumbStyle]} />
+            <Reanimated.View style={[styles.thumb, thumbStyle, disabled && { opacity: 0.45 }]} />
           </Reanimated.View>
         </View>
       </GestureDetector>

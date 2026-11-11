@@ -12,6 +12,9 @@ interface NewAnimeList {
 interface AnimeSchedule {
   title: string;
   link: string;
+  thumbnailUrl?: string;
+  estimatedTime?: string;
+  estimatedEpisode?: string;
 }
 
 type JadwalAnime = {
@@ -61,7 +64,9 @@ type AniStreaming = FromUrl & {
   title: string;
   streamingLink: string;
   streamingType: 'raw' | 'embed';
+  headers?: Record<string, string>;
   downloadLink: string;
+  downloadOptions?: { resolution: string; server: string; url: string }[];
   isHls?: boolean;
   resolution: string | undefined;
   resolutionRaw: {
@@ -98,6 +103,7 @@ interface listAnimeTypeList {
 
 export type {
   NewAnimeList,
+  AnimeSchedule,
   JadwalAnime,
   SearchAnimeList,
   SearchAnime,

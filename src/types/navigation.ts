@@ -1,14 +1,25 @@
 import { ComicsDetail, ComicsReading } from '../utils/scrapers/comicsv2';
 import { KomikuDetail, KomikuReading } from '../utils/scrapers/komiku';
-import { NovelDetail as NovelDetailType, NovelReading as NovelReadingType } from '../utils/scrapers/meionovel';
-import { MovieboxSearchItem, MovieboxSeason, MovieboxStream } from '../utils/scrapers/moviebox';
+import {
+  NovelDetail as NovelDetailType,
+  NovelReading as NovelReadingType,
+} from '../utils/scrapers/meionovel';
+import { FilmSearchItem, FilmSeason, FilmStream } from '../types/film';
 import { AniDetail, AniStreaming, EpisodeBaruHome } from './anime';
+import { ForumCategory, ForumLinkedMedia, ForumPost } from './forum';
 
 type HomeNavigator = {
   HomePage: undefined;
   BrowsePage: undefined;
+  ForumPage:
+    | {
+        filterMediaKey?: string;
+        filterMediaTitle?: string;
+        initialCategory?: ForumCategory;
+      }
+    | undefined;
   MessagesPage: undefined;
-  MyListsPage: undefined;
+  MyListsPage: { initialTab?: 'history' | 'watchlater' | 'downloads' } | undefined;
   AccountPage: undefined;
 };
 
@@ -18,7 +29,9 @@ type RootStackNavigator = {
     fileUrl: string;
   };
   Home: {
-    data: EpisodeBaruHome;
+    data?: EpisodeBaruHome;
+    screen?: keyof HomeNavigator;
+    params?: HomeNavigator[keyof HomeNavigator];
   };
   AnimeDetail: {
     data: AniDetail;
@@ -31,6 +44,7 @@ type RootStackNavigator = {
   ComicsReading: {
     data: KomikuReading | ComicsReading;
     link: string;
+    seriesLink?: string;
     historyData: {
       lastDuration?: number;
     };
@@ -54,14 +68,17 @@ type RootStackNavigator = {
     type?: 'comics' | 'anime' | 'novel' | 'movie';
     thumbnailUrl?: string;
     synopsis?: string;
+    seriesLink?: string;
     historyData?: {
       resolution: string;
       lastDuration: number;
     };
+    forceDetail?: boolean;
   };
   Video: {
     data: AniStreaming;
     link: string;
+    thumbnailUrl?: string;
     historyData?: {
       resolution: string | undefined;
       lastDuration: number;
@@ -90,7 +107,18 @@ type RootStackNavigator = {
     message?: string;
   };
   SeeMore: {
-    type: 'AnimeList' | 'MovieList' | 'ComicsList' | 'ComicsPopular' | 'NovelsList' | 'NovelsPopular' | 'AnimeGenre' | 'ComicsGenre' | 'FilmList';
+    type:
+      | 'AnimeList'
+      | 'MovieList'
+      | 'ComicsList'
+      | 'ComicsPopular'
+      | 'ComicsManhwa'
+      | 'NovelsList'
+      | 'NovelsPopular'
+      | 'AnimeGenre'
+      | 'ComicsGenre'
+      | 'FilmList'
+      | 'DonghuaList';
     genre?: string;
   };
   GenreSelectionScreen: {
@@ -104,10 +132,10 @@ type RootStackNavigator = {
   SearchUsers: undefined;
   FollowList: { userId: string; initialTab: 'Followers' | 'Following' };
   FilmDetail: {
-    data: MovieboxSearchItem;
+    data: FilmSearchItem;
   };
   FilmPlayer: {
-    streams: MovieboxStream[];
+    streams: FilmStream[];
     title: string;
     subjectId: string;
     detailPath: string;
@@ -115,18 +143,45 @@ type RootStackNavigator = {
     season?: number;
     episode?: number;
     poster?: string;
-    seasons?: MovieboxSeason[];
+    seasons?: FilmSeason[];
     language?: string;
+    source?: string;
     historyData?: { lastDuration?: number; resolution?: string };
+    roomId?: string;
+    isGuest?: boolean;
   };
   DMChat: {
     channelId: string;
     receiverId: string;
     username: string;
+    partnerAvatar?: string | null;
     isPending?: boolean;
   };
   ErrorScreen: { error: Error };
-  JoinNobar: { roomId: string };
+  AnimeSchedule: undefined;
+  JoinNobar: { roomId?: string; room?: string };
+  ForumComposer:
+    | {
+        linkedMedia?: ForumLinkedMedia;
+        defaultCategory?: ForumCategory;
+        nobarRoomId?: string;
+        nobarTitle?: string;
+      }
+    | undefined;
+  ForumPostDetail: {
+    postId: string;
+    initialPost?: ForumPost;
+    focusComment?: boolean;
+    rootCommentId?: string;
+  };
+  ForumUserFeed: {
+    mode: 'bookmarks' | 'user_posts';
+    userId?: string;
+    username?: string;
+  };
+  OfflineVideoPlayer: {
+    item: import('./offlineAnime').OfflineAnimeItem;
+  };
 };
 
 type UtilsStackNavigator = {
@@ -137,6 +192,7 @@ type UtilsStackNavigator = {
   About: undefined;
   SupportDev: undefined;
   ExtensionManager: undefined;
+  HomePreferences: undefined;
 };
 
 type SayaDrawerNavigator = {

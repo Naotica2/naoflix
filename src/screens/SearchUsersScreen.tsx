@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   FlatList,
-  Image,
   ActivityIndicator,
   useColorScheme,
 } from 'react-native';
@@ -17,6 +16,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackNavigator } from '../types/navigation';
 import { supabase } from '../config/supabaseClient';
 import { getLevelColor } from '../utils/LevelSystem';
+import { useLanguage } from '../misc/LanguageContext';
+import ForumImage from '../component/Forum/ForumImage';
 
 interface UserSearchResult {
   id: string;
@@ -24,37 +25,39 @@ interface UserSearchResult {
   display_name: string | null;
   avatar_url: string | null;
   level: number;
-  is_vip: boolean;
 }
 
 function SearchUsersScreen() {
   const isDark = useColorScheme() === 'dark';
   const navigation = useNavigation<NativeStackNavigationProp<RootStackNavigator>>();
+  const { t } = useLanguage();
   
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<UserSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   
   useEffect(() => {
-    if (!query.trim()) {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
       setResults([]);
       setLoading(false);
       return;
     }
 
     const timer = setTimeout(() => {
-      searchUsers(query.trim());
+      searchUsers(trimmed);
     }, 500);
 
     return () => clearTimeout(timer);
   }, [query]);
 
   const searchUsers = async (searchTerm: string) => {
+    if (searchTerm.trim().length < 2) return;
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, display_name, avatar_url, level, is_vip')
+        .select('id, username, display_name, avatar_url, level')
         .or(`username.ilike.%${searchTerm}%,display_name.ilike.%${searchTerm}%`)
         .limit(20);
 
@@ -67,6 +70,8 @@ function SearchUsersScreen() {
     }
   };
 
+  const keyExtractor = useCallback((item: UserSearchResult) => item.id, []);
+
   const renderItem = useCallback(({ item }: { item: UserSearchResult }) => {
     const levelColor = getLevelColor(item.level);
 
@@ -76,27 +81,21 @@ function SearchUsersScreen() {
         activeOpacity={0.7}
         onPress={() => navigation.navigate('UserProfile', { userId: item.id })}>
         
-        <View style={[styles.avatar, { backgroundColor: isDark ? '#1a1a1a' : '#ddd' }, item.is_vip && styles.avatarVIP]}>
+        <View style={[styles.avatar, { backgroundColor: isDark ? '#1a1a1a' : '#ddd' }]}>
           {item.avatar_url ? (
-            <Image source={{ uri: item.avatar_url }} style={styles.avatarImg} />
+            <ForumImage uri={item.avatar_url} recyclingKey={item.avatar_url} style={styles.avatarImg} />
           ) : (
             <Text style={[styles.avatarText, { color: isDark ? '#fff' : '#333' }]}>
               {(item.display_name || item.username || '?').charAt(0).toUpperCase()}
             </Text>
           )}
-          {item.is_vip && (
-            <View style={styles.vipBadgeContainerSmall}>
-              <MaterialIcons name="workspace-premium" size={10} color="#FFD700" />
-            </View>
-          )}
         </View>
 
         <View style={styles.userInfo}>
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingRight: 10 }}>
-            <Text style={[styles.displayName, { color: isDark ? '#fff' : '#111' }, item.is_vip && styles.usernameVIP]} numberOfLines={1}>
+            <Text style={[styles.displayName, { color: isDark ? '#fff' : '#111' }]} numberOfLines={1}>
               {item.display_name || item.username}
             </Text>
-            {item.is_vip && <MaterialIcons name="verified" size={14} color="#F59E0B" style={{ marginLeft: 4 }} />}
           </View>
           <View style={styles.usernameRow}>
             <Text style={[styles.username, { color: isDark ? '#888' : '#666' }]} numberOfLines={1}>
@@ -121,7 +120,7 @@ function SearchUsersScreen() {
           <MaterialIcons name="search" size={20} color={isDark ? '#555' : '#888'} />
           <TextInput
             style={[styles.input, { color: isDark ? '#fff' : '#111' }]}
-            placeholder="Cari pengguna..."
+            placeholder={t('profile.searchUsersPlaceholder')}
             placeholderTextColor={isDark ? '#555' : '#888'}
             value={query}
             onChangeText={setQuery}
@@ -142,15 +141,22 @@ function SearchUsersScreen() {
       ) : (
         <FlatList
           data={results}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           renderItem={renderItem}
+          removeClippedSubviews
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: 20 }}
           ListEmptyComponent={
-            query.trim().length > 0 && !loading ? (
+            query.trim().length === 1 && !loading ? (
+              <View style={styles.centerContainer}>
+                <Text style={[styles.emptyText, { color: isDark ? '#777' : '#666' }]}>
+                  {t('profile.searchUsersPrompt')}
+                </Text>
+              </View>
+            ) : query.trim().length >= 2 && !loading ? (
               <View style={styles.centerContainer}>
                 <Text style={[styles.emptyText, { color: isDark ? '#555' : '#999' }]}>
-                  Tidak ada pengguna yang cocok dengan "{query}"
+                  {t('profile.searchUsersEmpty')}
                 </Text>
               </View>
             ) : null
@@ -239,23 +245,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     textAlign: 'center',
-  },
-  avatarVIP: {
-    borderWidth: 2,
-    borderColor: '#FFD700',
-  },
-  usernameVIP: {
-    color: '#F59E0B',
-  },
-  vipBadgeContainerSmall: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    backgroundColor: '#000',
-    borderRadius: 10,
-    padding: 2,
-    borderWidth: 1,
-    borderColor: '#FFD700',
   },
 });
 

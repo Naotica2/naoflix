@@ -54,7 +54,17 @@ import ImageLoading from '../misc/ImageLoading';
 import DarkOverlay from '../misc/DarkOverlay';
 import DialogManager from '../../utils/dialogManager';
 import { DatabaseManager, useModifiedKeyValueIfFocused } from '../../utils/DatabaseManager';
+import { getSourceVersion } from '../../utils/sourcePreferences';
 import { LegendList, LegendListRef } from '@legendapp/list';
+import { TranslationKey, tSync, useLanguage } from '../../misc/LanguageContext';
+
+const Separator6 = () => <View style={{ height: 6 }} />;
+const HistorySeparatorDark = () => (
+  <View style={{ borderBottomWidth: 0.5, borderColor: 'gray', width: '100%' }} />
+);
+const HistorySeparatorLight = () => (
+  <View style={{ borderBottomWidth: 0.5, borderColor: 'black', width: '100%' }} />
+);
 
 export const MIN_IMAGE_HEIGHT = 200;
 export const MIN_IMAGE_WIDTH = 100;
@@ -72,6 +82,7 @@ type SearchRowItem = AnySearchItem;
 const TouchableOpacityAnimated = Reanimated.createAnimatedComponent(TouchableOpacity);
 
 function AnimePageComponent(props: AnimePageProps) {
+  const { t } = useLanguage();
   const globalStyles = useGlobalStyles();
   const colorScheme = useColorScheme();
   const styles = useStyles();
@@ -92,10 +103,18 @@ function AnimePageComponent(props: AnimePageProps) {
   const abortController = useRef<AbortController | null>(null);
   abortController.current ??= new AbortController();
   const isFocus = useRef(true);
+  const lastSourceVersionRef = useRef(getSourceVersion());
 
   const searchHistory = useModifiedKeyValueIfFocused(
     'searchHistory',
-    result => JSON.parse(result) as string[],
+    result => {
+      try {
+        return JSON.parse(result) as string[];
+      } catch {
+        return [] as string[];
+      }
+    },
+    [] as string[],
   );
 
   const clearSearch = useCallback(() => {
@@ -124,7 +143,7 @@ function AnimePageComponent(props: AnimePageProps) {
           } else {
             const err = animeResponse.reason;
             if (!err.message?.includes('Aborted') && !err.message?.includes('canceled')) {
-              DialogManager.alert('Error', err.message || 'Unknown error');
+              DialogManager.alert(tSync('common.error'), err.message || tSync('common.unknown'));
             }
           }
         } else {
@@ -132,17 +151,25 @@ function AnimePageComponent(props: AnimePageProps) {
         }
       })
       .finally(() => {
-        if (searchHistory.includes(searchText)) {
-          searchHistory.splice(searchHistory.indexOf(searchText), 1);
-        }
-        searchHistory.unshift(searchText);
-        DatabaseManager.set('searchHistory', JSON.stringify(searchHistory));
+        const nextHistory = [
+          searchText,
+          ...(searchHistory || []).filter(item => item !== searchText),
+        ];
+        DatabaseManager.set('searchHistory', JSON.stringify(nextHistory));
         setSearchLoading(false);
       });
   }, [searchHistory, searchText]);
 
   useFocusEffect(
     useCallback(() => {
+      const currentVersion = getSourceVersion();
+      if (currentVersion !== lastSourceVersionRef.current) {
+        lastSourceVersionRef.current = currentVersion;
+        setRefreshingKey(val => val + 1);
+        AnimeAPI.home()
+          .then(jsondata => setData?.(jsondata))
+          .catch(() => {});
+      }
       const timeout = setTimeout(() => {
         isFocus.current = true;
       }, 200);
@@ -155,7 +182,7 @@ function AnimePageComponent(props: AnimePageProps) {
         clearTimeout(timeout);
         clearSearch();
       };
-    }, [clearSearch]),
+    }, [clearSearch, setData]),
   );
 
   useFocusEffect(
@@ -197,7 +224,7 @@ function AnimePageComponent(props: AnimePageProps) {
           if (e.name === 'SankaRateLimitError') {
             setIsRateLimit(true);
           } else {
-            ToastAndroid.show('Gagal terhubung ke server.', ToastAndroid.SHORT);
+            ToastAndroid.show(tSync('lists.connectServerFailed'), ToastAndroid.SHORT);
           }
           setRefresh(false);
         });
@@ -211,7 +238,6 @@ function AnimePageComponent(props: AnimePageProps) {
 
   return (
     <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
-      {/* SEARCH BAR */}
       <View style={{ paddingTop: insets.top, paddingHorizontal: 12, paddingBottom: 6, backgroundColor: styles.container.backgroundColor }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           {showSearchHistory && (
@@ -231,7 +257,7 @@ function AnimePageComponent(props: AnimePageProps) {
               onIconPress={submitSearch}
               onChangeText={setSearchText}
               onFocus={onTextInputFocus}
-              placeholder="Cari anime / movie..."
+              placeholder={t('search.placeholderAnimeMovie')}
               value={searchText}
               autoCorrect={false}
               ref={textInputRef}
@@ -244,7 +270,6 @@ function AnimePageComponent(props: AnimePageProps) {
         </View>
       </View>
 
-      {/* GENRE BUTTON */}
       {!showSearchHistory && !hasSearchResults && !isSearchEmpty && !searchLoading && (
         <TouchableOpacityReactNative
           onPress={() => (props.navigation as any).navigate('GenreSelectionScreen', { type: 'anime' })}
@@ -262,34 +287,39 @@ function AnimePageComponent(props: AnimePageProps) {
           }}>
           <Icon name="tags" size={13} color="#F47521" style={{ marginRight: 8 }} />
           <Text style={{ fontWeight: '700', color: '#F47521', fontSize: 13 }}>
-            Jelajahi Berdasarkan Genre
+            {t('search.browseByGenre')}
           </Text>
         </TouchableOpacityReactNative>
       )}
 
-      {/* REMAINDER OF CONTENT WRAPPED SO ABSOLUTE POSITIONING OFFSETS AFTER SEARCH BAR */}
+      {/* Wrap remaining content so absolute overlays align below the search bar */}
       <View style={{ flex: 1 }}>
-        {/* SEARCH LOADING */}
       {searchLoading && (
         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, padding: 8 }}>
           <ActivityIndicator size="small" color={theme.colors.primary} />
-          <Text style={[globalStyles.text, { opacity: 0.8 }]}>Mencari...</Text>
+          <Text style={[globalStyles.text, { opacity: 0.8 }]}>{t('search.searchingShort')}</Text>
         </View>
       )}
 
-      {/* SEARCH RESULTS */}
       {hasSearchResults && !searchLoading && (
         <View style={{ flex: 1 }}>
           <Text style={[globalStyles.text, { fontWeight: 'bold', fontSize: 13, textAlign: 'center', marginVertical: 4 }]}>
-            Hasil pencarian untuk: {currentSearchQuery}
+            {t('search.resultsPrefix', { query: currentSearchQuery })}
           </Text>
           <FlashList
-        estimatedItemSize={200}
             data={flashListData}
-            keyExtractor={(item, index) => String(index)}
-            renderItem={({ item: z }) => <AnimeSearchList item={z} navigation={props.navigation} />}
+            drawDistance={350}
+            keyExtractor={(item, index) => item.animeUrl || item.title || String(index)}
+            renderItem={({ item: z }) => (
+              <AnimeSearchList
+                item={z}
+                navigation={props.navigation}
+                isDark={colorScheme === 'dark'}
+                textColor={globalStyles.text.color}
+              />
+            )}
             contentContainerStyle={{ paddingBottom: 20 }}
-            ItemSeparatorComponent={() => <View style={{ height: 6 }} />}
+            ItemSeparatorComponent={Separator6}
           />
           <TouchableOpacityAnimated
             style={searchStyles.closeSearchResult}
@@ -301,13 +331,12 @@ function AnimePageComponent(props: AnimePageProps) {
         </View>
       )}
 
-      {/* SEARCH EMPTY */}
       {isSearchEmpty && !searchLoading && (
         <Reanimated.View entering={FadeInUp} style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <Icon name="search-minus" size={60} color={theme.colors.outline} style={{ marginBottom: 15 }} />
-          <Text style={[globalStyles.text, { fontSize: 20, fontWeight: 'bold', marginBottom: 8 }]}>Hasil tidak ditemukan</Text>
+          <Text style={[globalStyles.text, { fontSize: 20, fontWeight: 'bold', marginBottom: 8 }]}>{t('search.noResults')}</Text>
           <Text style={[globalStyles.text, { fontSize: 14, opacity: 0.6, textAlign: 'center', paddingHorizontal: 40 }]}>
-            Coba periksa kembali kata kunci pencarianmu atau gunakan kata kunci lain.
+            {t('search.noResultsHint')}
           </Text>
           <TouchableOpacityAnimated
             style={searchStyles.closeSearchResult}
@@ -319,7 +348,6 @@ function AnimePageComponent(props: AnimePageProps) {
         </Reanimated.View>
       )}
 
-      {/* RATE LIMIT */}
       {isRateLimit && !searchLoading && !hasSearchResults && (
         <Reanimated.View entering={FadeInUp} style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <TouchableOpacityReactNative
@@ -327,16 +355,15 @@ function AnimePageComponent(props: AnimePageProps) {
             style={{ alignItems: 'center', backgroundColor: '#f39c1225', padding: 25, borderRadius: 15, marginHorizontal: 20 }}>
             <MaterialIcon name="hourglass-empty" size={50} color="#f39c12" />
             <Text style={[globalStyles.text, { fontSize: 20, fontWeight: 'bold', color: '#f39c12', marginTop: 15 }]}>
-              Server Sedang Antre
+              {t('lists.serverQueueTitle')}
             </Text>
             <Text style={[globalStyles.text, { fontSize: 14, color: '#f39c12', textAlign: 'center' }]}>
-              Ketuk untuk mencoba lagi.
+              {t('lists.tapToRetry')}
             </Text>
           </TouchableOpacityReactNative>
         </Reanimated.View>
       )}
 
-      {/* MAIN CONTENT (hidden when search results are shown) */}
       {!hasSearchResults && !isSearchEmpty && !isRateLimit && (
         <LegendList
           recycleItems
@@ -357,8 +384,8 @@ function AnimePageComponent(props: AnimePageProps) {
               <HeaderInfo />
 
               <TouchableOpacity style={styles.refreshButton} onPress={refreshing} disabled={refresh}>
-                <MaterialIcon name="refresh" size={20} color="#FFFFFF" style={styles.refreshIcon} />
-                <Text style={styles.refreshText}>Refresh Data</Text>
+                <MaterialIcon name="refresh" size={20} color={styles.refreshIcon.color} style={styles.refreshIcon} />
+                <Text style={styles.refreshText}>{t('lists.refreshDataBtn')}</Text>
               </TouchableOpacity>
 
               <AnimeCarousel data={data?.carousel} navigation={props.navigation} />
@@ -382,14 +409,12 @@ function AnimePageComponent(props: AnimePageProps) {
         />
       )}
 
-      {/* SEARCH HISTORY OVERLAY */}
       {showSearchHistory && (
         <Reanimated.View
           entering={ZoomIn.springify().withInitialValues({ transform: [{ scale: 0.5 }] })}
           exiting={ZoomOut.springify()}
           style={searchStyles.searchHistoryContainer}>
           <FlashList
-        estimatedItemSize={200}
             drawDistance={250}
             keyboardShouldPersistTaps="always"
             data={searchHistory}
@@ -397,13 +422,13 @@ function AnimePageComponent(props: AnimePageProps) {
             renderItem={({ item, index }) => (
               <HistoryItem item={item} index={index} onSelect={setSearchText} />
             )}
-            ItemSeparatorComponent={() => (
-              <View style={{ borderBottomWidth: 0.5, borderColor: colorScheme === 'dark' ? 'gray' : 'black', width: '100%' }} />
-            )}
+            ItemSeparatorComponent={
+              colorScheme === 'dark' ? HistorySeparatorDark : HistorySeparatorLight
+            }
             ListHeaderComponent={
               <View style={searchStyles.searchHistoryHeader}>
                 <Text style={[globalStyles.text, { fontWeight: 'bold', flex: 1, textAlign: 'center' }]}>
-                  Riwayat Pencarian: {searchHistory.length}
+                  {t('search.recentHistory')}: {searchHistory.length}
                 </Text>
               </View>
             }
@@ -415,6 +440,17 @@ function AnimePageComponent(props: AnimePageProps) {
   );
 }
 
+
+const DAY_KEY_MAP: Record<string, TranslationKey> = {
+  Senin: 'schedule.dayFull.Senin',
+  Selasa: 'schedule.dayFull.Selasa',
+  Rabu: 'schedule.dayFull.Rabu',
+  Kamis: 'schedule.dayFull.Kamis',
+  Jumat: 'schedule.dayFull.Jumat',
+  "Jum'at": 'schedule.dayFull.Jumat',
+  Sabtu: 'schedule.dayFull.Sabtu',
+  Minggu: 'schedule.dayFull.Minggu',
+};
 
 const EpisodeBaru = memo(EpisodeBaruComponent);
 function EpisodeBaruComponent({
@@ -434,12 +470,12 @@ function EpisodeBaruComponent({
   styles: ReturnType<typeof useStyles>;
   globalStyles: ReturnType<typeof useGlobalStyles>;
 }) {
+  const { t } = useLanguage();
   const renderNewAnime = useCallback(
     ({ item }: ListRenderItemInfo<NewAnimeList>) => (
       <ListAnimeComponent
         gap
         newAnimeData={item}
-        key={'btn' + item.title + item.episode}
         navigationProp={navigation}
       />
     ),
@@ -448,18 +484,21 @@ function EpisodeBaruComponent({
 
   const [showJadwal, setShowJadwal] = useState(false);
   const [jadwalData, setJadwalData] = useState<{ [key: string]: { title: string; link: string }[] } | null>(null);
+  const jadwalSourceVersionRef = useRef(getSourceVersion());
   const [isLoadingJadwal, setIsLoadingJadwal] = useState(false);
   const colorScheme = useColorScheme();
 
   const openJadwal = useCallback(async () => {
     setShowJadwal(true);
-    if (!jadwalData) {
+    const currentVersion = getSourceVersion();
+    if (!jadwalData || jadwalSourceVersionRef.current !== currentVersion) {
+      jadwalSourceVersionRef.current = currentVersion;
       setIsLoadingJadwal(true);
       try {
         const res = await AnimeAPI.jadwalAnime();
         setJadwalData(res);
       } catch (e) {
-        ToastAndroid.show('Gagal memuat jadwal rilis', ToastAndroid.SHORT);
+        ToastAndroid.show(tSync('lists.loadScheduleFailed'), ToastAndroid.SHORT);
       } finally {
         setIsLoadingJadwal(false);
       }
@@ -469,30 +508,29 @@ function EpisodeBaruComponent({
   return (
     <View style={styles.sectionContainer}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Episode Terbaru</Text>
+        <Text style={styles.sectionTitle}>{t('home.sectionLatestEp')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <TouchableOpacity
             style={[styles.seeMoreButton, { backgroundColor: '#F47521', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 8 }]}
             onPress={openJadwal}>
             <MaterialIcon name="calendar-today" size={14} color="#fff" />
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12, marginLeft: 4 }}>Jadwal</Text>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12, marginLeft: 4 }}>{t('home.scheduleBtn')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.seeMoreButton}
             onPress={() => {
               navigation.dispatch(StackActions.push('SeeMore', { type: 'AnimeList' }));
             }}>
-            <Text style={styles.seeMoreText}>Lihat Semua</Text>
+            <Text style={styles.seeMoreText}>{t('common.seeMore')}</Text>
             <MaterialIcon name="chevron-right" size={16} color="#F47521" />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* JADWAL RILIS MODAL - Crunchyroll style */}
       {showJadwal && (
         <View style={{ position: 'absolute', top: 50, left: 0, right: 0, backgroundColor: colorScheme === 'dark' ? '#141414' : '#fff', zIndex: 100, borderRadius: 12, padding: 0, maxHeight: 420, borderWidth: 1, borderColor: colorScheme === 'dark' ? '#2a2a2a' : '#e0e0e0', elevation: 8 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colorScheme === 'dark' ? '#222' : '#eee' }}>
-            <Text style={{ color: colorScheme === 'dark' ? '#f0f0f0' : '#111', fontSize: 17, fontWeight: '700' }}>Jadwal Rilis</Text>
+            <Text style={{ color: colorScheme === 'dark' ? '#f0f0f0' : '#111', fontSize: 17, fontWeight: '700' }}>{t('home.releaseSchedule')}</Text>
             <TouchableOpacity onPress={() => setShowJadwal(false)} style={{ padding: 4 }}>
               <MaterialIcon name="close" size={22} color={colorScheme === 'dark' ? '#888' : '#666'} />
             </TouchableOpacity>
@@ -505,7 +543,7 @@ function EpisodeBaruComponent({
                 <View key={hari} style={{ marginBottom: 20 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
                     <View style={{ width: 4, height: 18, backgroundColor: '#F47521', borderRadius: 2, marginRight: 10 }} />
-                    <Text style={{ color: '#F47521', fontWeight: '700', fontSize: 15 }}>{hari}</Text>
+                    <Text style={{ color: '#F47521', fontWeight: '700', fontSize: 15 }}>{DAY_KEY_MAP[hari] ? t(DAY_KEY_MAP[hari]) : hari}</Text>
                   </View>
                   {jadwalData[hari].map((anime, idx) => (
                     <TouchableOpacity
@@ -534,7 +572,6 @@ function EpisodeBaruComponent({
 
       {(data?.newAnime.length || 0) > 0 ? (
         <FlashList
-        estimatedItemSize={200}
           renderScrollComponent={(p) => <ScrollView {...p} />}
           contentContainerStyle={{ gap: 3 }}
           horizontal
@@ -550,14 +587,14 @@ function EpisodeBaruComponent({
         <TouchableOpacity style={styles.errorContainer} onPress={onRetry}>
           <MaterialIcon name="hourglass-empty" size={24} color="#f39c12" />
           <Text style={styles.errorText}>
-            Server Sanka sedang antre. Ketuk untuk mencoba ulang.
+            {t('lists.serverQueueTapRetry')}
           </Text>
         </TouchableOpacity>
       ) : (
         <View>
           <MaterialIcon name="error-outline" size={24} color="#d80000" />
           <Text style={styles.errorText}>
-            Error mendapatkan data. Silahkan refresh untuk mencoba lagi
+            {t('lists.serverDataErrorRefresh')}
           </Text>
         </View>
       )}
@@ -583,12 +620,16 @@ function HistoryItem({ item, index, onSelect }: { item: string; index: number; o
         <TouchableOpacityReactNative
           hitSlop={14}
           onPress={async () => {
+            let parsed: string[] = [];
+            try {
+              parsed = JSON.parse((await DatabaseManager.get('searchHistory')) ?? '[]');
+            } catch {
+              parsed = [];
+            }
             DatabaseManager.set(
               'searchHistory',
               JSON.stringify(
-                (JSON.parse((await DatabaseManager.get('searchHistory')) ?? '[]') as string[]).filter(
-                  (_, i) => i !== index,
-                ),
+                (Array.isArray(parsed) ? parsed : []).filter((_, i) => i !== index),
               ),
             );
           }}>
@@ -599,27 +640,35 @@ function HistoryItem({ item, index, onSelect }: { item: string; index: number; o
   );
 }
 
-function AnimeSearchList({ item: z, navigation }: { item: AnySearchItem; navigation: any }) {
-  const theme = useTheme();
-  const globalStyles = useGlobalStyles();
-  const colorScheme = useColorScheme();
-
+const AnimeSearchList = memo(function AnimeSearchList({
+  item: z,
+  navigation,
+  isDark,
+  textColor,
+}: {
+  item: AnySearchItem;
+  navigation: any;
+  isDark: boolean;
+  textColor: string | undefined;
+}) {
   return (
-    <TouchableOpacityAnimated
-      entering={FadeInRight}
-      style={[searchStyles.listContainer, { backgroundColor: colorScheme === 'dark' ? '#333' : '#fff' }]}
+    <TouchableOpacityReactNative
+      activeOpacity={0.85}
+      style={[searchStyles.listContainer, { backgroundColor: isDark ? '#333' : '#fff' }]}
       onPress={() => {
         navigation.dispatch(
           StackActions.push('FromUrl', {
             title: z.title,
             link: z.animeUrl,
             type: 'anime',
+            thumbnailUrl: z.thumbnailUrl,
           }),
         );
       }}>
       <ImageLoading
         resizeMode="cover"
         source={{ uri: z.thumbnailUrl }}
+        fallbackSearchTitle={z.title}
         style={searchStyles.listImage}
       />
       <ImageLoading
@@ -631,33 +680,37 @@ function AnimeSearchList({ item: z, navigation }: { item: AnySearchItem; navigat
         <View style={{ flexDirection: 'row', flex: 1 }}>
           <View style={{ flex: 1 }} />
           <View style={{ flexDirection: 'column', marginRight: 5, marginTop: 5 }}>
-            <View style={[searchStyles.statusInfo, {
-              backgroundColor: z.status === 'Ongoing' ? '#920000' : '#006600',
-            }]}>
-              <Text style={[globalStyles.text, { fontWeight: 'bold', color: 'white' }]}>
+            <View
+              style={[
+                searchStyles.statusInfo,
+                {
+                  backgroundColor: z.status === 'Ongoing' ? '#920000' : '#006600',
+                },
+              ]}>
+              <Text style={{ fontWeight: 'bold', color: 'white' }}>
                 {z.status}
               </Text>
             </View>
           </View>
         </View>
         <View style={{ flexShrink: 1, paddingHorizontal: 5, justifyContent: 'center', flex: 1, marginLeft: 5 }}>
-          <Text numberOfLines={4} style={[globalStyles.text, { fontWeight: 'bold', color: 'white', flexShrink: 1 }]}>
+          <Text numberOfLines={4} style={{ fontWeight: 'bold', color: 'white', flexShrink: 1 }}>
             {z.title}
           </Text>
         </View>
         <View style={{ justifyContent: 'flex-end', flex: 1 }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5 }}>
             <View style={{ backgroundColor: 'rgba(0,0,0,0.445)', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 5 }}>
-              <Text style={[globalStyles.text, { fontWeight: 'bold', color: 'white', fontSize: 14 }]} numberOfLines={1}>
+              <Text style={{ fontWeight: 'bold', color: 'white', fontSize: 14 }} numberOfLines={1}>
                 <Icon name="tags" color="white" /> {z.genres.join(', ')}
               </Text>
             </View>
           </View>
         </View>
       </ImageLoading>
-    </TouchableOpacityAnimated>
+    </TouchableOpacityReactNative>
   );
-}
+});
 
 export function ShowSkeletonLoading() {
   const dimensions = useWindowDimensions();
@@ -692,7 +745,6 @@ function AnimeCarouselComponent({ data, navigation }: { data: CarouselItem[] | u
   return (
     <View style={{ marginBottom: 16 }}>
       <FlashList
-        estimatedItemSize={200}
         data={data || []}
         horizontal
         pagingEnabled
@@ -761,7 +813,7 @@ const searchStyles = StyleSheet.create({
     zIndex: 10,
     padding: 10,
     elevation: 5,
-    backgroundColor: 'rgba(0, 0, 0, 0.95)', // fully opaque back panel
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
   },
   searchHistoryHeader: {
     flexDirection: 'row',

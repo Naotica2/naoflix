@@ -22,7 +22,7 @@ import setHistory from '../../utils/historyControl';
 import { getNovelReading } from '../../utils/scrapers/meionovel';
 import { useLevel } from '../../misc/LevelContext';
 import { EXP_REWARDS } from '../../utils/LevelSystem';
-import { useTimeTracker } from '../../utils/UserTracker';
+import { tSync, useLanguage } from '../../misc/LanguageContext';
 
 type Props = NativeStackScreenProps<RootStackNavigator, 'NovelReading'>;
 
@@ -31,7 +31,7 @@ const FONT_SIZE_LABELS = ['XS', 'S', 'M', 'L', 'XL'];
 
 export default function NovelReading(props: Props) {
   const theme = useTheme();
-  useTimeTracker('novel');
+  const { t } = useLanguage();
   const { addExp } = useLevel();
   const awardedChaptersRef = useRef<Set<string>>(new Set());
   const abortController = useRef<AbortController>(null);
@@ -40,7 +40,7 @@ export default function NovelReading(props: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSnackBarOpen, setIsSnackBarOpen] = useState(false);
   const [snackBarText, setSnackBarText] = useState('');
-  const [fontSizeIndex, setFontSizeIndex] = useState(2); // Default: Medium (18)
+  const [fontSizeIndex, setFontSizeIndex] = useState(2);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [contentHeight, setContentHeight] = useState(0);
   const [viewHeight, setViewHeight] = useState(0);
@@ -142,7 +142,7 @@ export default function NovelReading(props: Props) {
   const moveChapter = useCallback(
     (url: string) => {
       if (isSnackBarOpen) return;
-      setSnackBarText('Mengambil data...');
+      setSnackBarText(tSync('reader.fetchingData'));
       setIsSnackBarOpen(true);
 
       getNovelReading(url, abortController.current?.signal)
@@ -156,7 +156,7 @@ export default function NovelReading(props: Props) {
         })
         .catch(err => {
           if (err.name === 'AbortError') return;
-          DialogManager.alert('Gagal mengambil data', err.message);
+          DialogManager.alert(tSync('reader.fetchFailed'), err.message);
         })
         .finally(() => setIsSnackBarOpen(false));
     },
@@ -181,10 +181,11 @@ export default function NovelReading(props: Props) {
           onDismiss={() => setIsSnackBarOpen(false)}
           visible={isSnackBarOpen}
           action={{
-            label: 'Batal',
+            label: t('common.cancel'),
             onPress: () => {
               abortController.current?.abort();
               abortController.current = new AbortController();
+              setIsSnackBarOpen(false);
             },
           }}>
           {snackBarText}
@@ -230,20 +231,18 @@ export default function NovelReading(props: Props) {
         ListEmptyComponent={
           <View style={{ alignItems: 'center', padding: 40 }}>
             <Text style={{ color: isDark ? '#888' : '#666', fontSize: 16 }}>
-              Konten tidak tersedia
+              {t('reader.contentUnavailable')}
             </Text>
           </View>
         }
       />
 
-      {/* Bottom controls */}
       <View style={{ display: isFullscreen ? 'none' : 'flex' }}>
         <View
           style={[
             styles.controls,
             { backgroundColor: theme.colors.elevation.level1 },
           ]}>
-          {/* Font size controls */}
           <View style={styles.fontSizeRow}>
             <IconButton
               icon="format-font-size-decrease"
@@ -262,14 +261,13 @@ export default function NovelReading(props: Props) {
             />
           </View>
 
-          {/* Nav buttons */}
           <View style={styles.navRow}>
             {data.prevChapter && (
               <Button
                 icon="arrow-left"
                 onPress={() => moveChapter(data.prevChapter!)}
                 compact>
-                Sebelumnya
+                {t('reader.prev')}
               </Button>
             )}
             {data.nextChapter && (
@@ -278,7 +276,7 @@ export default function NovelReading(props: Props) {
                 onPress={() => moveChapter(data.nextChapter!)}
                 contentStyle={{ flexDirection: 'row-reverse' }}
                 compact>
-                Selanjutnya
+                {t('reader.next')}
               </Button>
             )}
           </View>

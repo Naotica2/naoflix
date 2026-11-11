@@ -1,35 +1,32 @@
 import { DrawerContentScrollView, createDrawerNavigator } from '@react-navigation/drawer';
 import { DrawerContentComponentProps } from '@react-navigation/drawer';
-import { memo, useMemo, useRef, useState } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View, useColorScheme, ToastAndroid } from 'react-native';
+import { memo, useMemo } from 'react';
+import { Image, StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 import { Appbar, Divider } from 'react-native-paper';
-import { supabase } from '../../config/supabaseClient';
 import Icon from '@react-native-vector-icons/fontawesome';
 import MaterialIcons from '@react-native-vector-icons/material-icons';
 import MDIcon from '@react-native-vector-icons/material-design-icons';
 import useGlobalStyles from '../../assets/style';
-import { SayaDrawerNavigator } from '../../types/navigation';
+import { SayaDrawerNavigator, RootStackNavigator } from '../../types/navigation';
 import { useAuth } from '../../misc/AuthContext';
+import { useLanguage } from '../../misc/LanguageContext';
 import { useKeyValueIfFocused } from '../../utils/DatabaseManager';
 import History from './Saya/History';
 import WatchLater from './Saya/WatchLater';
 import { useLevel } from '../../misc/LevelContext';
-import VIPOfferModal from '../WatchNRead/VIPOfferModal';
-import { LinearGradient } from 'expo-linear-gradient';
 import { formatExp, getLevelColor, getLevelBgColor, getLevelLabel } from '../../utils/LevelSystem';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackNavigator } from '../../types/navigation';
 
 const Drawer = createDrawerNavigator<SayaDrawerNavigator>();
 
 function ProfileDrawerContent(props: DrawerContentComponentProps) {
-  const { profile, user, signOut, refreshProfile } = useAuth();
+  const { profile, user, signOut } = useAuth();
+  const { t } = useLanguage();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const navigation = useNavigation<NativeStackNavigationProp<RootStackNavigator>>();
   const { levelData } = useLevel();
-  const [showVIPModal, setShowVIPModal] = useState(false);
 
   const historyRaw = useKeyValueIfFocused('historyKeyCollectionsOrder');
   const watchLaterRaw = useKeyValueIfFocused('watchLater');
@@ -46,31 +43,9 @@ function ProfileDrawerContent(props: DrawerContentComponentProps) {
     container: { flex: 1, backgroundColor: isDark ? '#0a0a0a' : '#f5f5f5' },
     profileSection: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 20 },
     avatar: { width: 80, height: 80, borderRadius: 40, borderWidth: 2, borderColor: isDark ? '#333' : '#ddd', marginBottom: 12 },
-    avatarVIP: { borderColor: '#F59E0B', borderWidth: 2 },
-    vipBadgeContainer: {
-      position: 'absolute',
-      bottom: 10,
-      right: 0,
-      backgroundColor: '#111',
-      borderRadius: 12,
-      padding: 3,
-      borderWidth: 1,
-      borderColor: '#F59E0B',
-      elevation: 4,
-      shadowColor: '#F59E0B',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.8,
-      shadowRadius: 4,
-    },
-    vipCrownIcon: {
-      textShadowColor: 'rgba(245, 158, 11, 0.75)',
-      textShadowOffset: {width: 0, height: 0},
-      textShadowRadius: 6
-    },
     avatarPlaceholder: { backgroundColor: '#1a1a1a', justifyContent: 'center', alignItems: 'center' },
     avatarText: { fontSize: 32, fontWeight: '700', color: '#fff' },
     username: { fontSize: 18, fontWeight: '700', color: isDark ? '#fff' : '#111', marginBottom: 2 },
-    usernameVIP: { color: '#F59E0B', textShadowColor: 'rgba(245, 158, 11, 0.3)', textShadowOffset: {width: 0, height: 1}, textShadowRadius: 2 },
     displayName: { fontSize: 13, color: '#888', marginBottom: 12 },
     levelSection: { width: '100%', marginBottom: 16, alignItems: 'center' },
     levelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
@@ -98,42 +73,26 @@ function ProfileDrawerContent(props: DrawerContentComponentProps) {
       paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#333',
     },
     signOutText: { fontSize: 14, color: '#ef4444', fontWeight: '600' },
-    vipBannerContainer: { width: '100%', marginTop: 24, borderRadius: 16, overflow: 'hidden', elevation: 4, shadowColor: '#F59E0B', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
-    vipBannerContent: { padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    vipBannerTitle: { fontSize: 16, fontWeight: 'bold', color: '#fff' },
-    vipBannerSubtitle: { fontSize: 11, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-    vipBannerBtn: { backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-    vipBannerBtnText: { color: '#F59E0B', fontSize: 12, fontWeight: 'bold' }
   }), [isDark]);
 
   const activeIndex = props.state.index;
-
-  const handleAvatarPress = () => {
-  };
 
   return (
     <View style={styles.container}>
       <DrawerContentScrollView {...props} contentContainerStyle={{ paddingTop: 0 }}>
         <View style={styles.profileSection}>
-          <TouchableOpacity activeOpacity={0.8} onPress={handleAvatarPress}>
-            <View style={{ position: 'relative' }}>
-              {profile?.avatar_url ? (
-                <Image source={{ uri: profile.avatar_url }} style={[styles.avatar, profile?.is_vip && styles.avatarVIP]} />
-              ) : (
-                <View style={[styles.avatar, styles.avatarPlaceholder, profile?.is_vip && styles.avatarVIP]}>
-                  <Text style={styles.avatarText}>
-                    {(profile?.username ?? '?').charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
-              {profile?.is_vip && (
-                <View style={styles.vipBadgeContainer}>
-                  <MDIcon name="crown" size={16} color="#FFD700" style={styles.vipCrownIcon} />
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-          <Text style={[styles.username, profile?.is_vip && styles.usernameVIP]}>@{profile?.username ?? '—'}</Text>
+          <View style={{ position: 'relative' }}>
+            {profile?.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <Text style={styles.avatarText}>
+                  {(profile?.username ?? '?').charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.username}>@{profile?.username ?? '-'}</Text>
           <Text style={styles.displayName}>{profile?.display_name ?? ''}</Text>
 
           {user && (
@@ -154,27 +113,13 @@ function ProfileDrawerContent(props: DrawerContentComponentProps) {
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{historyCount}</Text>
-              <Text style={styles.statLabel}>Riwayat</Text>
+              <Text style={styles.statLabel}>{t('lists.tabHistory')}</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{watchLaterCount}</Text>
-              <Text style={styles.statLabel}>Nanti</Text>
+              <Text style={styles.statLabel}>{t('common.later')}</Text>
             </View>
           </View>
-
-          {!profile?.is_vip && user && (
-            <TouchableOpacity style={styles.vipBannerContainer} activeOpacity={0.9} onPress={() => setShowVIPModal(true)}>
-              <LinearGradient colors={['#FDE68A', '#F59E0B']} style={styles.vipBannerContent}>
-                <View>
-                  <Text style={styles.vipBannerTitle}>Upgrade VIP 👑</Text>
-                  <Text style={styles.vipBannerSubtitle}>Nobar & Fitur Premium Bebas Batas!</Text>
-                </View>
-                <View style={styles.vipBannerBtn}>
-                  <Text style={styles.vipBannerBtnText}>Get</Text>
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
         </View>
 
         <Divider style={{ backgroundColor: isDark ? '#222' : '#ddd' }} />
@@ -184,13 +129,13 @@ function ProfileDrawerContent(props: DrawerContentComponentProps) {
             style={[styles.navItem, activeIndex === 0 && styles.navItemActive]}
             onPress={() => props.navigation.navigate('History')}>
             <MaterialIcons name="history" size={22} color={activeIndex === 0 ? (isDark ? '#fff' : '#000') : '#888'} />
-            <Text style={[styles.navText, activeIndex === 0 && styles.navTextActive]}>Riwayat</Text>
+            <Text style={[styles.navText, activeIndex === 0 && styles.navTextActive]}>{t('lists.tabHistory')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.navItem, activeIndex === 1 && styles.navItemActive]}
             onPress={() => props.navigation.navigate('WatchLater')}>
             <Icon name="clock-o" size={20} color={activeIndex === 1 ? (isDark ? '#fff' : '#000') : '#888'} />
-            <Text style={[styles.navText, activeIndex === 1 && styles.navTextActive]}>Tonton Nanti</Text>
+            <Text style={[styles.navText, activeIndex === 1 && styles.navTextActive]}>{t('lists.tabWatchLater')}</Text>
           </TouchableOpacity>
         </View>
       </DrawerContentScrollView>
@@ -199,22 +144,17 @@ function ProfileDrawerContent(props: DrawerContentComponentProps) {
         {user ? (
           <TouchableOpacity style={styles.signOutBtn} onPress={signOut}>
             <MDIcon name="logout" size={18} color="#ef4444" />
-            <Text style={styles.signOutText}>Keluar</Text>
+            <Text style={styles.signOutText}>{t('common.logout')}</Text>
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity 
-            style={[styles.signOutBtn, { borderColor: '#6366f1' }]} 
+          <TouchableOpacity
+            style={[styles.signOutBtn, { borderColor: '#6366f1' }]}
             onPress={() => navigation.navigate('LoginScreen')}>
             <MDIcon name="login" size={18} color="#6366f1" />
-            <Text style={[styles.signOutText, { color: '#6366f1' }]}>Masuk</Text>
+            <Text style={[styles.signOutText, { color: '#6366f1' }]}>{t('common.login')}</Text>
           </TouchableOpacity>
         )}
       </View>
-
-      <VIPOfferModal 
-        visible={showVIPModal} 
-        onDismiss={() => setShowVIPModal(false)} 
-      />
     </View>
   );
 }
@@ -224,6 +164,7 @@ function Saya() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const { profile } = useAuth();
+  const { t } = useLanguage();
 
   return (
     <Drawer.Navigator
@@ -256,12 +197,12 @@ function Saya() {
       <Drawer.Screen
         name="History"
         component={History}
-        options={{ title: 'Riwayat' }}
+        options={{ title: t('lists.tabHistory') }}
       />
       <Drawer.Screen
         name="WatchLater"
         component={WatchLater}
-        options={{ title: 'Tonton Nanti' }}
+        options={{ title: t('lists.tabWatchLater') }}
       />
     </Drawer.Navigator>
   );

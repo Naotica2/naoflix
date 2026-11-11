@@ -3,6 +3,7 @@ import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Appbar, useTheme, Surface, Text, TextInput } from 'react-native-paper';
 import { RootStackNavigator } from '../../types/navigation';
+import { useLanguage } from '../../misc/LanguageContext';
 import useGlobalStyles from '../../assets/style';
 
 const ANIME_GENRES = ['Action', 'Adventure', 'Comedy', 'Demons', 'Drama', 'Ecchi', 'Fantasy', 'Game', 'Harem', 'Historical', 'Horror', 'Isekai', 'Josei', 'Magic', 'Martial Arts', 'Mecha', 'Military', 'Music', 'Mystery', 'Psychological', 'Romance', 'Samurai', 'School', 'Sci-Fi', 'Seinen', 'Shoujo', 'Shoujo Ai', 'Shounen', 'Slice of Life', 'Space', 'Sports', 'Super Power', 'Supernatural', 'Thriller', 'Vampire'];
@@ -13,11 +14,12 @@ type Props = NativeStackScreenProps<RootStackNavigator, 'GenreSelectionScreen'>;
 export default function GenreSelectionScreen({ navigation, route }: Props) {
   const { type } = route.params;
   const theme = useTheme();
+  const { t } = useLanguage();
   const globalStyles = useGlobalStyles();
   const [searchQuery, setSearchQuery] = useState('');
 
   const genres = type === 'anime' ? ANIME_GENRES : COMIC_GENRES;
-  const title = type === 'anime' ? 'Genre Anime' : 'Genre Komik';
+  const title = type === 'anime' ? t('browse.genreAnimeTitle') : t('browse.genreComicsTitle');
 
   const filteredGenres = genres.filter(g => g.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -38,7 +40,7 @@ export default function GenreSelectionScreen({ navigation, route }: Props) {
       <View style={styles.searchContainer}>
         <TextInput
           mode="outlined"
-          placeholder="Cari genre..."
+          placeholder={t('browse.searchGenrePlaceholder')}
           value={searchQuery}
           onChangeText={setSearchQuery}
           left={<TextInput.Icon icon="magnify" />}
@@ -61,7 +63,7 @@ export default function GenreSelectionScreen({ navigation, route }: Props) {
             </TouchableOpacity>
           ))}
           {filteredGenres.length === 0 && (
-            <Text style={[globalStyles.text, { marginTop: 20, opacity: 0.7 }]}>Genre tidak ditemukan.</Text>
+            <Text style={[globalStyles.text, { marginTop: 20, opacity: 0.7 }]}>{t('browse.genreNotFound')}</Text>
           )}
         </View>
       </ScrollView>

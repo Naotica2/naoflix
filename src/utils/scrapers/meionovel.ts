@@ -103,7 +103,7 @@ export interface NovelReading {
   title: string;
   chapter: string;
   thumbnailUrl: string;
-  content: string[]; // Array of paragraphs
+  content: string[];
   nextChapter: string | undefined;
   prevChapter: string | undefined;
 }

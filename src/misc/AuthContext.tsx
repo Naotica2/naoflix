@@ -1,7 +1,18 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../config/supabaseClient';
 import { initPresence, clearActivity } from '../utils/presenceSystem';
+import { clearDmInboxCache } from '../utils/dmCache';
+import { invalidateFollowCountsCache } from '../utils/followSystem';
+import { invalidateWatchHistoryGridCache } from '../utils/watchHistorySync';
 
 export interface UserProfile {
   username: string;
@@ -11,10 +22,6 @@ export interface UserProfile {
   banner_url: string | null;
   total_exp: number;
   level: number;
-  is_vip?: boolean;
-  nobar_count?: number;
-  last_nobar_date?: string | null;
-  vip_until?: string | null;
 }
 
 type ProfileStatus = 'idle' | 'loading' | 'loaded' | 'error';
@@ -57,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const fetchPromise = supabase
         .from('profiles')
-        .select('username, avatar_url, display_name, bio, banner_url, total_exp, level, is_vip, nobar_count, last_nobar_date, vip_until')
+        .select('username, avatar_url, display_name, bio, banner_url, total_exp, level')
         .eq('id', userId)
         .single();
         
@@ -84,33 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return 'loaded';
       }
 
-      let finalData = data;
-      if (finalData.is_vip && finalData.vip_until) {
-        const now = new Date().toISOString();
-        if (finalData.vip_until < now) {
-          supabase.from('profiles').update({ is_vip: false, vip_until: null }).eq('id', userId).then();
-          finalData = { ...finalData, is_vip: false, vip_until: null };
-        }
-      }
-
-      if (!finalData.is_vip) {
-        supabase.from('transactions').select('ref').eq('user_id', userId).eq('status', 'pending')
-          .then(({ data: txs }) => {
-            if (txs && txs.length > 0) {
-              txs.forEach((tx: any) => {
-                fetch(`https://naoflix-backend.vercel.app/api/status?ref=${tx.ref}`)
-                  .then(r => r.json())
-                  .then(rData => {
-                    if (rData && rData.status === 'success') {
-                      fetchProfile(userId);
-                    }
-                  }).catch(() => {});
-              });
-            }
-          });
-      }
-
-      setProfile(finalData);
+      setProfile(data);
       setProfileStatus('loaded');
       retryCountRef.current = 0;
       return 'loaded';
@@ -211,26 +192,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     retryCountRef.current = 0;
     await clearActivity();
     await supabase.auth.signOut();
+    clearDmInboxCache();
+    invalidateFollowCountsCache();
+    invalidateWatchHistoryGridCache();
     setProfile(null);
     setProfileStatus('idle');
   }, []);
 
-  return (
-    <AuthContext
-      value={{
-        user,
-        session,
-        profile,
-        isLoading,
-        hasProfile: profileStatus === 'loaded' && profile !== null,
-        confirmedNoProfile: profileStatus === 'loaded' && profile === null,
-        profileStatus,
-        signOut,
-        refreshProfile,
-      }}>
-      {children}
-    </AuthContext>
+  const contextValue = useMemo<AuthContextType>(
+    () => ({
+      user,
+      session,
+      profile,
+      isLoading,
+      hasProfile: profileStatus === 'loaded' && profile !== null,
+      confirmedNoProfile: profileStatus === 'loaded' && profile === null,
+      profileStatus,
+      signOut,
+      refreshProfile,
+    }),
+    [user, session, profile, isLoading, profileStatus, signOut, refreshProfile],
   );
+
+  return <AuthContext value={contextValue}>{children}</AuthContext>;
 }
 
 export function useAuth(): AuthContextType {

@@ -1,7 +1,3 @@
-const ReactCompilerConfig = {
-  target: '19', // '17' | '18' | '19'
-};
-
 module.exports = {
   presets: [['babel-preset-expo']],
   env: {
@@ -10,8 +6,6 @@ module.exports = {
     },
   },
   plugins: [
-    // ['babel-plugin-react-compiler', ReactCompilerConfig], // must run first!
-    // 'react-native-worklets/plugin',
     ['module:react-native-dotenv'],
     [
       'babel-plugin-inline-import',

@@ -21,7 +21,6 @@ export function unpack(source: string) {
     const word = match;
     let word2: string;
     if (radix === 1) {
-      //throw Error("symtab unknown");
       word2 = symtab[parseInt(word)];
     } else {
       word2 = symtab[unbase.unbase(word)];
@@ -38,14 +37,9 @@ export function unpack(source: string) {
       /}\('(.*)', *(\d+|\[\]), *(\d+), *'(.*)'\.split\('\|'\)/,
     ];
     for (const juicer of juicers) {
-      //const args = re.search(juicer, source, re.DOTALL);
       const args = juicer.exec(src);
       if (args) {
         let a = args;
-        if (a[2] === '[]') {
-          // a = list(a);
-          // a = tuple(a);
-        }
         try {
           return {
             payload: a[1],

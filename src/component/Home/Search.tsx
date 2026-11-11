@@ -28,7 +28,7 @@ import Reanimated, {
   ZoomIn,
   ZoomOut,
 } from 'react-native-reanimated';
-import proTips from '../../assets/proTips.json';
+import { tSync, useLanguage } from '../../misc/LanguageContext';
 import useGlobalStyles from '../../assets/style';
 import { SearchAnime, listAnimeTypeList } from '../../types/anime';
 import { HomeNavigator, RootStackNavigator } from '../../types/navigation';
@@ -50,7 +50,9 @@ type AnySearchItem = SearchAnimeResult | ComicsComboSearch;
 type SearchRowItem = Exclude<AnySearchItem, SectionHeader>;
 
 const TouchableOpacityAnimated = Reanimated.createAnimatedComponent(TouchableOpacity);
-const Reanimated_KeyboardAvoidingView = Reanimated.createAnimatedComponent(KeyboardAvoidingView);
+
+const ListSeparator10 = () => <View style={{ height: 10 }} />;
+const ListSeparator4 = () => <View style={{ height: 4 }} />;
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<HomeNavigator, 'HomePage'>,
@@ -65,8 +67,9 @@ function Search(props: Props) {
   const colorScheme = useColorScheme();
   const styles = useStyles();
   const theme = useTheme();
+  const { t } = useLanguage();
 
-  const [searchType, setSearchType] = useState<'anime' | 'comics'>('anime');
+  const [searchType, setSearchType] = useState<'anime' | 'comics' | 'donghua'>('anime');
   const [searchedSearchType, setSearchedSearchType] = useState(searchType);
   const textInputRef = useRef<TextInputType>(null);
 
@@ -86,7 +89,6 @@ function Search(props: Props) {
         isFocus.current = false;
         keyboardEvent.remove();
         clearTimeout(timeout);
-        setShowSearchHistory(false);
       };
     }, []),
   );
@@ -100,27 +102,72 @@ function Search(props: Props) {
   const [comicsData, setComicsData] = useState<null | ComicsComboSearch[]>(null);
   const [loading, setLoading] = useState(false);
   const [currentSearchQuery, setCurrentSearchQuery] = useState<string>('');
-  const [showSearchHistory, setShowSearchHistory] = useState(false);
-
-
-  useFocusEffect(
-    useCallback(() => {
-      if (showSearchHistory) {
-        const backAction = () => {
-          setShowSearchHistory(false);
-          textInputRef.current?.blur();
-          return true;
-        };
-        const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
-        return () => backHandler.remove();
-      }
-    }, [showSearchHistory]),
-  );
+  const isDark = colorScheme === 'dark';
 
   const searchHistory = useModifiedKeyValueIfFocused(
     'searchHistory',
-    result => JSON.parse(result) as string[],
+    result => {
+      try {
+        const parsed = JSON.parse(result);
+        return Array.isArray(parsed) ? (parsed as string[]) : [];
+      } catch {
+        return [];
+      }
+    },
+    [] as string[],
   );
+
+  const proTipKeys = useMemo(() => {
+    if (searchedSearchType === 'comics') {
+      return ['search.proTipComics0'] as const;
+    }
+    if (searchedSearchType === 'donghua') {
+      return ['search.proTipDonghua0', 'search.proTipDonghua1'] as const;
+    }
+    return ['search.proTipAnime0', 'search.proTipAnime1'] as const;
+  }, [searchedSearchType]);
+
+  const handleQuickSearch = useCallback((keyword: string) => {
+    setSearchText(keyword);
+    textInputRef.current?.blur();
+  }, []);
+
+  const clearAllHistory = useCallback(async () => {
+    await DatabaseManager.set('searchHistory', JSON.stringify([]));
+  }, []);
+
+  const removeHistoryItem = useCallback(
+    async (index: number) => {
+      const updated = (searchHistory || []).filter((_, i) => i !== index);
+      await DatabaseManager.set('searchHistory', JSON.stringify(updated));
+    },
+    [searchHistory],
+  );
+
+  const popularSuggestions = useMemo(() => {
+    if (searchType === 'comics') {
+      return [
+        'Solo Leveling',
+        'Lookism',
+        'Omniscient Reader',
+        'Magic Emperor',
+        'Return of Mount Hua',
+        'Tower of God',
+        'Wind Breaker',
+      ];
+    }
+    return [
+      'One Piece',
+      'Solo Leveling',
+      'Jujutsu Kaisen',
+      'Demon Slayer',
+      'Naruto',
+      'Bleach',
+      'Wind Breaker',
+      'Chainsaw Man',
+      'Kaiju No. 8',
+    ];
+  }, [searchType]);
 
   const abortController = useRef<AbortController | null>(null);
   abortController.current ??= new AbortController();
@@ -138,10 +185,13 @@ function Search(props: Props) {
       .then(animeData => {
         setListAnime(animeData);
       })
-      .catch(() => {
+      .catch(e => {
         setListAnime(null);
         setIsError(true);
-        ToastAndroid.show('Gagal memuat daftar anime', ToastAndroid.SHORT);
+        ToastAndroid.show(
+          tSync('search.loadListFailed', { message: e?.message || tSync('common.unknown') }),
+          ToastAndroid.SHORT,
+        );
       })
       .finally(() => {
         setListAnimeLoading(false);
@@ -153,7 +203,7 @@ function Search(props: Props) {
   }, []);
 
   useEffect(() => {
-    if (searchType !== 'anime' || searchText.trim() === '') return;
+    if (searchText.trim() === '') return;
 
     const timeoutId = setTimeout(() => {
       submit();
@@ -163,24 +213,24 @@ function Search(props: Props) {
   }, [searchText, searchType]);
 
   const submit = useCallback(() => {
-    const handleError = (err: Error) => {
-      if (err.message.includes('Aborted') || err.message.includes('canceled')) {
+    const handleError = (err: any) => {
+      const msg = err?.message ? err.message : (typeof err === 'string' ? err : String(err));
+      if (msg.includes('Aborted') || msg.includes('canceled')) {
         return;
       }
-      if (err.message === 'Silahkan selesaikan captcha') {
-        return ToastAndroid.show('Silahkan selesaikan captcha', ToastAndroid.SHORT);
+      if (msg === 'Silahkan selesaikan captcha') {
+        return ToastAndroid.show(tSync('search.solveCaptcha'), ToastAndroid.SHORT);
       }
       const errMessage =
-        err.message === 'Network Error'
-          ? 'Permintaan gagal.\nPastikan kamu terhubung dengan internet'
-          : 'Error tidak diketahui: ' + err.message;
-      DialogManager.alert('Error', errMessage);
+        msg === 'Network Error'
+          ? tSync('settings.errorNetwork')
+          : tSync('player.unknownError', { message: msg });
+      DialogManager.alert(tSync('common.error'), errMessage);
     };
     if (searchText === '') {
       return;
     }
 
-    setShowSearchHistory(false);
     setLoading(true);
     textInputRef.current?.blur();
 
@@ -205,11 +255,39 @@ function Search(props: Props) {
         })
         .finally(() => {
           setSearchedSearchType(searchType);
-          if (searchHistory.includes(searchText)) {
-            searchHistory.splice(searchHistory.indexOf(searchText), 1);
+          const nextHistory = [
+            searchText,
+            ...(searchHistory || []).filter(item => item !== searchText),
+          ];
+          DatabaseManager.set('searchHistory', JSON.stringify(nextHistory));
+          setLoading(false);
+        });
+    } else if (searchType === 'donghua') {
+      Promise.allSettled([
+        Promise.resolve({ result: [] as any }),
+      ])
+        .then(([animeResponse]) => {
+          setIsRateLimit(false);
+          setCurrentSearchQuery(searchText);
+          setComicsData(null);
+
+          if (animeResponse.status === 'rejected') {
+            if (animeResponse.reason?.name === 'SankaRateLimitError') {
+              setIsRateLimit(true);
+            } else {
+              handleError(animeResponse.reason);
+            }
+          } else {
+            setData(animeResponse.value);
           }
-          searchHistory.unshift(searchText);
-          DatabaseManager.set('searchHistory', JSON.stringify(searchHistory));
+        })
+        .finally(() => {
+          setSearchedSearchType(searchType);
+          const nextHistory = [
+            searchText,
+            ...(searchHistory || []).filter(item => item !== searchText),
+          ];
+          DatabaseManager.set('searchHistory', JSON.stringify(nextHistory));
           setLoading(false);
         });
     } else {
@@ -219,10 +297,7 @@ function Search(props: Props) {
       ])
         .then(([comicsResponse, komikuResponse]) => {
           if (comicsResponse.status === 'rejected' && komikuResponse.status === 'rejected') {
-            if (abortController.current?.signal.aborted) {
-              throw new Error(comicsResponse.reason);
-            }
-            throw new Error(comicsResponse.reason);
+            throw new Error(comicsResponse.reason?.message || String(comicsResponse.reason || 'Error'));
           }
           const comicsResult = comicsResponse.status === 'fulfilled' ? comicsResponse.value : [];
           const komikuResult = komikuResponse.status === 'fulfilled' ? komikuResponse.value : [];
@@ -236,7 +311,7 @@ function Search(props: Props) {
 
           const grouped: { [key: string]: ComicItem[] } = {};
           allItems.forEach(item => {
-            const src = item.source || 'Lainnya';
+            const src = item.source || tSync('search.othersGroup');
             if (!grouped[src]) {
               grouped[src] = [];
             }
@@ -254,23 +329,16 @@ function Search(props: Props) {
         .catch(handleError)
         .finally(() => {
           setSearchedSearchType(searchType);
-          if (searchHistory.includes(searchText)) {
-            searchHistory.splice(searchHistory.indexOf(searchText), 1);
-          }
-          searchHistory.unshift(searchText);
-          DatabaseManager.set('searchHistory', JSON.stringify(searchHistory));
+          const nextHistory = [
+            searchText,
+            ...(searchHistory || []).filter(item => item !== searchText),
+          ];
+          DatabaseManager.set('searchHistory', JSON.stringify(nextHistory));
           setCurrentSearchQuery(searchText);
           setLoading(false);
         });
     }
   }, [searchHistory, searchText, searchType]);
-
-  function renderSearchHistory({ item, index }: ListRenderItemInfo<string>) {
-    const onSelectHistory = (text: string) => {
-      onChangeText(text);
-    };
-    return <HistoryList index={index} item={item} onChangeTextFunction={onSelectHistory} />;
-  }
 
   const listAnimeRenderer = useCallback(
     ({ index, item }: ListRenderItemInfo<listAnimeTypeList>) => {
@@ -301,9 +369,7 @@ function Search(props: Props) {
     if (!isFocus.current) {
       textInputRef.current?.blur();
       isFocus.current = true;
-      return;
     }
-    setShowSearchHistory(true);
   }, []);
 
   const hasSearchResults =
@@ -327,157 +393,168 @@ function Search(props: Props) {
   ];
 
   return (
-    <View style={[{ flex: 1 }]}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          width: '100%',
-        }}>
-        {showSearchHistory && (
-          <TouchableOpacityReactNative
-            hitSlop={15}
-            onPress={() => {
-              setShowSearchHistory(false);
-              textInputRef.current?.blur();
-            }}
-            style={{ paddingHorizontal: 10 }}>
-            <Icon name="angle-left" size={30} color={theme.colors.primary} />
-          </TouchableOpacityReactNative>
-        )}
-        <Reanimated.View layout={LinearTransition.springify()} style={{ flex: 1, height: 60 }}>
-          <Searchbar
-            onSubmitEditing={submit}
-            onIconPress={submit}
-            onChangeText={onChangeText}
-            onFocus={onTextInputFocus}
-            placeholder="Cari disini"
-            value={searchText}
-            autoCorrect={false}
-            ref={textInputRef}
-          />
-        </Reanimated.View>
-      </View>
+    <View style={[{ flex: 1, backgroundColor: isDark ? '#09090b' : '#f8fafc' }]}>
+      <View style={styles.searchHeaderWrap}>
+        <View style={styles.searchBarRow}>
+          <View style={{ flex: 1 }}>
+            <Searchbar
+              onSubmitEditing={submit}
+              onIconPress={submit}
+              onChangeText={onChangeText}
+              onFocus={onTextInputFocus}
+              onClearIconPress={() => {
+                setSearchText('');
+                setData(null);
+                setComicsData(null);
+              }}
+              placeholder={searchType === 'comics' ? t('search.placeholderComics') : t('search.placeholderAnime')}
+              value={searchText}
+              autoCorrect={false}
+              ref={textInputRef}
+              style={styles.searchbarStyle}
+              inputStyle={styles.searchbarInputStyle}
+              iconColor={isDark ? '#a1a1aa' : '#64748b'}
+              placeholderTextColor={isDark ? '#71717a' : '#94a3b8'}
+            />
+          </View>
+        </View>
 
-      <SegmentedButtons
-        style={{ marginTop: 6 }}
-        value={searchType}
-        onValueChange={setSearchType}
-        buttons={[
-          {
-            value: 'anime',
-            label: 'Cari anime/movie',
-            icon: 'movie-search',
-          },
-          {
-            value: 'comics',
-            label: 'Cari komik',
-            icon: 'book-search',
-          },
-        ]}
-      />
-
-      {(searchType === 'anime' || searchType === 'comics') && (
-        <View style={{ marginTop: 15, marginBottom: 10, paddingHorizontal: 10 }}>
+        <View style={styles.filterPillsRow}>
           <TouchableOpacityReactNative
-            onPress={() => props.navigation.navigate('GenreSelectionScreen', { type: searchType })}
-            style={{
-              backgroundColor: theme.colors.elevation.level3,
-              paddingVertical: 12,
-              borderRadius: 12,
-              flexDirection: 'row',
-              justifyContent: 'center',
-              alignItems: 'center',
-              borderWidth: 1,
-              borderColor: theme.colors.primary,
-            }}>
-            <Icon name="tags" size={16} color={theme.colors.primary} style={{ marginRight: 8 }} />
-            <Text style={[globalStyles.text, { fontWeight: 'bold', color: theme.colors.primary }]}>
-              Jelajahi Berdasarkan Genre
+            style={[styles.filterPill, searchType === 'anime' && styles.filterPillActive]}
+            onPress={() => setSearchType('anime')}>
+            <Icon
+              name="film"
+              size={12}
+              color={searchType === 'anime' ? '#fff' : isDark ? '#9ca3af' : '#6b7280'}
+            />
+            <Text
+              style={[
+                styles.filterPillText,
+                searchType === 'anime' && styles.filterPillTextActive,
+              ]}>
+              {t('search.filterAnime')}
             </Text>
           </TouchableOpacityReactNative>
+
+          <TouchableOpacityReactNative
+            style={[styles.filterPill, searchType === 'comics' && styles.filterPillActive]}
+            onPress={() => setSearchType('comics')}>
+            <Icon
+              name="book"
+              size={12}
+              color={searchType === 'comics' ? '#fff' : isDark ? '#9ca3af' : '#6b7280'}
+            />
+            <Text
+              style={[
+                styles.filterPillText,
+                searchType === 'comics' && styles.filterPillTextActive,
+              ]}>
+              {t('search.filterComics')}
+            </Text>
+          </TouchableOpacityReactNative>
+
+          <TouchableOpacityReactNative
+            style={styles.genreFilterPill}
+            onPress={() => props.navigation.navigate('GenreSelectionScreen', { type: searchType === 'comics' ? 'comics' : 'anime' })}>
+            <Icon name="tags" size={12} color="#3b82f6" />
+            <Text style={styles.genreFilterPillText}>{t('search.filterGenre')}</Text>
+          </TouchableOpacityReactNative>
         </View>
-      )}
+      </View>
 
       {isLoading && (
-        <View
-          style={[
-            styles.center,
-            {
-              flex: 0,
-              flexDirection: 'row',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: 10,
-            },
-          ]}>
-          <ActivityIndicator size="small" color={theme.colors.primary} />
-          <Text style={[globalStyles.text, { opacity: 0.8 }]}>Sedang mengambil data...</Text>
+        <View style={styles.loadingRow}>
+          <ActivityIndicator size="small" color="#3b82f6" />
+          <Text style={[globalStyles.text, { fontSize: 13, opacity: 0.8 }]}>
+            {t('search.loadingData')}
+          </Text>
         </View>
       )}
 
       {shouldShowManualLoad && !isRateLimit && (
-        <Reanimated.View entering={FadeInUp} style={styles.center}>
-          <View style={styles.emptyStateContainer}>
-            <Icon
-              name={isError ? 'warning' : 'list-alt'}
-              size={60}
-              color={isError ? theme.colors.error : theme.colors.outline}
-              style={{ marginBottom: 15 }}
-            />
-            <Text style={[globalStyles.text, styles.emptyStateTitle]}>
-              {isError ? 'Gagal Memuat Data' : 'Jelajahi Anime'}
-            </Text>
-            <Text style={[globalStyles.text, styles.emptyStateSubtitle]}>
-              {isError
-                ? 'Terjadi kesalahan koneksi. Silahkan coba lagi.'
-                : 'Tekan tombol di bawah untuk melihat daftar anime terbaru.'}
-            </Text>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 40 }}
+          keyboardShouldPersistTaps="handled">
+          {searchHistory.length > 0 && (
+            <View style={styles.idleSection}>
+              <View style={styles.idleSectionHeader}>
+                <Text style={styles.idleSectionTitle}>{t('search.recentTitle')}</Text>
+                <TouchableOpacityReactNative onPress={clearAllHistory} hitSlop={10}>
+                  <Text style={styles.clearAllText}>{t('search.clearRecent')}</Text>
+                </TouchableOpacityReactNative>
+              </View>
+              <View style={styles.chipsWrap}>
+                {searchHistory.slice(0, 8).map((keyword, idx) => (
+                  <View key={keyword + idx} style={styles.historyChip}>
+                    <TouchableOpacityReactNative
+                      onPress={() => handleQuickSearch(keyword)}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Icon name="history" size={11} color={isDark ? '#9ca3af' : '#6b7280'} />
+                      <Text style={styles.historyChipText} numberOfLines={1}>{keyword}</Text>
+                    </TouchableOpacityReactNative>
+                    <TouchableOpacityReactNative
+                      onPress={() => removeHistoryItem(idx)}
+                      hitSlop={8}
+                      style={{ marginLeft: 6 }}>
+                      <Icon name="times" size={12} color={isDark ? '#6b7280' : '#9ca3af'} />
+                    </TouchableOpacityReactNative>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
 
-            <TouchableOpacityReactNative
-              onPress={loadAnimeList}
-              activeOpacity={0.7}
-              style={[
-                styles.loadButton,
-                {
-                  backgroundColor: isError
-                    ? theme.colors.errorContainer
-                    : theme.colors.primaryContainer,
-                },
-              ]}>
-              <Icon
-                name={isError ? 'refresh' : 'cloud-download'}
-                size={18}
-                color={isError ? theme.colors.onErrorContainer : theme.colors.onPrimaryContainer}
-              />
-              <Text
-                style={[
-                  globalStyles.text,
-                  styles.loadButtonText,
-                  {
-                    color: isError
-                      ? theme.colors.onErrorContainer
-                      : theme.colors.onPrimaryContainer,
-                  },
-                ]}>
-                {isError ? 'Coba Lagi' : 'Muat Daftar Anime'}
-              </Text>
-            </TouchableOpacityReactNative>
+          <View style={styles.idleSection}>
+            <View style={styles.idleSectionHeader}>
+              <Text style={styles.idleSectionTitle}>{t('search.popularTrending')}</Text>
+            </View>
+            <View style={styles.chipsWrap}>
+              {popularSuggestions.map(title => (
+                <TouchableOpacityReactNative
+                  key={title}
+                  style={styles.trendingChip}
+                  onPress={() => handleQuickSearch(title)}>
+                  <Icon name="fire" size={12} color="#f59e0b" />
+                  <Text style={styles.trendingChipText}>{title}</Text>
+                </TouchableOpacityReactNative>
+              ))}
+            </View>
           </View>
-        </Reanimated.View>
+
+          <View style={styles.idleSection}>
+            <View style={styles.browseBanner}>
+              <Icon name={isError ? 'exclamation-circle' : 'compass'} size={24} color="#3b82f6" />
+              <View style={{ flex: 1, marginHorizontal: 12 }}>
+                <Text style={styles.browseBannerTitle}>
+                  {isError ? t('search.loadErrorTitle') : t('search.browseCatalogTitle')}
+                </Text>
+                <Text style={styles.browseBannerSub}>
+                  {isError ? t('search.loadErrorSub') : t('search.browseCatalogSub')}
+                </Text>
+              </View>
+              <TouchableOpacityReactNative
+                style={styles.browseButton}
+                onPress={loadAnimeList}>
+                <Text style={styles.browseButtonText}>{isError ? t('common.retry') : t('common.open')}</Text>
+              </TouchableOpacityReactNative>
+            </View>
+          </View>
+        </ScrollView>
       )}
 
       {isRateLimit && (
         <Reanimated.View entering={FadeInUp} style={styles.center}>
           <TouchableOpacityReactNative
-             onPress={submit}
-             style={{ alignItems: 'center', backgroundColor: '#f39c1225', padding: 25, borderRadius: 15, marginHorizontal: 20 }}>
-            <MaterialIcon name="hourglass-empty" size={50} color="#f39c12" />
-            <Text style={[globalStyles.text, styles.emptyStateTitle, { color: '#f39c12', marginTop: 15 }]}>
-              Server Sedang Antre
+            onPress={submit}
+            style={styles.rateLimitCard}>
+            <MaterialIcon name="hourglass-empty" size={44} color="#f59e0b" />
+            <Text style={styles.rateLimitTitle}>
+              {t('search.rateLimitTitle')}
             </Text>
-            <Text style={[globalStyles.text, styles.emptyStateSubtitle, { color: '#f39c12' }]}>
-              Banyak pengguna yang sedang mengakses server. Santai sejenak lalu ketuk kotak ini untuk mencoba lagi.
+            <Text style={styles.rateLimitSub}>
+              {t('search.rateLimitSub')}
             </Text>
           </TouchableOpacityReactNative>
         </Reanimated.View>
@@ -485,17 +562,18 @@ function Search(props: Props) {
 
       {showDefaultList && (
         <View style={{ flex: 1 }}>
-          <Text
-            style={[globalStyles.text, { textAlign: 'center', marginTop: 10, fontWeight: 'bold' }]}>
-            Total anime: {listAnime?.length} (belum termasuk movie)
-          </Text>
+          <View style={styles.resultCounterBar}>
+            <Text style={styles.resultCounterText}>
+              {t('search.totalAnimeAvailable', { count: listAnime?.length ?? 0 })}
+            </Text>
+          </View>
 
           <FlashList
-        estimatedItemSize={200}
             data={listAnime}
+            drawDistance={350}
             renderItem={listAnimeRenderer}
-            ItemSeparatorComponent={() => <View style={{ height: 4 }} />}
-            keyExtractor={item => item.title}
+            ItemSeparatorComponent={ListSeparator4}
+            keyExtractor={(item, idx) => item.streamingLink || item.title || String(idx)}
             extraData={styles}
             contentContainerStyle={{ paddingBottom: 20 }}
           />
@@ -504,36 +582,43 @@ function Search(props: Props) {
 
       {(hasSearchResults || isSearchEmpty) && (
         <>
-          <Text
-            style={[
-              globalStyles.text,
-              { fontWeight: 'bold', fontSize: 13, marginVertical: 2, textAlign: 'center' },
-            ]}>
-            {isSearchEmpty
-              ? 'Tidak ada hasil pencarian yang ditemukan!'
-              : `Hasil pencarian untuk: ${currentSearchQuery}`}
-          </Text>
+          <View style={styles.resultCounterBar}>
+            <Text style={styles.resultCounterText} numberOfLines={1}>
+              {isSearchEmpty
+                ? t('search.noResultsFor', { query: currentSearchQuery })
+                : t('search.resultsForCount', { count: flashListData.length, query: currentSearchQuery })}
+            </Text>
+            <TouchableOpacityReactNative
+              onPress={() => {
+                setData(null);
+                setComicsData(null);
+                setSearchText('');
+              }}
+              style={styles.clearResultButton}>
+              <Icon name="times-circle" size={13} color={isDark ? '#a1a1aa' : '#64748b'} />
+              <Text style={styles.clearResultText}>{t('common.reset')}</Text>
+            </TouchableOpacityReactNative>
+          </View>
 
           {isSearchEmpty && (
             <Reanimated.View entering={FadeInUp} style={styles.center}>
               <View style={styles.emptyStateContainer}>
                 <Icon
                   name="search-minus"
-                  size={60}
+                  size={50}
                   color={theme.colors.outline}
-                  style={{ marginBottom: 15 }}
+                  style={{ marginBottom: 12 }}
                 />
                 <Text style={[globalStyles.text, styles.emptyStateTitle]}>
-                  Hasil tidak ditemukan
+                  {t('search.noResultsTitle')}
                 </Text>
                 <Text style={[globalStyles.text, styles.emptyStateSubtitle]}>
-                  Coba periksa kembali kata kunci pencarianmu atau gunakan kata kunci lain yang
-                  lebih umum.
+                  {t('search.noResultsHint')}
                 </Text>
                 <View style={{ alignItems: 'flex-start' }}>
-                  {proTips[searchedSearchType].map(proTip => (
-                    <Text style={[globalStyles.text, styles.proTip]} key={proTip}>
-                      <Icon name="lightbulb-o" size={12} color={theme.colors.primary} /> {proTip}
+                  {proTipKeys.map(tipKey => (
+                    <Text style={[globalStyles.text, styles.proTip]} key={tipKey}>
+                      <Icon name="lightbulb-o" size={12} color="#3b82f6" /> {t(tipKey)}
                     </Text>
                   ))}
                 </View>
@@ -543,9 +628,9 @@ function Search(props: Props) {
 
           {hasSearchResults && (
             <FlashList
-        estimatedItemSize={200}
               renderScrollComponent={RenderScrollComponent}
-              ItemSeparatorComponent={() => <View style={{ height: 6 }} />}
+              ItemSeparatorComponent={ListSeparator10}
+              drawDistance={350}
               data={flashListData}
               getItemType={item => {
                 if ('type' in item && item.type === 'header') {
@@ -557,84 +642,39 @@ function Search(props: Props) {
                 if ('type' in item && item.type === 'header') {
                   return `header-${item.title}-${index}`;
                 }
-                return String(index);
+                if ('animeUrl' in item && item.animeUrl) {
+                  return item.animeUrl;
+                }
+                if ('detailUrl' in item && item.detailUrl) {
+                  return item.detailUrl;
+                }
+                return `${item.title || 'item'}-${index}`;
               }}
-              renderItem={({ item: z }) => <SearchList item={z} parentProps={props} />}
-              contentContainerStyle={{ paddingBottom: 20 }}
+              renderItem={({ item: z }) => (
+                <SearchList
+                  item={z}
+                  navigation={props.navigation}
+                  styles={styles}
+                  primaryColor={theme.colors.primary}
+                />
+              )}
+              contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4, paddingBottom: 30 }}
             />
           )}
         </>
       )}
 
-      {showSearchHistory && (
-        <Reanimated_KeyboardAvoidingView
-          behavior="height"
-          entering={ZoomIn.springify().withInitialValues({ transform: [{ scale: 0.5 }] })}
-          exiting={ZoomOut.springify()}
-          style={styles.searchHistoryContainer}>
-          <View style={{ flex: 1 }}>
-            <SegmentedButtons
-              value={searchType}
-              onValueChange={setSearchType}
-              buttons={[
-                {
-                  value: 'anime',
-                  label: 'Cari anime/movie',
-                  icon: 'movie-search',
-                },
-                {
-                  value: 'comics',
-                  label: 'Cari komik',
-                  icon: 'book-search',
-                },
-              ]}
-            />
-            <FlashList
-        estimatedItemSize={200}
-              drawDistance={250}
-              keyboardShouldPersistTaps="always"
-              contentContainerStyle={styles.searchHistoryScrollBox}
-              data={searchHistory}
-              keyExtractor={searchHistoryKeyExtractor}
-              extraData={styles}
-              renderItem={renderSearchHistory}
-              ItemSeparatorComponent={() => (
-                <View
-                  pointerEvents="none"
-                  style={{
-                    borderBottomWidth: 0.5,
-                    borderColor: colorScheme === 'dark' ? 'gray' : 'black',
-                    width: '100%',
-                  }}
-                />
-              )}
-              ListHeaderComponent={() => (
-                <View>
-                  <View style={styles.searchHistoryHeader}>
-                    <Text
-                      style={[
-                        globalStyles.text,
-                        { fontWeight: 'bold', flex: 1, textAlign: 'center', marginRight: 25 },
-                      ]}>
-                      Riwayat Pencarian: {searchHistory.length}
-                    </Text>
-                  </View>
-                </View>
-              )}
-            />
-          </View>
-        </Reanimated_KeyboardAvoidingView>
-      )}
       {(data !== null || comicsData !== null) && !loading && (
         <TouchableOpacityAnimated
           style={styles.closeSearchResult}
           onPress={() => {
             setData(null);
             setComicsData(null);
+            setSearchText('');
           }}
           entering={ZoomIn}
           exiting={ZoomOut}>
-          <Icon name="times" size={30} style={{ alignSelf: 'center' }} color="#dadada" />
+          <Icon name="times" size={20} style={{ alignSelf: 'center' }} color="#ffffff" />
         </TouchableOpacityAnimated>
       )}
       <Snackbar
@@ -644,87 +684,38 @@ function Search(props: Props) {
           setLoading(false);
         }}
         action={{
-          label: 'Batal',
+          label: t('common.cancel'),
           onPress: () => {
             abortController.current?.abort();
             abortController.current = new AbortController();
           },
         }}
         duration={Infinity}>
-        Memuat data...
+        {t('common.loading')}
       </Snackbar>
-    </View>
-  );
-}
-
-function HistoryList({
-  index,
-  item,
-  onChangeTextFunction,
-}: {
-  index: number;
-  item: string;
-  onChangeTextFunction: (text: string) => void;
-}) {
-  const theme = useTheme();
-  const globalStyles = useGlobalStyles();
-  const styles = useStyles();
-  return (
-    <View
-      style={styles.searchHistoryItemContainer}
-      pointerEvents="box-none"
-      onStartShouldSetResponder={() => true}>
-      <TouchableOpacityReactNative
-        style={[
-          {
-            padding: 6,
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            minHeight: 40,
-          },
-        ]}
-        onPress={() => {
-          onChangeTextFunction(item);
-        }}>
-        <View
-          style={{ justifyContent: 'center', alignItems: 'center', flex: 1, flexDirection: 'row' }}>
-          <Icon name="history" size={20} color={theme.colors.tertiary} />
-          <Text style={[globalStyles.text, { fontWeight: 'bold', flex: 1, textAlign: 'center' }]}>
-            {item}
-          </Text>
-        </View>
-        <TouchableOpacityReactNative
-          hitSlop={14}
-          onPress={async () => {
-            DatabaseManager.set(
-              'searchHistory',
-              JSON.stringify(
-                (
-                  JSON.parse((await DatabaseManager.get('searchHistory')) ?? '[]') as string[]
-                ).filter((_, i) => i !== index),
-              ),
-            );
-          }}>
-          <Icon name="times" size={25} color="#ff0f0f" />
-        </TouchableOpacityReactNative>
-      </TouchableOpacityReactNative>
     </View>
   );
 }
 
 type SearchAnimeResult = SearchAnime['result'][number];
 
-function SearchList({ item: z, parentProps: props }: { item: AnySearchItem; parentProps: Props }) {
-  const theme = useTheme();
-  const globalStyles = useGlobalStyles();
-  const styles = useStyles();
-
+const SearchList = memo(function SearchList({
+  item: z,
+  navigation,
+  styles,
+  primaryColor,
+}: {
+  item: AnySearchItem;
+  navigation: Props['navigation'];
+  styles: ReturnType<typeof useStyles>;
+  primaryColor: string;
+}) {
   if ('type' in z && z.type === 'header') {
     return (
       <View style={styles.sectionHeaderContainer}>
         <View style={styles.sectionHeaderLine} />
-        <Text style={[globalStyles.text, styles.sectionHeaderText]}>
-          <Icon name="globe" size={14} color={theme.colors.secondary} /> {z.title.toUpperCase()}
+        <Text style={styles.sectionHeaderText}>
+          <Icon name="globe" size={13} color={primaryColor} /> {z.title.toUpperCase()}
         </Text>
         <View style={styles.sectionHeaderLine} />
       </View>
@@ -732,182 +723,122 @@ function SearchList({ item: z, parentProps: props }: { item: AnySearchItem; pare
   }
   const item = z as SearchRowItem;
 
-  const isComic = (data: SearchRowItem): data is ComicItem => {
-    return 'additionalInfo' in data;
+  const isComic = (dataItem: SearchRowItem): dataItem is ComicItem => {
+    return 'additionalInfo' in dataItem;
   };
 
-  const isAnime = (data: SearchRowItem): data is SearchAnimeResult => {
-    return 'animeUrl' in data;
+  const isAnime = (dataItem: SearchRowItem): dataItem is SearchAnimeResult => {
+    return 'animeUrl' in dataItem;
   };
+
+  const isOngoing = isAnime(item) && item.status?.toLowerCase().includes('ongoing');
 
   return (
-    <TouchableOpacityAnimated
-      entering={FadeInRight}
-      style={[styles.listContainer, { minHeight: 100 }]}
+    <TouchableOpacity
+      style={styles.cardContainer}
       onPress={() => {
         if (!isComic(item) && !isAnime(item)) return;
 
-        props.navigation.dispatch(
+        navigation.dispatch(
           StackActions.push('FromUrl', {
             title: item.title,
-            link: isComic(item)
-                  ? item.detailUrl
-                  : item.animeUrl,
-            type: isComic(item)
-                  ? 'comics'
-                  : 'anime',
+            link: isComic(item) ? item.detailUrl : item.animeUrl,
+            type: isComic(item) ? 'comics' : 'anime',
+            thumbnailUrl: item.thumbnailUrl,
           }),
         );
       }}>
-      <ImageLoading
-        resizeMode="cover"
-        source={{ uri: item.thumbnailUrl }}
-        style={[
-          styles.listImage,
-          isComic(item) && 'concept' in item ? { width: 150, height: 'auto' } : undefined,
-        ]}>
-        {isComic(item) && (
-          <View
-            style={{
-              position: 'absolute',
-              top: 5,
-              right: 5,
-              backgroundColor: '#0000009d',
-              padding: 5,
-              borderRadius: 8,
-            }}>
-            <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>
-              {item.latestChapter}
-            </Text>
+      <View style={styles.cardPosterWrap}>
+        <ImageLoading
+          resizeMode="cover"
+          source={{ uri: item.thumbnailUrl }}
+          fallbackSearchTitle={item.title}
+          style={styles.cardPoster}
+        />
+        {isComic(item) && item.latestChapter ? (
+          <View style={styles.chapterBadge}>
+            <Text style={styles.chapterBadgeText}>{item.latestChapter}</Text>
+          </View>
+        ) : null}
+        {isAnime(item) && item.rating && item.rating !== '?' && item.rating !== 'N/A' && (
+          <View style={styles.cardRatingBadge}>
+            <Icon name="star" size={10} color="#f59e0b" style={{ marginRight: 3 }} />
+            <Text style={styles.cardRatingText}>{item.rating}</Text>
           </View>
         )}
-      </ImageLoading>
+      </View>
 
-      <ImageLoading
-        displayLoading={false}
-        source={{ uri: item.thumbnailUrl }}
-        blurRadius={5}
-        style={{ flex: 1 }}>
-        <DarkOverlay transparent={0.8} />
-        <View style={{ flexDirection: 'row', flex: 1 }}>
-          <View style={styles.ratingInfo}>
-            {isAnime(item) && (
-                <Text style={[globalStyles.text, styles.animeSearchListDetailText]}>
-                  <Icon name="star" color="gold" /> {item.rating}
-                </Text>
-              )}
-          </View>
-          <View style={{ flexDirection: 'column', marginRight: 5, marginTop: 5 }}>
+      <View style={styles.cardContent}>
+        <Text numberOfLines={2} style={styles.cardTitle}>
+          {item.title}
+        </Text>
+
+        <View style={styles.cardBadgesRow}>
+          {isAnime(item) && item.status ? (
             <View
               style={[
-                styles.statusInfo,
+                styles.cardStatusBadge,
                 {
-                  backgroundColor:
-                    isAnime(item) && item.status === 'Ongoing'
-                      ? '#920000'
-                      : '#006600',
+                  backgroundColor: isOngoing
+                    ? 'rgba(59, 130, 246, 0.15)'
+                    : 'rgba(34, 197, 94, 0.15)',
                 },
               ]}>
-              <Text style={[globalStyles.text, styles.animeSearchListDetailText]}>
-                {isComic(item) ? item.type : item.status}
+              <Text
+                style={[
+                  styles.cardStatusText,
+                  { color: isOngoing ? '#3b82f6' : '#22c55e' },
+                ]}>
+                {item.status}
               </Text>
             </View>
-          </View>
+          ) : isComic(item) && item.type ? (
+            <View style={[styles.cardStatusBadge, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+              <Text style={[styles.cardStatusText, { color: '#3b82f6' }]}>{item.type}</Text>
+            </View>
+          ) : null}
+
+          {isComic(item) && item.source ? (
+            <View style={styles.cardSourceBadge}>
+              <Text style={styles.cardSourceText}>{item.source.toUpperCase()}</Text>
+            </View>
+          ) : null}
         </View>
 
-        <View style={[styles.listTitle]}>
-          <Text
-            numberOfLines={4}
-            style={[{ flexShrink: 1 }, [globalStyles.text, styles.animeSearchListDetailText]]}>
-            {item?.title}
+        <View style={styles.cardTagsRow}>
+          {isAnime(item) && item.genres && item.genres.length > 0 ? (
+            item.genres.slice(0, 3).map(genre => (
+              <View key={genre} style={styles.cardTagPill}>
+                <Text style={styles.cardTagText} numberOfLines={1}>
+                  {genre}
+                </Text>
+              </View>
+            ))
+          ) : isComic(item) && (item as any).concept ? (
+            <View style={styles.cardTagPill}>
+              <Text style={styles.cardTagText} numberOfLines={1}>
+                {(item as any).concept}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        {isComic(item) && item.additionalInfo ? (
+          <Text style={styles.cardAdditionalInfo} numberOfLines={1}>
+            {item.additionalInfo}
           </Text>
-        </View>
-
-        <View style={styles.releaseInfo}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5 }}>
-              <View
-                style={{
-                  backgroundColor: 'rgba(0, 0, 0, 0.445)',
-                  paddingHorizontal: 6,
-                  paddingVertical: 3,
-                  borderRadius: 5,
-                }}>
-                <Text
-                  style={[
-                    globalStyles.text,
-                    styles.animeSearchListDetailText,
-                    {
-                      fontSize: 14,
-                    },
-                  ]}
-                  numberOfLines={1}>
-                  <Icon name="tags" color={styles.animeSearchListDetailText.color} />{' '}
-                  {isAnime(item)
-                    ? item.genres.join(', ')
-                    : (item as any).concept || (item as any).status}
-                </Text>
-              </View>
-            {isComic(item) && (
-              <View
-                style={{
-                  backgroundColor: 'rgba(0, 0, 0, 0.445)',
-                  paddingHorizontal: 6,
-                  paddingVertical: 3,
-                  borderRadius: 5,
-                }}>
-                <Text
-                  style={[
-                    globalStyles.text,
-                    styles.animeSearchListDetailText,
-                    {
-                      fontSize: 14,
-                    },
-                  ]}
-                  numberOfLines={1}>
-                  <Icon name="info" color={styles.animeSearchListDetailText.color} />{' '}
-                  {item.additionalInfo}
-                </Text>
-              </View>
-            )}
-
-            {isComic(item) && item.source && (
-              <View
-                style={{
-                  backgroundColor: theme.colors.tertiaryContainer,
-                  paddingHorizontal: 6,
-                  paddingVertical: 3,
-                  borderRadius: 5,
-                }}>
-                <Text
-                  style={[
-                    globalStyles.text,
-                    styles.animeSearchListDetailText,
-                    {
-                      fontSize: 12,
-                      color: theme.colors.onTertiaryContainer,
-                    },
-                  ]}
-                  numberOfLines={1}>
-                  <Icon name="globe" color={theme.colors.onTertiaryContainer} />{' '}
-                  {item.source.toUpperCase()}
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </ImageLoading>
-    </TouchableOpacityAnimated>
+        ) : null}
+      </View>
+    </TouchableOpacity>
   );
-}
-
-function searchHistoryKeyExtractor(name: string, index: number) {
-  return name + String(index);
-}
+});
 
 function useStyles() {
   const globalStyles = useGlobalStyles();
   const theme = useTheme();
   const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
   return useMemo(
     () =>
       StyleSheet.create({
@@ -916,72 +847,358 @@ function useStyles() {
           alignItems: 'center',
           flex: 1,
         },
+        searchHeaderWrap: {
+          paddingHorizontal: 16,
+          paddingTop: 8,
+          paddingBottom: 10,
+          backgroundColor: isDark ? '#09090b' : '#ffffff',
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: isDark ? '#27272a' : '#e2e8f0',
+        },
+        searchBarRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+        },
+        searchbarStyle: {
+          borderRadius: 12,
+          backgroundColor: isDark ? '#18181b' : '#f1f5f9',
+          elevation: 0,
+          height: 46,
+        },
+        searchbarInputStyle: {
+          minHeight: 0,
+          fontSize: 14,
+          alignSelf: 'center',
+          color: isDark ? '#f4f4f6' : '#0f172a',
+        },
+        filterPillsRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+          marginTop: 10,
+        },
+        filterPill: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+          paddingHorizontal: 14,
+          paddingVertical: 7,
+          borderRadius: 20,
+          backgroundColor: isDark ? '#18181b' : '#f1f5f9',
+          borderWidth: 1,
+          borderColor: isDark ? '#27272a' : '#e2e8f0',
+        },
+        filterPillActive: {
+          backgroundColor: '#3b82f6',
+          borderColor: '#3b82f6',
+        },
+        filterPillText: {
+          fontSize: 12,
+          fontWeight: '600',
+          color: isDark ? '#a1a1aa' : '#64748b',
+        },
+        filterPillTextActive: {
+          color: '#ffffff',
+        },
+        genreFilterPill: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+          paddingHorizontal: 14,
+          paddingVertical: 7,
+          borderRadius: 20,
+          backgroundColor: 'rgba(59, 130, 246, 0.12)',
+          borderWidth: 1,
+          borderColor: 'rgba(59, 130, 246, 0.3)',
+        },
+        genreFilterPillText: {
+          fontSize: 12,
+          fontWeight: '700',
+          color: '#3b82f6',
+        },
+        loadingRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          paddingVertical: 14,
+        },
+        idleSection: {
+          marginBottom: 22,
+        },
+        idleSectionHeader: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 10,
+        },
+        idleSectionTitle: {
+          fontSize: 13,
+          fontWeight: '700',
+          color: isDark ? '#a1a1aa' : '#64748b',
+          textTransform: 'uppercase',
+          letterSpacing: 0.5,
+        },
+        clearAllText: {
+          fontSize: 12,
+          fontWeight: '600',
+          color: '#ef4444',
+        },
+        chipsWrap: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 8,
+        },
+        historyChip: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: isDark ? '#18181b' : '#ffffff',
+          borderWidth: 1,
+          borderColor: isDark ? '#27272a' : '#e2e8f0',
+          paddingHorizontal: 12,
+          paddingVertical: 7,
+          borderRadius: 20,
+        },
+        historyChipText: {
+          fontSize: 12,
+          color: isDark ? '#f4f4f6' : '#0f172a',
+          maxWidth: 160,
+        },
+        trendingChip: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+          backgroundColor: isDark ? '#18181b' : '#ffffff',
+          borderWidth: 1,
+          borderColor: isDark ? '#27272a' : '#e2e8f0',
+          paddingHorizontal: 12,
+          paddingVertical: 7,
+          borderRadius: 20,
+        },
+        trendingChipText: {
+          fontSize: 12,
+          fontWeight: '500',
+          color: isDark ? '#f4f4f6' : '#0f172a',
+        },
+        browseBanner: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: isDark ? '#18181b' : '#ffffff',
+          padding: 16,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: isDark ? '#27272a' : '#e2e8f0',
+        },
+        browseBannerTitle: {
+          fontSize: 14,
+          fontWeight: '700',
+          color: isDark ? '#f4f4f6' : '#0f172a',
+        },
+        browseBannerSub: {
+          fontSize: 12,
+          color: isDark ? '#a1a1aa' : '#64748b',
+          marginTop: 2,
+        },
+        browseButton: {
+          backgroundColor: '#3b82f6',
+          paddingHorizontal: 14,
+          paddingVertical: 8,
+          borderRadius: 8,
+        },
+        browseButtonText: {
+          color: '#ffffff',
+          fontSize: 12,
+          fontWeight: '700',
+        },
+        rateLimitCard: {
+          alignItems: 'center',
+          backgroundColor: isDark ? '#252014' : '#fffbeb',
+          padding: 22,
+          borderRadius: 16,
+          marginHorizontal: 20,
+          borderWidth: 1,
+          borderColor: isDark ? '#453818' : '#fde68a',
+        },
+        rateLimitTitle: {
+          fontSize: 16,
+          fontWeight: '700',
+          color: '#f59e0b',
+          marginTop: 10,
+        },
+        rateLimitSub: {
+          fontSize: 13,
+          textAlign: 'center',
+          color: isDark ? '#fde68a' : '#92400e',
+          marginTop: 4,
+          lineHeight: 18,
+        },
+        resultCounterBar: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+        },
+        resultCounterText: {
+          fontSize: 13,
+          fontWeight: '600',
+          color: isDark ? '#a1a1aa' : '#64748b',
+          flex: 1,
+        },
+        clearResultButton: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          paddingHorizontal: 8,
+          paddingVertical: 4,
+          borderRadius: 6,
+          backgroundColor: isDark ? '#27272a' : '#e2e8f0',
+        },
+        clearResultText: {
+          fontSize: 11,
+          fontWeight: '600',
+          color: isDark ? '#a1a1aa' : '#64748b',
+        },
+        cardContainer: {
+          flexDirection: 'row',
+          backgroundColor: isDark ? '#18181b' : '#ffffff',
+          borderRadius: 12,
+          overflow: 'hidden',
+          elevation: 2,
+          borderWidth: 1,
+          borderColor: isDark ? '#27272a' : '#e2e8f0',
+        },
+        cardPosterWrap: {
+          width: 95,
+          height: 135,
+          position: 'relative',
+          backgroundColor: isDark ? '#27272a' : '#e2e8f0',
+        },
+        cardPoster: {
+          width: '100%',
+          height: '100%',
+        },
+        chapterBadge: {
+          position: 'absolute',
+          bottom: 6,
+          left: 6,
+          backgroundColor: 'rgba(0,0,0,0.75)',
+          paddingHorizontal: 6,
+          paddingVertical: 2,
+          borderRadius: 4,
+        },
+        chapterBadgeText: {
+          color: '#ffffff',
+          fontSize: 10,
+          fontWeight: '700',
+        },
+        cardRatingBadge: {
+          position: 'absolute',
+          top: 6,
+          left: 6,
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: 'rgba(0,0,0,0.75)',
+          paddingHorizontal: 6,
+          paddingVertical: 2,
+          borderRadius: 4,
+        },
+        cardRatingText: {
+          color: '#f59e0b',
+          fontSize: 10,
+          fontWeight: '700',
+        },
+        cardContent: {
+          flex: 1,
+          padding: 10,
+          justifyContent: 'space-between',
+        },
+        cardTitle: {
+          fontSize: 14,
+          fontWeight: '700',
+          color: isDark ? '#f4f4f6' : '#0f172a',
+          lineHeight: 18,
+        },
+        cardBadgesRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 6,
+          marginTop: 4,
+        },
+        cardStatusBadge: {
+          paddingHorizontal: 8,
+          paddingVertical: 3,
+          borderRadius: 4,
+        },
+        cardStatusText: {
+          fontSize: 10,
+          fontWeight: '700',
+          textTransform: 'uppercase',
+        },
+        cardSourceBadge: {
+          backgroundColor: 'rgba(99, 102, 241, 0.15)',
+          paddingHorizontal: 6,
+          paddingVertical: 2,
+          borderRadius: 4,
+        },
+        cardSourceText: {
+          color: '#6366f1',
+          fontSize: 10,
+          fontWeight: '700',
+        },
+        cardTagsRow: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 4,
+          marginTop: 6,
+        },
+        cardTagPill: {
+          backgroundColor: isDark ? '#27272a' : '#f1f5f9',
+          paddingHorizontal: 7,
+          paddingVertical: 3,
+          borderRadius: 4,
+        },
+        cardTagText: {
+          fontSize: 10,
+          color: isDark ? '#a1a1aa' : '#64748b',
+          fontWeight: '500',
+        },
+        cardAdditionalInfo: {
+          fontSize: 11,
+          color: isDark ? '#71717a' : '#94a3b8',
+          marginTop: 2,
+        },
         emptyStateContainer: {
           alignItems: 'center',
           paddingHorizontal: 40,
         },
         emptyStateTitle: {
-          fontSize: 20,
+          fontSize: 18,
           fontWeight: 'bold',
-          marginBottom: 8,
+          marginBottom: 6,
           textAlign: 'center',
         },
         emptyStateSubtitle: {
-          fontSize: 14,
+          fontSize: 13,
           textAlign: 'center',
           opacity: 0.6,
-          marginBottom: 24,
+          marginBottom: 20,
         },
         proTip: {
-          fontSize: 13,
+          fontSize: 12,
           fontStyle: 'italic',
           opacity: 0.8,
           marginBottom: 4,
-        },
-        loadButton: {
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingVertical: 12,
-          paddingHorizontal: 24,
-          borderRadius: 25,
-          elevation: 2,
-        },
-        loadButtonText: {
-          fontWeight: 'bold',
-          marginLeft: 10,
-          fontSize: 15,
-        },
-        nullDataText: {
-          color: globalStyles.text.color,
-          fontWeight: 'bold',
-          fontSize: 17,
-        },
-        loadingView: {
-          position: 'absolute',
-          bottom: 10,
-          left: 0,
-          right: 0,
-          justifyContent: 'center',
-          alignItems: 'center',
-        },
-        loadingText: {
-          fontWeight: 'bold',
-          color: colorScheme === 'dark' ? '#53c412' : 'black',
-          backgroundColor: colorScheme === 'dark' ? '#1d1d1d' : '#f0f0f0',
-          padding: 12,
-          zIndex: 2,
-          borderRadius: 12,
-          borderColor: colorScheme === 'dark' ? '#53c412' : 'black',
-          borderWidth: 1.3,
         },
         animeList: {
           justifyContent: 'center',
           paddingVertical: 10,
           flexDirection: 'row',
-          backgroundColor: colorScheme === 'dark' ? '#1d1d1d' : '#f5f5f5',
+          backgroundColor: isDark ? '#18181b' : '#f1f5f9',
           marginHorizontal: 16,
           borderRadius: 12,
-          elevation: 2,
+          elevation: 1,
         },
         animeListIndex: {
           marginLeft: 4,
@@ -989,81 +1206,22 @@ function useStyles() {
           fontSize: 12,
           color: theme.colors.onPrimaryContainer,
         },
-        animeSearchListDetailText: {
-          fontWeight: 'bold',
-          color: 'white',
-        },
-        listContainer: {
-          flexDirection: 'row',
-          backgroundColor: colorScheme === 'dark' ? '#333' : '#fff',
-          borderRadius: 16,
-          elevation: 4,
-        },
-        listImage: {
-          width: 80,
-          height: 150,
-          borderTopLeftRadius: 16,
-          borderBottomLeftRadius: 16,
-        },
-        listTitle: {
-          flexShrink: 1,
-          paddingHorizontal: 5,
-          justifyContent: 'center',
-          flex: 1,
-          marginLeft: 5,
-        },
-        ratingInfo: {
-          flex: 1,
-        },
-        statusInfo: {
-          padding: 4,
-          borderRadius: 6,
-        },
-        synopsisFilmText: {
-          color: 'gray',
-          fontWeight: 'bold',
-        },
-        releaseInfo: {
-          justifyContent: 'flex-end',
-          flex: 1,
-        },
-        searchHistoryHeader: {
-          flexDirection: 'row',
-          alignItems: 'center',
-          padding: 8,
-          backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#f0f0f0',
-          borderRadius: 7,
-          marginBottom: 5,
-        },
-        searchHistoryContainer: {
-          position: 'absolute',
-          top: 60,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 10,
-          backgroundColor: colorScheme === 'dark' ? '#121212' : '#fafafa',
-          padding: 10,
-          elevation: 5,
-        },
-        searchHistoryScrollBox: {
-          backgroundColor: colorScheme === 'dark' ? '#1e1e1e' : '#f8f8f8',
-          padding: 4,
-        },
-        searchHistoryItemContainer: {
-          backgroundColor: colorScheme === 'light' ? '#e3e5e6' : '#252525',
-          borderRadius: 9,
-          marginVertical: 3,
-        },
         closeSearchResult: {
           position: 'absolute',
-          backgroundColor: '#dd0d0dd3',
-          borderRadius: 20,
-          padding: 10,
-          paddingHorizontal: 12,
-          bottom: 20,
-          right: 10,
-          zIndex: 1,
+          backgroundColor: 'rgba(239, 68, 68, 0.9)',
+          borderRadius: 24,
+          width: 44,
+          height: 44,
+          justifyContent: 'center',
+          alignItems: 'center',
+          bottom: 24,
+          right: 18,
+          elevation: 4,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.3,
+          shadowRadius: 4,
+          zIndex: 10,
         },
         sectionHeaderContainer: {
           flexDirection: 'row',
@@ -1073,7 +1231,7 @@ function useStyles() {
           justifyContent: 'center',
         },
         sectionHeaderText: {
-          fontSize: 16,
+          fontSize: 14,
           fontWeight: 'bold',
           marginHorizontal: 10,
           color: theme.colors.primary,
@@ -1084,7 +1242,7 @@ function useStyles() {
           backgroundColor: theme.colors.outlineVariant,
         },
       }),
-    [globalStyles.text.color, colorScheme, theme],
+    [globalStyles.text.color, isDark, theme],
   );
 }
 

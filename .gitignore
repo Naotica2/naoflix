@@ -82,31 +82,40 @@ mykeystore.txt
 
 # env
 .env
+.env.*
+.env*.local
+!.example.env
 
-# expo dist
-dist
+# expo
+.expo/
+dist/
+web-build/
 
 # etc
 .git*
 !.github
-
 !.gitignore
+!.gitmodules
 google-services.json
 
 #keystore
-*.keystore
 *.jks
 android/app/*.keystore
 android/app/*.jks
+!android/app/debug.keystore
 
-#android keystore
+#android keystore & build artifacts
 desktop/src-tauri/target/
+*.apk
+*.ap_
+*.aab
+android/app/release/
 
 #keystore
 android/gradle.properties
 android/app/gradle.properties
 
-# Test & scratch files
+# Test, output & scratch files
 tes-webhook.js
 scratch_test*.js
 test-nimegami.js
@@ -114,6 +123,10 @@ test_nimegami.js
 nimegami_test.html
 detail.html
 patch_*.js
+output/
+
+# TypeScript build info
+*.tsbuildinfo
 
 # Log files
 *.log
@@ -131,3 +144,4 @@ pg-backend/
 
 # Supabase temp
 supabase/.temp/
+supabase/.branches/

@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabaseClient';
 import { Platform } from 'react-native';
+import { tSync } from '../misc/LanguageContext';
 
 const MAX_AVATAR_SIZE_MB = 4;
 const MAX_BANNER_SIZE_MB = 6;
@@ -47,7 +48,7 @@ async function uploadToSupabase(
   try {
     const isValidSize = await validateFileSize(uri, maxMb);
     if (!isValidSize) {
-      return { error: `Ukuran file terlalu besar! Maksimal ${maxMb}MB` };
+      return { error: tSync('profileStorage.fileTooLarge', { maxMb }) };
     }
 
     const { ext, type } = getFileInfo(uri);
@@ -64,7 +65,7 @@ async function uploadToSupabase(
     const { data: session } = await supabase.auth.getSession();
     const token = session?.session?.access_token;
 
-    if (!token) return { error: 'Belum login' };
+    if (!token) return { error: tSync('profileStorage.notLoggedIn') };
 
     const supabaseUrl = process.env.SUPABASE_URL || '';
     const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${fileName}`;
@@ -80,7 +81,7 @@ async function uploadToSupabase(
     if (!response.ok) {
       const errRes = await response.json();
       console.warn('Upload error:', errRes);
-      return { error: 'Gagal mengunggah gambar' };
+      return { error: tSync('profileStorage.uploadFailed') };
     }
 
     const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(fileName);
@@ -88,7 +89,7 @@ async function uploadToSupabase(
 
   } catch (error) {
     console.error(`Error uploading ${bucket}:`, error);
-    return { error: 'Terjadi kesalahan sistem' };
+    return { error: tSync('profileStorage.systemError') };
   }
 }
 

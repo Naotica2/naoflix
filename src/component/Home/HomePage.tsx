@@ -1,132 +1,200 @@
 import MaterialIcon from '@react-native-vector-icons/material-icons';
 import Icon from '@react-native-vector-icons/fontawesome';
-import { StackActions, useFocusEffect, useNavigation } from '@react-navigation/native';
-import { NavigationProp } from '@react-navigation/native';
+import { StackActions, useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { FlashList, ListRenderItemInfo } from '@shopify/flash-list';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Dimensions,
+  AppState,
   StyleSheet,
   Text,
-  ToastAndroid,
   TouchableOpacity as TouchableOpacityReactNative,
   useColorScheme,
   useWindowDimensions,
   View,
 } from 'react-native';
-import { RefreshControl, ScrollView, TextInput as RNTextInput } from 'react-native-gesture-handler';
-import { useTheme, FAB, Portal, Dialog, Button, TextInput } from 'react-native-paper';
-import Reanimated from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import useGlobalStyles from '../../assets/style';
+import { RefreshControl, ScrollView } from 'react-native-gesture-handler';
+import { Button, Dialog, Portal, TextInput } from 'react-native-paper';
 import {
   EpisodeBaruHomeContext,
   ComicsListContext,
-  NovelListContext,
 } from '../../misc/context';
-import { RootStackNavigator } from '../../types/navigation';
-import { EpisodeBaruHome, NewAnimeList, JadwalAnime } from '../../types/anime';
+import { TranslationKey, useLanguage } from '../../misc/LanguageContext';
+import { AnimeSchedule, NewAnimeList } from '../../types/anime';
 import { HistoryItemKey } from '../../types/databaseTarget';
 import { HistoryJSON } from '../../types/historyJSON';
 import AnimeAPI from '../../utils/AnimeAPI';
+import { fetchLatestAnimeIndoDomain } from '../../utils/scrapers/animeindo';
 import { DatabaseManager, useModifiedKeyValueIfFocused } from '../../utils/DatabaseManager';
+import { getSourceVersion } from '../../utils/sourcePreferences';
+import offlineDownloadManager from '../../utils/offlineDownloadManager';
+import { ActiveDownloadItem } from '../../types/offlineAnime';
 import {
   LatestComicsRelease,
   getLatestComicsReleases,
+  getPopularComicsReleases,
+  getManhwaWebtoonReleases,
 } from '../../utils/scrapers/comicsv2';
-import { LatestNovel, getLatestNovels } from '../../utils/scrapers/meionovel';
-import { getTrending, MovieboxSearchItem } from '../../utils/scrapers/moviebox';
+import { getTrending } from '../../utils/scrapers/lk21';
+import { FilmSearchItem } from '../../types/film';
 
 import Announcment from '../misc/Announcement';
 import { ListAnimeComponent } from '../misc/ListAnimeComponent';
 import ImageLoading from '../misc/ImageLoading';
 import DarkOverlay from '../misc/DarkOverlay';
 import { TouchableOpacity } from '../misc/TouchableOpacityRNGH';
-import { ShowSkeletonLoading, RenderScrollComponent } from './AnimePage';
-import { LegendList } from '@legendapp/list';
+import { MIN_IMAGE_WIDTH, ShowSkeletonLoading, RenderScrollComponent } from './AnimePage';
+
+type CategoryFilter = 'all' | 'anime' | 'film' | 'comics';
+
+const CATEGORY_TABS: { key: CategoryFilter; labelKey: TranslationKey }[] = [
+  { key: 'all', labelKey: 'lists.filterAll' },
+  { key: 'anime', labelKey: 'lists.filterAnime' },
+  { key: 'film', labelKey: 'lists.filterFilms' },
+  { key: 'comics', labelKey: 'lists.filterComics' },
+];
 
 const HERO_ITEM_COUNT = 5;
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-function HeroCarousel({ data, navigation }: { data: NewAnimeList[]; navigation: any }) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+const HorizontalSeparator8 = () => <View style={{ width: 8 }} />;
+const HorizontalSeparator10 = () => <View style={{ width: 10 }} />;
+
+interface HeroItem {
+  id: string;
+  title: string;
+  thumbnailUrl: string;
+  badge: string;
+  subtitle?: string;
+  actionText: string;
+  onPress: () => void;
+  onDetailPress?: () => void;
+}
+
+const HeroCarousel = memo(function HeroCarousel({
+  items,
+  isDark,
+  screenWidth,
+}: {
+  items: HeroItem[];
+  isDark: boolean;
+  screenWidth: number;
+}) {
+  const isFocused = useIsFocused();
+  const { t } = useLanguage();
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isAppActive, setIsAppActive] = useState(() => AppState.currentState === 'active');
   const flatListRef = useRef<any>(null);
   const autoScrollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const heroData = useMemo(() => data.slice(0, HERO_ITEM_COUNT), [data]);
-  const HERO_HEIGHT = Math.round(SCREEN_WIDTH * 0.55);
+  const heroData = useMemo(() => items.slice(0, HERO_ITEM_COUNT), [items]);
+  const HERO_HEIGHT = useMemo(() => Math.min(Math.round(screenWidth * 0.58), 280), [screenWidth]);
 
-  const startAutoScroll = useCallback(() => {
-    if (autoScrollRef.current) clearInterval(autoScrollRef.current);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', nextState => {
+      setIsAppActive(nextState === 'active');
+    });
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    if (autoScrollRef.current) {
+      clearInterval(autoScrollRef.current);
+      autoScrollRef.current = null;
+    }
+    if (!isFocused || !isAppActive || heroData.length <= 1) return;
+
     autoScrollRef.current = setInterval(() => {
       setActiveIndex(prev => {
         const next = (prev + 1) % heroData.length;
         flatListRef.current?.scrollToIndex({ index: next, animated: true });
         return next;
       });
-    }, 4000);
-  }, [heroData.length]);
+    }, 4500);
+
+    return () => {
+      if (autoScrollRef.current) {
+        clearInterval(autoScrollRef.current);
+        autoScrollRef.current = null;
+      }
+    };
+  }, [heroData.length, isFocused, isAppActive]);
 
   useEffect(() => {
-    if (heroData.length > 1) startAutoScroll();
-    return () => { if (autoScrollRef.current) clearInterval(autoScrollRef.current); };
-  }, [heroData.length, startAutoScroll]);
+    setActiveIndex(0);
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [items]);
 
-  if (heroData.length === 0) return null;
+  const renderItem = useCallback(
+    ({ item }: { item: HeroItem }) => (
+      <View style={[heroStyles.slide, { width: screenWidth, height: HERO_HEIGHT }]}>
+        <ImageLoading
+          resizeMode="cover"
+          source={{ uri: item.thumbnailUrl }}
+          fallbackSearchTitle={item.title}
+          style={[heroStyles.image, { width: screenWidth, height: HERO_HEIGHT }]}>
+          <View style={heroStyles.gradientTop} />
+          <View style={heroStyles.gradientBottom} />
 
-  const renderItem = ({ item }: { item: NewAnimeList }) => (
-    <TouchableOpacityReactNative
-      activeOpacity={0.9}
-      onPress={() => {
-        navigation.dispatch(StackActions.push('FromUrl', {
-          title: item.title,
-          link: item.streamingLink,
-          type: 'anime',
-        }));
-      }}
-      style={[heroStyles.slide, { height: HERO_HEIGHT }]}>
-      <ImageLoading
-        resizeMode="cover"
-        source={{ uri: item.thumbnailUrl }}
-        fallbackSearchTitle={item.title}
-        style={[heroStyles.image, { height: HERO_HEIGHT }]}>
-        <View style={heroStyles.gradientTop} />
-        <View style={heroStyles.gradientBottom} />
-        <View style={heroStyles.overlay}>
-          <View style={heroStyles.infoContainer}>
-            <Text numberOfLines={2} style={heroStyles.title}>{item.title}</Text>
-            <Text numberOfLines={1} style={heroStyles.episode}>{item.episode}</Text>
-            <View style={heroStyles.ctaButton}>
-              <Icon name="play" size={14} color="#fff" />
-              <Text style={heroStyles.ctaText}>Tonton</Text>
+          <View style={heroStyles.overlayContent}>
+            <View style={heroStyles.badgeRow}>
+              <View style={heroStyles.typeBadge}>
+                <Text style={heroStyles.typeBadgeText}>{item.badge}</Text>
+              </View>
+              {item.subtitle ? (
+                <Text style={heroStyles.episodeText} numberOfLines={1}>
+                  {item.subtitle}
+                </Text>
+              ) : null}
+            </View>
+
+            <Text numberOfLines={2} style={heroStyles.title}>
+              {item.title}
+            </Text>
+
+            <View style={heroStyles.actionsRow}>
+              <TouchableOpacityReactNative
+                activeOpacity={0.8}
+                onPress={item.onPress}
+                style={heroStyles.playButton}>
+                <Icon name="play" size={13} color="#ffffff" style={{ marginRight: 6 }} />
+                <Text style={heroStyles.playButtonText}>{item.actionText}</Text>
+              </TouchableOpacityReactNative>
+
+              {item.onDetailPress && (
+                <TouchableOpacityReactNative
+                  activeOpacity={0.8}
+                  onPress={item.onDetailPress}
+                  style={heroStyles.detailButton}>
+                  <Text style={heroStyles.detailButtonText}>{t('player.detail')}</Text>
+                </TouchableOpacityReactNative>
+              )}
             </View>
           </View>
-        </View>
-      </ImageLoading>
-    </TouchableOpacityReactNative>
+        </ImageLoading>
+      </View>
+    ),
+    [screenWidth, HERO_HEIGHT, t],
   );
+
+  if (heroData.length === 0) return null;
 
   return (
     <View style={[heroStyles.container, { height: HERO_HEIGHT }]}>
       <FlashList
-        // @ts-ignore
-        estimatedItemSize={200}
         ref={flatListRef}
         data={heroData}
         renderItem={renderItem}
-        keyExtractor={(item, i) => `hero-${i}`}
+        keyExtractor={item => item.id}
         horizontal
         pagingEnabled
+        drawDistance={screenWidth}
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={e => {
-          const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+          const idx = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
           setActiveIndex(idx);
         }}
       />
-      {/* Dot indicators */}
+
       <View style={heroStyles.dotsContainer}>
         {heroData.map((_, i) => (
           <View
@@ -134,8 +202,13 @@ function HeroCarousel({ data, navigation }: { data: NewAnimeList[]; navigation: 
             style={[
               heroStyles.dot,
               {
-                backgroundColor: i === activeIndex ? '#3b82f6' : (isDark ? '#444' : '#ccc'),
-                width: i === activeIndex ? 18 : 6,
+                backgroundColor:
+                  i === activeIndex
+                    ? '#3b82f6'
+                    : isDark
+                    ? 'rgba(255,255,255,0.3)'
+                    : 'rgba(0,0,0,0.2)',
+                width: i === activeIndex ? 16 : 5,
               },
             ]}
           />
@@ -143,232 +216,509 @@ function HeroCarousel({ data, navigation }: { data: NewAnimeList[]; navigation: 
       </View>
     </View>
   );
-}
-
-const heroStyles = StyleSheet.create({
-  container: { marginBottom: 12 },
-  slide: { width: SCREEN_WIDTH },
-  image: { width: SCREEN_WIDTH },
-  gradientBottom: {
-    position: 'absolute', bottom: 0, left: 0, right: 0, height: '55%',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  gradientTop: {
-    position: 'absolute', top: 0, left: 0, right: 0, height: '20%',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  overlay: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16 },
-  infoContainer: {},
-  title: { fontSize: 20, fontWeight: '800', color: '#fff', marginBottom: 4, textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 4 },
-  episode: { fontSize: 13, color: '#ddd', marginBottom: 10, fontWeight: '500' },
-  ctaButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#3b82f6', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, alignSelf: 'flex-start', gap: 6 },
-  ctaText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  dotsContainer: { flexDirection: 'row', justifyContent: 'center', gap: 5, position: 'absolute', bottom: 8, left: 0, right: 0 },
-  dot: { height: 6, borderRadius: 3 },
 });
 
-function ContinueWatchingRow({ navigation }: { navigation: any }) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const globalStyles = useGlobalStyles();
+const heroStyles = StyleSheet.create({
+  container: { marginBottom: 8 },
+  slide: { width: '100%' },
+  image: { width: '100%' },
+  gradientTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '25%',
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+  },
+  gradientBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '65%',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+  },
+  overlayContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingBottom: 22,
+  },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 8 },
+  typeBadge: { backgroundColor: '#3b82f6', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4 },
+  typeBadgeText: { color: '#ffffff', fontSize: 10, fontWeight: '700' },
+  episodeText: { color: '#e2e8f0', fontSize: 12, fontWeight: '500' },
+  title: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#ffffff',
+    lineHeight: 22,
+    marginBottom: 10,
+    letterSpacing: -0.2,
+  },
+  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  playButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 6,
+  },
+  playButtonText: { color: '#ffffff', fontSize: 13, fontWeight: '700' },
+  detailButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  detailButtonText: { color: '#ffffff', fontSize: 13, fontWeight: '600' },
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    bottom: 8,
+    left: 0,
+    right: 0,
+    gap: 5,
+  },
+  dot: { height: 4, borderRadius: 2 },
+});
+
+const ContinueWatchingRow = memo(function ContinueWatchingRow({
+  navigation,
+  category,
+  isDark,
+}: {
+  navigation: any;
+  category: CategoryFilter;
+  isDark: boolean;
+}) {
+  const { t } = useLanguage();
 
   const historyKeys = useModifiedKeyValueIfFocused(
     'historyKeyCollectionsOrder',
-    state => JSON.parse(state) as HistoryItemKey[],
+    state => {
+      try {
+        const parsed = JSON.parse(state);
+        return Array.isArray(parsed) ? (parsed as HistoryItemKey[]) : [];
+      } catch {
+        return [] as HistoryItemKey[];
+      }
+    },
     [] as HistoryItemKey[],
   );
 
   const [historyItems, setHistoryItems] = useState<(HistoryJSON & { contentType: string })[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
     const loadItems = async () => {
-      const items: (HistoryJSON & { contentType: string })[] = [];
+      if (category === 'comics') {
+        if (!cancelled) setHistoryItems([]);
+        return;
+      }
+
+      const candidates: { key: HistoryItemKey; isMovie: boolean }[] = [];
       for (const key of historyKeys.slice(0, 20)) {
+        const parts = key.split(':');
+        const isComics = parts[parts.length - 2] === 'true';
+        const isMovie = parts[parts.length - 1] === 'true';
+        if (isComics) continue;
+        if (category === 'film' && !isMovie) continue;
+        if (category === 'anime' && isMovie) continue;
+        candidates.push({ key, isMovie });
+        if (candidates.length >= 12) break;
+      }
+
+      if (candidates.length === 0) {
+        if (!cancelled) {
+          setHistoryItems(prev => (prev.length === 0 ? prev : []));
+        }
+        return;
+      }
+
+      const rawList = await Promise.all(
+        candidates.map(c => DatabaseManager.get(c.key).catch(() => null)),
+      );
+      if (cancelled) return;
+
+      const items: (HistoryJSON & { contentType: string })[] = [];
+      for (let i = 0; i < rawList.length; i++) {
+        const raw = rawList[i];
+        if (!raw) continue;
         try {
-          const parts = key.split(':');
-          const isComics = parts[parts.length - 2] === 'true';
-          const isMovie = parts[parts.length - 1] === 'true';
-          if (isComics) continue;
-          const raw = await DatabaseManager.get(key);
-          if (raw) {
-            const parsed: HistoryJSON = JSON.parse(raw);
-            if (parsed.link?.includes('meionovel')) continue; // Exclude novels
-            if (parsed.title && parsed.link) {
-              let contentType = 'anime';
-              if (parsed.link.startsWith('film://')) {
-                contentType = 'movie';
-              } else if (isMovie || parsed.isMovie) {
-                contentType = 'movie';
-              }
-              items.push({ ...parsed, contentType });
-            }
+          const parsed: HistoryJSON = JSON.parse(raw);
+          if (parsed.link?.includes('meionovel')) continue;
+          if (parsed.title && parsed.link) {
+            const contentType =
+              candidates[i].isMovie || parsed.link.startsWith('film://') || parsed.isMovie
+                ? 'movie'
+                : 'anime';
+            items.push({ ...parsed, contentType });
           }
+          if (items.length >= 8) break;
         } catch {}
-        if (items.length >= 10) break;
       }
       setHistoryItems(items);
     };
     loadItems();
-  }, [historyKeys]);
+    return () => {
+      cancelled = true;
+    };
+  }, [historyKeys, category]);
 
-  if (historyItems.length === 0) return null;
+  const renderCwItem = useCallback(
+    ({ item }: ListRenderItemInfo<HistoryJSON & { contentType: string }>) => (
+      <TouchableOpacityReactNative
+        style={cwStyles.card}
+        activeOpacity={0.8}
+        onPress={() => {
+          navigation.dispatch(
+            StackActions.push('FromUrl', {
+              title: item.title,
+              link: item.link,
+              type: item.contentType,
+              historyData: item,
+              thumbnailUrl: item.thumbnailUrl,
+            }),
+          );
+        }}>
+        <ImageLoading
+          resizeMode="cover"
+          source={{ uri: item.thumbnailUrl }}
+          fallbackSearchTitle={item.contentType === 'anime' ? item.title : undefined}
+          style={cwStyles.thumbnail}>
+          <DarkOverlay transparent={0.35} />
+          <View style={cwStyles.playIconCircle}>
+            <Icon name="play" size={11} color="#ffffff" style={{ marginLeft: 2 }} />
+          </View>
+          {(item.lastDuration ?? 0) > 0 && (
+            <View style={cwStyles.progressBarContainer}>
+              <View
+                style={[
+                  cwStyles.progressBarFill,
+                  { width: `${Math.min(100, ((item.lastDuration || 0) / 1440) * 100)}%` },
+                ]}
+              />
+            </View>
+          )}
+        </ImageLoading>
+        <Text
+          numberOfLines={1}
+          style={[cwStyles.title, { color: isDark ? '#f3f4f6' : '#1f2937' }]}>
+          {item.title}
+        </Text>
+        {item.episode ? (
+          <Text numberOfLines={1} style={cwStyles.subtitle}>
+            {item.episode}
+          </Text>
+        ) : null}
+      </TouchableOpacityReactNative>
+    ),
+    [isDark, navigation],
+  );
+
+  if (category === 'comics' || historyItems.length === 0) return null;
 
   return (
     <View style={sectionStyles.container}>
       <View style={sectionStyles.header}>
-        <Text style={[sectionStyles.title, { color: isDark ? '#f0f0f0' : '#1a1a1a' }]}>
-          Lanjutkan Menonton
+        <Text style={[sectionStyles.title, { color: isDark ? '#f3f4f6' : '#111827' }]}>
+          {t('home.continueWatching')}
         </Text>
       </View>
       <FlashList
-        // @ts-ignore
-        estimatedItemSize={200}
         data={historyItems}
         horizontal
+        drawDistance={260}
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
-        ItemSeparatorComponent={() => <View style={{ width: 10 }} />}
-        removeClippedSubviews={true}
-        initialNumToRender={6}
-        maxToRenderPerBatch={6}
-        windowSize={5}
-        renderItem={({ item }) => (
-          <TouchableOpacityReactNative
-            style={{ width: 140 }}
-            onPress={() => {
-              navigation.dispatch(StackActions.push('FromUrl', {
-                title: item.title,
-                link: item.link,
-                type: item.contentType,
-                historyData: item,
-                thumbnailUrl: item.thumbnailUrl,
-              }));
-            }}>
-            <ImageLoading
-              resizeMode="cover"
-              source={{ uri: item.thumbnailUrl }}
-              fallbackSearchTitle={item.contentType === 'anime' ? item.title : undefined}
-              style={{ width: 140, height: 80, borderRadius: 8 }}>
-              <DarkOverlay transparent={0.4} />
-              {(item.lastDuration ?? 0) > 0 && (
-                <View style={{ position: 'absolute', bottom: 4, left: 4, right: 4 }}>
-                  <View style={{ height: 3, backgroundColor: '#333', borderRadius: 2 }}>
-                    <View style={{ height: 3, backgroundColor: '#3b82f6', borderRadius: 2, width: `${Math.min(100, ((item.lastDuration || 0) / 1440) * 100)}%` }} />
-                  </View>
-                </View>
-              )}
-            </ImageLoading>
-            <Text numberOfLines={2} style={{ fontSize: 12, fontWeight: '600', color: isDark ? '#e0e0e0' : '#222', marginTop: 4 }}>
-              {item.title}
-            </Text>
-            {item.episode && (
-              <Text numberOfLines={1} style={{ fontSize: 11, color: '#888', marginTop: 1 }}>
-                {item.episode}
-              </Text>
-            )}
-          </TouchableOpacityReactNative>
-        )}
-        keyExtractor={(item, i) => `cw-${i}`}
+        contentContainerStyle={cwStyles.listPadding}
+        ItemSeparatorComponent={HorizontalSeparator10}
+        renderItem={renderCwItem}
+        keyExtractor={(item, i) => item.link || `${item.title}-${i}`}
       />
     </View>
   );
-}
+});
+
+const cwStyles = StyleSheet.create({
+  listPadding: { paddingHorizontal: 16 },
+  card: { width: 144 },
+  thumbnail: {
+    width: 144,
+    height: 84,
+    borderRadius: 8,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playIconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  progressBarContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    overflow: 'hidden',
+  },
+  progressBarFill: { height: 3, backgroundColor: '#3b82f6' },
+  title: { fontSize: 12, fontWeight: '600', marginTop: 5 },
+  subtitle: { fontSize: 11, color: '#888888', marginTop: 1 },
+});
 
 const sectionStyles = StyleSheet.create({
-  container: { paddingVertical: 4, marginBottom: 8 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 10 },
-  title: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
+  container: { paddingVertical: 6, marginBottom: 6 },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  title: { fontSize: 16, fontWeight: '700', letterSpacing: -0.2 },
   seeMoreBtn: { flexDirection: 'row', alignItems: 'center' },
-  seeMoreText: { fontSize: 13, fontWeight: '600', color: '#3b82f6' },
+  seeMoreText: { fontSize: 12, fontWeight: '600', color: '#3b82f6' },
+  listPadding: { paddingHorizontal: 16 },
 });
 
 const filmCardStyles = StyleSheet.create({
-  container: { width: 120 },
-  poster: { width: 120, height: 170, borderRadius: 8 },
+  container: { width: 116 },
+  poster: { width: 116, height: 164, borderRadius: 8 },
   title: { fontSize: 12, fontWeight: '600', marginTop: 4 },
   metaRow: { flexDirection: 'row', gap: 4, marginTop: 2, alignItems: 'center' },
   badge: { paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3 },
-  badgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
-  imdb: { fontSize: 10, color: '#f5c518', fontWeight: '600' },
+  badgeText: { color: '#ffffff', fontSize: 9, fontWeight: '700' },
+  imdb: { fontSize: 10, color: '#f59e0b', fontWeight: '600' },
 });
 
-const FilmCard = memo(({ item, navigation }: { item: MovieboxSearchItem; navigation: any }) => {
-  const isDark = useColorScheme() === 'dark';
+const FilmCard = memo(function FilmCard({
+  item,
+  navigation,
+  isDark,
+}: {
+  item: FilmSearchItem;
+  navigation: any;
+  isDark: boolean;
+}) {
+  const onPress = useCallback(() => {
+    navigation.dispatch(StackActions.push('FilmDetail', { data: item }));
+  }, [item, navigation]);
+
   return (
-    <TouchableOpacity
-      style={filmCardStyles.container}
-      onPress={() => navigation.dispatch(StackActions.push('FilmDetail', { data: item }))}>
+    <TouchableOpacity style={filmCardStyles.container} onPress={onPress}>
       <ImageLoading
         resizeMode="cover"
-        source={{ uri: item.cover?.url }}
+        source={{ uri: item.cover || item.poster }}
         style={filmCardStyles.poster}
       />
-      <Text numberOfLines={2} style={[filmCardStyles.title, { color: isDark ? '#e0e0e0' : '#222' }]}>
+      <Text numberOfLines={2} style={[filmCardStyles.title, { color: isDark ? '#f3f4f6' : '#1f2937' }]}>
         {item.title}
       </Text>
       <View style={filmCardStyles.metaRow}>
-        <View style={[filmCardStyles.badge, { backgroundColor: item.subjectType === 2 ? '#f59e0b' : '#3b82f6' }]}>
+        <View
+          style={[
+            filmCardStyles.badge,
+            { backgroundColor: item.subjectType === 2 ? '#f59e0b' : '#3b82f6' },
+          ]}>
           <Text style={filmCardStyles.badgeText}>{item.subjectType === 2 ? 'TV' : 'Movie'}</Text>
         </View>
-        {item.imdbRatingValue ? (
-          <Text style={filmCardStyles.imdb}>★ {item.imdbRatingValue}</Text>
-        ) : null}
+        {item.imdbRatingValue ? <Text style={filmCardStyles.imdb}>{item.imdbRatingValue}</Text> : null}
       </View>
     </TouchableOpacity>
   );
 });
 
-function SectionRow<T>({
-  title, data, renderItem, navigation, seeMoreType, seeMoreLabel,
+const ScheduleCard = memo(function ScheduleCard({
+  item,
+  navigation,
+  isDark,
+}: {
+  item: AnimeSchedule;
+  navigation: any;
+  isDark: boolean;
+}) {
+  const { t } = useLanguage();
+  const onPress = useCallback(() => {
+    navigation.dispatch(
+      StackActions.push('FromUrl', {
+        title: item.title,
+        link: item.link,
+        thumbnailUrl: item.thumbnailUrl,
+        type: 'anime',
+      }),
+    );
+  }, [item.link, item.thumbnailUrl, item.title, navigation]);
+
+  return (
+    <TouchableOpacityReactNative
+      activeOpacity={0.8}
+      style={scheduleCardStyles.container}
+      onPress={onPress}>
+      <View
+        style={[
+          scheduleCardStyles.posterWrap,
+          { backgroundColor: isDark ? '#18181b' : '#e2e8f0' },
+        ]}>
+        <ImageLoading
+          resizeMode="cover"
+          source={{ uri: item.thumbnailUrl || '' }}
+          fallbackSearchTitle={item.title}
+          style={scheduleCardStyles.poster}
+        />
+        <LinearGradient
+          colors={['transparent', 'rgba(0, 0, 0, 0.78)']}
+          style={scheduleCardStyles.gradientOverlay}
+          pointerEvents="none"
+        />
+        <View style={scheduleCardStyles.badgeContainer} pointerEvents="none">
+          <View style={scheduleCardStyles.badge}>
+            <Text style={scheduleCardStyles.badgeText} numberOfLines={1}>
+              {item.estimatedEpisode || t('common.today')}
+            </Text>
+          </View>
+          {item.estimatedTime ? (
+            <View style={scheduleCardStyles.timeBadge}>
+              <Text style={scheduleCardStyles.timeBadgeText}>{item.estimatedTime}</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+      <Text
+        numberOfLines={2}
+        style={[scheduleCardStyles.title, { color: isDark ? '#e0e0e0' : '#222222' }]}>
+        {item.title}
+      </Text>
+    </TouchableOpacityReactNative>
+  );
+});
+
+const scheduleCardStyles = StyleSheet.create({
+  container: { width: 116 },
+  posterWrap: {
+    width: 116,
+    height: 174,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  poster: { width: '100%', height: '100%' },
+  gradientOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '45%',
+  },
+  badgeContainer: {
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    right: 6,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 4,
+  },
+  badge: {
+    backgroundColor: 'rgba(59, 130, 246, 0.92)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    flexShrink: 1,
+  },
+  badgeText: { color: '#ffffff', fontSize: 10, fontWeight: '700' },
+  timeBadge: {
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  timeBadgeText: { color: '#f8fafc', fontSize: 9, fontWeight: '700' },
+  title: { fontSize: 12, fontWeight: '600', lineHeight: 16, marginTop: 6, paddingHorizontal: 2 },
+});
+
+function SectionRowInner<T>({
+  title,
+  data,
+  renderItem,
+  navigation,
+  isDark,
+  seeMoreType,
+  onCustomSeeMorePress,
+  customSeeMoreLabel,
 }: {
   title: string;
   data: T[] | null | undefined;
   renderItem: (info: ListRenderItemInfo<T>) => React.ReactElement;
   navigation: any;
+  isDark: boolean;
   seeMoreType?: string;
-  seeMoreLabel?: string;
+  onCustomSeeMorePress?: () => void;
+  customSeeMoreLabel?: string;
 }) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const slicedData = useMemo(() => data?.slice(0, 25), [data]);
+  const { t } = useLanguage();
+  const slicedData = useMemo(() => data?.slice(0, 20), [data]);
+
+  const keyExtractor = useCallback(
+    (item: any, i: number) =>
+      `${title}-${item?.streamingLink || item?.detailUrl || item?.link || item?.id || item?.title || i}`,
+    [title],
+  );
 
   return (
     <View style={sectionStyles.container}>
       <View style={sectionStyles.header}>
-        <Text style={[sectionStyles.title, { color: isDark ? '#f0f0f0' : '#1a1a1a' }]}>{title}</Text>
-        {seeMoreType && (
+        <Text style={[sectionStyles.title, { color: isDark ? '#f3f4f6' : '#111827' }]}>{title}</Text>
+        {onCustomSeeMorePress ? (
+          <TouchableOpacity style={sectionStyles.seeMoreBtn} onPress={onCustomSeeMorePress}>
+            <Text style={sectionStyles.seeMoreText}>{customSeeMoreLabel || t('common.seeMore')}</Text>
+            <MaterialIcon name="chevron-right" size={16} color="#3b82f6" />
+          </TouchableOpacity>
+        ) : seeMoreType ? (
           <TouchableOpacity
             style={sectionStyles.seeMoreBtn}
             disabled={!data || data.length === 0}
             onPress={() => navigation.dispatch(StackActions.push('SeeMore', { type: seeMoreType }))}>
-            <Text style={sectionStyles.seeMoreText}>{seeMoreLabel || 'Lihat Semua'}</Text>
+            <Text style={sectionStyles.seeMoreText}>{t('common.seeMore')}</Text>
             <MaterialIcon name="chevron-right" size={16} color="#3b82f6" />
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
       {!data ? (
         <ShowSkeletonLoading />
       ) : slicedData && slicedData.length > 0 ? (
-        <FlashList
-          // @ts-ignore
-          estimatedItemSize={200}
+          <FlashList
           renderScrollComponent={RenderScrollComponent}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
+          contentContainerStyle={sectionStyles.listPadding}
           horizontal
+          drawDistance={300}
           data={slicedData}
+          extraData={isDark}
           renderItem={renderItem}
-          keyExtractor={(item: any, i: number) => `${title}-${i}`}
+          keyExtractor={keyExtractor}
           showsHorizontalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={{ width: 8 }} />}
-          removeClippedSubviews={true}
-          initialNumToRender={8}
-          maxToRenderPerBatch={8}
-          windowSize={5}
+          ItemSeparatorComponent={HorizontalSeparator8}
         />
       ) : (
-        <View style={{ paddingHorizontal: 16, paddingVertical: 20 }}>
-          <Text style={{ color: isDark ? '#777' : '#999', fontSize: 13, fontStyle: 'italic' }}>
-            Data tidak ditemukan atau gagal memuat. Tarik ke bawah untuk memuat ulang.
+        <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+          <Text style={{ color: isDark ? '#6b7280' : '#9ca3af', fontSize: 12, fontStyle: 'italic' }}>
+            {t('home.emptyOrOffline')}
           </Text>
         </View>
       )}
@@ -376,323 +726,844 @@ function SectionRow<T>({
   );
 }
 
-const WEEKDAYS_ORDER = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+const SectionRow = memo(SectionRowInner) as typeof SectionRowInner;
 
-function getTodayIndonesian(): string {
-  const jsDay = new Date().getDay();
-  return WEEKDAYS_ORDER[jsDay === 0 ? 6 : jsDay - 1];
-}
-
-function JadwalRilisSection({ navigation }: { navigation: any }) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const [jadwalData, setJadwalData] = useState<JadwalAnime | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+const ActiveDownloadBanner = memo(function ActiveDownloadBanner({
+  navigation,
+  isDark,
+}: {
+  navigation: any;
+  isDark: boolean;
+}) {
+  const { t } = useLanguage();
+  const [activeDownloads, setActiveDownloads] = useState<ActiveDownloadItem[]>([]);
 
   useEffect(() => {
-    setIsLoading(true);
-    AnimeAPI.jadwalAnime()
-      .then(res => {
-        setJadwalData(res);
-        if (res && Object.keys(res).length > 0) {
-          const today = getTodayIndonesian();
-          setSelectedDay(res[today] ? today : Object.keys(res)[0]);
-        }
-      })
-      .catch(() => ToastAndroid.show('Gagal memuat jadwal rilis', ToastAndroid.SHORT))
-      .finally(() => setIsLoading(false));
+    return offlineDownloadManager.subscribeProgress(activeMap => {
+      setActiveDownloads(Array.from(activeMap.values()));
+    });
   }, []);
 
-  if (isLoading && !jadwalData) {
-    return (
-      <View style={{ padding: 20, alignItems: 'center' }}>
-        <ActivityIndicator size="small" color="#3b82f6" />
-      </View>
-    );
-  }
+  if (activeDownloads.length === 0) return null;
 
-  if (!jadwalData || Object.keys(jadwalData).length === 0) return null;
+  const downloadingItem = activeDownloads.find(d => d.status === 'downloading');
+  const networkPausedCount = activeDownloads.filter(
+    d => d.status === 'paused' && d.pauseReason === 'network',
+  ).length;
+  const isAllPaused = !downloadingItem;
+  const primaryItem = downloadingItem || activeDownloads[0];
 
-  const days = WEEKDAYS_ORDER.filter(d => jadwalData[d] !== undefined);
-  const currentDayData = selectedDay ? jadwalData[selectedDay] || [] : [];
+  const bannerText = downloadingItem
+    ? t('home.bannerDownloading', {
+        count: activeDownloads.length,
+        percent: downloadingItem.progressPercent,
+      })
+    : networkPausedCount > 0
+      ? t('home.bannerNetworkPaused', { count: networkPausedCount })
+      : t('home.bannerPaused', { count: activeDownloads.length });
 
   return (
-    <View style={[sectionStyles.container, { marginHorizontal: 16, backgroundColor: isDark ? '#151515' : '#fff', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: isDark ? '#222' : '#eee' }]}>
-      <Text style={[sectionStyles.title, { color: isDark ? '#f0f0f0' : '#1a1a1a', marginBottom: 12 }]}>
-        Jadwal Rilis Minggu Ini
-      </Text>
-      {/* Day tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 12 }}>
-        {days.map(day => (
-          <TouchableOpacityReactNative
-            key={day}
-            onPress={() => setSelectedDay(day)}
-            style={{
-              paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
-              backgroundColor: day === selectedDay ? '#3b82f6' : (isDark ? '#222' : '#f0f0f0'),
-            }}>
-            <Text style={{ fontWeight: '700', fontSize: 12, color: day === selectedDay ? '#fff' : (isDark ? '#aaa' : '#666') }}>
-              {day}
-            </Text>
-          </TouchableOpacityReactNative>
-        ))}
-      </ScrollView>
-      {/* Anime list for selected day */}
-      {currentDayData.length > 0 ? (
-        currentDayData.slice(0, 10).map((anime, idx) => (
-          <TouchableOpacity
-            key={anime.title}
-            style={{
-              paddingVertical: 10, paddingHorizontal: 12,
-              backgroundColor: isDark ? (idx % 2 === 0 ? '#1a1a1a' : '#151515') : (idx % 2 === 0 ? '#f9f9f9' : '#fff'),
-              borderRadius: 6, marginBottom: 2,
-            }}
-            onPress={() => {
-              navigation.dispatch(StackActions.push('FromUrl', {
-                title: anime.title,
-                link: anime.link,
-                type: 'anime',
-              }));
-            }}>
-            <Text numberOfLines={1} style={{ color: isDark ? '#ccc' : '#333', fontSize: 13, fontWeight: '500' }}>
-              {anime.title}
-            </Text>
-          </TouchableOpacity>
-        ))
-      ) : (
-        <Text style={{ color: '#888', fontSize: 13, textAlign: 'center', paddingVertical: 12 }}>
-          Tidak ada jadwal untuk hari ini
-        </Text>
-      )}
-    </View>
+    <TouchableOpacityReactNative
+      activeOpacity={0.8}
+      onPress={() => navigation.navigate('MyListsPage', { initialTab: 'downloads' })}
+      style={[
+        styles.activeDlStrip,
+        {
+          backgroundColor: isAllPaused
+            ? isDark
+              ? '#241e12'
+              : '#fffbeb'
+            : isDark
+              ? '#121D33'
+              : '#EFF6FF',
+          borderColor: isAllPaused
+            ? isDark
+              ? '#b45309'
+              : '#fcd34d'
+            : isDark
+              ? '#1E3A8A'
+              : '#BFDBFE',
+        },
+      ]}>
+      <View style={styles.activeDlStripTop}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+          <MaterialIcon
+            name={isAllPaused ? 'pause-circle-outline' : 'download'}
+            size={16}
+            color={isAllPaused ? '#f59e0b' : '#3B82F6'}
+          />
+          <Text
+            style={[
+              styles.activeDlStripText,
+              {
+                color: isAllPaused
+                  ? isDark
+                    ? '#fcd34d'
+                    : '#b45309'
+                  : isDark
+                    ? '#93C5FD'
+                    : '#1E40AF',
+              },
+            ]}
+            numberOfLines={1}>
+            {bannerText}
+          </Text>
+        </View>
+        <Icon
+          name="chevron-right"
+          size={11}
+          color={isAllPaused ? '#f59e0b' : '#3B82F6'}
+        />
+      </View>
+      <View
+        style={[
+          styles.activeDlTrack,
+          {
+            backgroundColor: isAllPaused
+              ? 'rgba(245, 158, 11, 0.25)'
+              : isDark
+                ? 'rgba(59, 130, 246, 0.25)'
+                : '#DBEAFE',
+          },
+        ]}>
+        <View
+          style={[
+            styles.activeDlFill,
+            {
+              width: `${Math.max(4, primaryItem.progressPercent)}%`,
+              backgroundColor: isAllPaused ? '#f59e0b' : '#3B82F6',
+            },
+          ]}
+        />
+      </View>
+    </TouchableOpacityReactNative>
   );
-}
+});
 
 function HomePage({ navigation }: { navigation: any }) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const insets = useSafeAreaInsets();
+  const isDark = useColorScheme() === 'dark';
+  const { width: windowWidth } = useWindowDimensions();
+  const cardWidth = useMemo(
+    () => Math.max((windowWidth - 48) / 3, MIN_IMAGE_WIDTH),
+    [windowWidth],
+  );
+  const { t } = useLanguage();
 
   const { paramsState: animeData, setParamsState: setAnimeData } = useContext(EpisodeBaruHomeContext);
   const { paramsState: comicsData, setParamsState: setComicsData } = useContext(ComicsListContext);
-  const { paramsState: novelData, setParamsState: setNovelData } = useContext(NovelListContext);
 
-
+  const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>('all');
   const [refresh, setRefresh] = useState(false);
-  const [filmData, setFilmData] = useState<MovieboxSearchItem[] | null>(null);
-  
+  const [filmData, setFilmData] = useState<FilmSearchItem[] | null>(null);
+  const [offlineCount, setOfflineCount] = useState(
+    () => offlineDownloadManager.getOfflineAnimeList().length,
+  );
+
+  const [popularComics, setPopularComics] = useState<LatestComicsRelease[] | null>(null);
+  const [latestFilms, setLatestFilms] = useState<FilmSearchItem[] | null>(null);
+  const [animeMovies, setAnimeMovies] = useState<NewAnimeList[] | null>(null);
+  const [manhwaList, setManhwaList] = useState<LatestComicsRelease[] | null>(null);
+  const [scheduleData, setScheduleData] = useState<Record<string, AnimeSchedule[]> | null>(null);
+
   const [joinDialogVisible, setJoinDialogVisible] = useState(false);
   const [roomIdInput, setRoomIdInput] = useState('');
 
-  const withTimeout = useCallback((ms: number): AbortSignal => {
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), ms);
-    return controller.signal;
+  const lastSourceVersionRef = useRef(getSourceVersion());
+
+  useEffect(() => {
+    return offlineDownloadManager.subscribeList(list => {
+      setOfflineCount(list.length);
+    });
   }, []);
 
-  useEffect(() => {
-    if (comicsData !== undefined) return;
-    const signal = withTimeout(20000);
-    getLatestComicsReleases(1, signal).then(z => setComicsData?.(z)).catch(() => setComicsData?.([]));
-  }, [setComicsData, comicsData, withTimeout]);
-
-  useEffect(() => {
-    if (novelData !== undefined) return;
-    const signal = withTimeout(20000);
-    getLatestNovels(1, signal).then(z => setNovelData?.(z)).catch(() => setNovelData?.([]));
-  }, [setNovelData, novelData, withTimeout]);
+  // Automatically refresh anime & comic feeds whenever active source changes in ExtensionManager
+  useFocusEffect(
+    useCallback(() => {
+      const currentVersion = getSourceVersion();
+      if (currentVersion !== lastSourceVersionRef.current) {
+        lastSourceVersionRef.current = currentVersion;
+        setAnimeMovies(null);
+        setScheduleData(null);
+        setComicsData?.(undefined);
+        setPopularComics(null);
+        setManhwaList(null);
+        setRefresh(true);
+        AnimeAPI.home()
+          .then(data => {
+            if (data) setAnimeData?.(data);
+          })
+          .catch(() => {})
+          .finally(() => setRefresh(false));
+      }
+    }, [setAnimeData, setComicsData]),
+  );
 
   useEffect(() => {
     if (filmData !== null) return;
-    const signal = withTimeout(20000);
-    getTrending(0, signal).then(z => setFilmData(z)).catch(() => setFilmData([]));
-  }, [filmData, withTimeout]);
+    const controller = new AbortController();
+    getTrending(0, controller.signal)
+      .then(res => setFilmData(res))
+      .catch(() => setFilmData([]));
+    return () => controller.abort();
+  }, [filmData]);
+
+  useEffect(() => {
+    if (comicsData !== undefined) return;
+    const controller = new AbortController();
+    getLatestComicsReleases(1, controller.signal)
+      .then(res => setComicsData?.(res))
+      .catch(() => setComicsData?.([]));
+    return () => controller.abort();
+  }, [comicsData, setComicsData]);
+
+  useEffect(() => {
+    if ((selectedCategory === 'all' || selectedCategory === 'comics') && popularComics === null) {
+      const controller = new AbortController();
+      getPopularComicsReleases(1, controller.signal)
+        .then(res => setPopularComics(res || []))
+        .catch(() => setPopularComics([]));
+      return () => controller.abort();
+    }
+  }, [selectedCategory, popularComics]);
+
+  useEffect(() => {
+    if (selectedCategory === 'comics' && manhwaList === null) {
+      const controller = new AbortController();
+      getManhwaWebtoonReleases(1, controller.signal)
+        .then(res => setManhwaList(res || []))
+        .catch(() => setManhwaList([]));
+      return () => controller.abort();
+    }
+  }, [selectedCategory, manhwaList]);
+
+  useEffect(() => {
+    if ((selectedCategory === 'all' || selectedCategory === 'film') && latestFilms === null) {
+      const controller = new AbortController();
+      getTrending(1, controller.signal)
+        .then(res => setLatestFilms(res || []))
+        .catch(() => setLatestFilms([]));
+      return () => controller.abort();
+    }
+  }, [selectedCategory, latestFilms]);
+
+  useEffect(() => {
+    if (selectedCategory === 'anime' && animeMovies === null) {
+      const controller = new AbortController();
+      AnimeAPI.searchMovies(1, controller.signal)
+        .then(res => {
+          const list: NewAnimeList[] = (res.result || []).map(r => ({
+            title: r.title,
+            thumbnailUrl: r.thumbnailUrl,
+            episode: 'Movie',
+            streamingLink: r.animeUrl,
+            releaseDate: '',
+            releaseDay: '',
+          }));
+          setAnimeMovies(list);
+        })
+        .catch(() => setAnimeMovies([]));
+      return () => controller.abort();
+    }
+  }, [selectedCategory, animeMovies]);
+
+  useEffect(() => {
+    if (selectedCategory === 'anime' && scheduleData === null) {
+      const controller = new AbortController();
+      AnimeAPI.jadwalAnime(controller.signal)
+        .then(res => setScheduleData(res || {}))
+        .catch(() => setScheduleData({}));
+      return () => controller.abort();
+    }
+  }, [selectedCategory, scheduleData]);
+
+  const todayIndo = useMemo(() => {
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    return days[new Date().getDay()];
+  }, []);
+
+  const todayDisplay = t(`schedule.dayFull.${todayIndo}` as TranslationKey);
+
+  const todayAnime = useMemo(() => {
+    if (scheduleData && scheduleData[todayIndo]?.length) {
+      return scheduleData[todayIndo];
+    }
+    if (!animeData?.jadwalAnime) return [];
+    return animeData.jadwalAnime[todayIndo] || [];
+  }, [scheduleData, animeData?.jadwalAnime, todayIndo]);
+
+  const heroItems: HeroItem[] = useMemo(() => {
+    if (selectedCategory === 'comics') {
+      return (comicsData || []).slice(0, 5).map((item, idx) => ({
+        id: `hero-comic-${idx}`,
+        title: item.title,
+        thumbnailUrl: item.thumbnailUrl,
+        badge: t('home.heroBadgeComic'),
+        subtitle: item.latestChapter || t('home.heroBadgeLatestEp'),
+        actionText: t('home.actionRead'),
+        onPress: () => {
+          navigation.dispatch(
+            StackActions.push('FromUrl', {
+              title: item.title,
+              link: item.detailUrl,
+              type: 'comics',
+            }),
+          );
+        },
+        onDetailPress: () => {
+          navigation.dispatch(
+            StackActions.push('FromUrl', {
+              title: item.title,
+              link: item.detailUrl,
+              type: 'comics',
+              forceDetail: true,
+            }),
+          );
+        },
+      }));
+    }
+
+    if (selectedCategory === 'film') {
+      return (filmData || []).slice(0, 5).map((item, idx) => ({
+        id: `hero-film-${idx}`,
+        title: item.title,
+        thumbnailUrl: item.cover || item.poster,
+        badge: item.subjectType === 2 ? t('home.heroBadgeSeries') : t('home.heroBadgeMovie'),
+        subtitle: item.imdbRatingValue ? `Rating: ${item.imdbRatingValue}` : item.year || '',
+        actionText: t('home.actionWatch'),
+        onPress: () => {
+          navigation.dispatch(StackActions.push('FilmDetail', { data: item }));
+        },
+        onDetailPress: () => {
+          navigation.dispatch(StackActions.push('FilmDetail', { data: item }));
+        },
+      }));
+    }
+
+    return (animeData?.newAnime || []).slice(0, 5).map((item, idx) => ({
+      id: `hero-anime-${idx}`,
+      title: item.title,
+      thumbnailUrl: item.thumbnailUrl,
+      badge: t('home.heroBadgeAnime'),
+      subtitle: item.episode,
+      actionText: t('home.actionWatch'),
+      onPress: () => {
+        navigation.dispatch(
+          StackActions.push('FromUrl', {
+            title: item.title,
+            link: item.streamingLink,
+            type: 'anime',
+          }),
+        );
+      },
+      onDetailPress: () => {
+        navigation.dispatch(
+          StackActions.push('FromUrl', {
+            title: item.title,
+            link: item.streamingLink,
+            type: 'anime',
+            forceDetail: true,
+          }),
+        );
+      },
+    }));
+  }, [selectedCategory, comicsData, filmData, animeData, navigation, t]);
 
   const onRefresh = useCallback(() => {
     setRefresh(true);
     setAnimeData?.(val => (val ? { ...val, newAnime: [] } : { newAnime: [], jadwalAnime: {} }));
     setComicsData?.(undefined);
-    setNovelData?.(undefined);
     setFilmData(null);
-    AnimeAPI.home()
-      .then(data => { setAnimeData?.(data); setRefresh(false); })
-      .catch(() => { ToastAndroid.show('Gagal terhubung ke server.', ToastAndroid.SHORT); setRefresh(false); });
-    getLatestComicsReleases().then(z => setComicsData?.(z)).catch(() => setComicsData?.([]));
-    getLatestNovels().then(z => setNovelData?.(z)).catch(() => setNovelData?.([]));
-    getTrending().then(z => setFilmData(z)).catch(() => setFilmData([]));
-  }, [setAnimeData, setComicsData, setNovelData]);
+    setPopularComics(null);
+    setLatestFilms(null);
+    setAnimeMovies(null);
+    setScheduleData(null);
+    setManhwaList(null);
+
+    Promise.all([
+      fetchLatestAnimeIndoDomain().catch(() => {}).then(() => AnimeAPI.home()).then(data => setAnimeData?.(data)).catch(() => {}),
+      getLatestComicsReleases(1).then(z => setComicsData?.(z)).catch(() => setComicsData?.([])),
+      getTrending(0).then(z => setFilmData(z)).catch(() => setFilmData([])),
+    ]).finally(() => {
+      setRefresh(false);
+    });
+  }, [setAnimeData, setComicsData]);
 
   const renderAnimeItem = useCallback(
     ({ item }: ListRenderItemInfo<NewAnimeList>) => (
-      <ListAnimeComponent newAnimeData={item} key={'ep' + item.title + item.episode} navigationProp={navigation} />
-    ), [navigation],
+      <ListAnimeComponent
+        newAnimeData={item}
+        type="anime"
+        navigationProp={navigation}
+        isDark={isDark}
+        cardWidth={cardWidth}
+      />
+    ),
+    [cardWidth, isDark, navigation],
   );
 
   const renderComicItem = useCallback(
     ({ item }: ListRenderItemInfo<LatestComicsRelease>) => (
-      <ListAnimeComponent newAnimeData={item} type="comics" key={'comic' + item.title} navigationProp={navigation} />
-    ), [navigation],
-  );
-
-  const renderNovelItem = useCallback(
-    ({ item }: ListRenderItemInfo<LatestNovel>) => (
       <ListAnimeComponent
         newAnimeData={item}
-        type="novel"
-        key={'novel' + item.title}
+        type="comics"
         navigationProp={navigation}
+        isDark={isDark}
+        cardWidth={cardWidth}
       />
-    ), [navigation],
+    ),
+    [cardWidth, isDark, navigation],
   );
 
   const renderFilmItem = useCallback(
-    ({ item }: ListRenderItemInfo<MovieboxSearchItem>) => (
-      <FilmCard item={item} navigation={navigation} />
-    ), [navigation],
+    ({ item }: ListRenderItemInfo<FilmSearchItem>) => (
+      <FilmCard item={item} navigation={navigation} isDark={isDark} />
+    ),
+    [isDark, navigation],
   );
 
+  const renderScheduleItem = useCallback(
+    ({ item }: ListRenderItemInfo<AnimeSchedule>) => (
+      <ScheduleCard item={item} navigation={navigation} isDark={isDark} />
+    ),
+    [isDark, navigation],
+  );
+
+  const openSchedule = useCallback(() => {
+    navigation.dispatch(StackActions.push('AnimeSchedule'));
+  }, [navigation]);
+
+  const isAppearingOffline =
+    (animeData?.newAnime?.length ?? 0) === 0 && filmData !== null && filmData.length === 0;
+
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? '#0f0f0f' : '#fafafa' }}>
+    <View style={{ flex: 1, backgroundColor: isDark ? '#0a0a0a' : '#f8fafc' }}>
       <Announcment />
-      <LegendList
-        recycleItems
-        renderScrollComponent={(p: any) => <ScrollView {...p} />}
+
+      <ActiveDownloadBanner navigation={navigation} isDark={isDark} />
+
+      <ScrollView
         style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refresh}
             onRefresh={onRefresh}
-            progressBackgroundColor={isDark ? '#0f0f0f' : '#fafafa'}
-            colors={['#3b82f6', '#ff9a56']}
+            progressBackgroundColor={isDark ? '#121212' : '#ffffff'}
+            colors={['#3b82f6']}
           />
-        }
-        ListHeaderComponent={
-          <>
-            {/* Hero Carousel */}
-            {animeData && animeData.newAnime.length > 0 && (
-              <HeroCarousel data={animeData.newAnime} navigation={navigation} />
-            )}
+        }>
+        {heroItems.length > 0 && (
+          <HeroCarousel items={heroItems} isDark={isDark} screenWidth={windowWidth} />
+        )}
 
-            {/* Quick Actions */}
-            <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
-              <TouchableOpacityReactNative
-                onPress={() => setJoinDialogVisible(true)}
-                activeOpacity={0.8}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  backgroundColor: 'rgba(99, 102, 241, 0.15)',
-                  paddingVertical: 12,
-                  paddingHorizontal: 16,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: 'rgba(99, 102, 241, 0.3)',
-                }}
-              >
-                <View style={{ backgroundColor: '#6366f1', padding: 8, borderRadius: 8 }}>
-                  <Icon name="group" size={14} color="#fff" />
-                </View>
-                <View style={{ marginLeft: 12, flex: 1 }}>
-                  <Text style={{ color: isDark ? '#fff' : '#1a1a1a', fontWeight: '700', fontSize: 14 }}>
-                    Gabung Room Nobar
+        <View style={styles.categoryPillsContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryPillsContent}>
+            {CATEGORY_TABS.map(tab => {
+              const isActive = selectedCategory === tab.key;
+              return (
+                <TouchableOpacityReactNative
+                  key={tab.key}
+                  onPress={() => setSelectedCategory(tab.key)}
+                  activeOpacity={0.7}
+                  style={[
+                    styles.pillButton,
+                    {
+                      backgroundColor: isActive
+                        ? '#3b82f6'
+                        : isDark
+                        ? '#171717'
+                        : '#f1f5f9',
+                      borderColor: isActive ? '#2563eb' : isDark ? '#262626' : '#e2e8f0',
+                    },
+                  ]}>
+                  <Text
+                    style={[
+                      styles.pillText,
+                      {
+                        color: isActive ? '#ffffff' : isDark ? '#9ca3af' : '#475569',
+                        fontWeight: isActive ? '700' : '500',
+                      },
+                    ]}>
+                    {t(tab.labelKey)}
                   </Text>
-                  <Text style={{ color: isDark ? '#aaa' : '#666', fontSize: 12, marginTop: 2 }}>
-                    Punya ID Room? Masukkan di sini.
+                </TouchableOpacityReactNative>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {isAppearingOffline && (
+          <View style={styles.offlineCardWrap}>
+            <View
+              style={[
+                styles.offlineCard,
+                {
+                  backgroundColor: isDark ? '#141417' : '#ffffff',
+                  borderColor: isDark ? '#27272a' : '#e2e8f0',
+                },
+              ]}>
+              <View style={styles.offlineHeader}>
+                <Icon name="wifi" size={16} color="#3b82f6" />
+                <Text style={[styles.offlineTitle, { color: isDark ? '#f4f4f6' : '#0f172a' }]}>
+                  {t('home.offlineBannerTitle')}
+                </Text>
+              </View>
+              <Text style={[styles.offlineDesc, { color: isDark ? '#9ca3af' : '#64748b' }]}>
+                {t('home.offlineBannerDesc')}
+              </Text>
+              <View style={styles.offlineActions}>
+                {offlineCount > 0 ? (
+                  <TouchableOpacityReactNative
+                    activeOpacity={0.8}
+                    style={styles.offlinePrimaryBtn}
+                    onPress={() => navigation.navigate('MyListsPage', { initialTab: 'downloads' })}>
+                    <MaterialIcon name="download-done" size={16} color="#ffffff" />
+                    <Text style={styles.offlinePrimaryText}>
+                      {t('home.openOfflineVideos', { count: offlineCount })}
+                    </Text>
+                  </TouchableOpacityReactNative>
+                ) : null}
+                <TouchableOpacityReactNative
+                  activeOpacity={0.8}
+                  style={[
+                    styles.offlineSecondaryBtn,
+                    { borderColor: isDark ? '#3f3f46' : '#cbd5e1' },
+                  ]}
+                  onPress={onRefresh}>
+                  <MaterialIcon
+                    name="refresh"
+                    size={16}
+                    color={isDark ? '#e4e4e7' : '#334155'}
+                  />
+                  <Text
+                    style={[
+                      styles.offlineSecondaryText,
+                      { color: isDark ? '#e4e4e7' : '#334155' },
+                    ]}>
+                    {t('player.retry')}
                   </Text>
-                </View>
-                <MaterialIcon name="chevron-right" size={20} color="#6366f1" />
-              </TouchableOpacityReactNative>
+                </TouchableOpacityReactNative>
+              </View>
             </View>
+          </View>
+        )}
 
-            {/* Continue Watching */}
-            <ContinueWatchingRow navigation={navigation} />
+        {selectedCategory !== 'comics' && (
+          <View style={{ paddingHorizontal: 16, marginBottom: 8, flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacityReactNative
+              onPress={() => navigation.dispatch(StackActions.push('AnimeSchedule'))}
+              activeOpacity={0.8}
+              style={[
+                styles.nobarBar,
+                {
+                  flex: 1,
+                  backgroundColor: isDark ? '#141417' : '#ffffff',
+                  borderColor: isDark ? '#27272a' : '#e2e8f0',
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                },
+              ]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                <Icon name="calendar" size={13} color="#3b82f6" />
+                <Text
+                  style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#f4f4f6' : '#0f172a' }}>
+                  {t('home.animeSchedule')}
+                </Text>
+              </View>
+              <MaterialIcon name="chevron-right" size={16} color="#3b82f6" />
+            </TouchableOpacityReactNative>
 
-            {/* Episode Terbaru */}
+            <TouchableOpacityReactNative
+              onPress={() => setJoinDialogVisible(true)}
+              activeOpacity={0.8}
+              style={[
+                styles.nobarBar,
+                {
+                  backgroundColor: isDark ? '#141417' : '#ffffff',
+                  borderColor: isDark ? '#27272a' : '#e2e8f0',
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                },
+              ]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Icon name="users" size={12} color="#3b82f6" />
+                <Text
+                  style={{ fontSize: 12, fontWeight: '600', color: isDark ? '#f4f4f6' : '#0f172a' }}>
+                  {t('player.nobar')}
+                </Text>
+              </View>
+            </TouchableOpacityReactNative>
+          </View>
+        )}
+
+        <ContinueWatchingRow navigation={navigation} category={selectedCategory} isDark={isDark} />
+
+        {selectedCategory === 'all' && (
+          <>
             <SectionRow
-              title="Episode Terbaru"
+              title={t('home.sectionAnimeNew')}
               data={animeData?.newAnime}
               renderItem={renderAnimeItem}
               navigation={navigation}
+              isDark={isDark}
               seeMoreType="AnimeList"
             />
-
-            {/* Komik Terbaru */}
             <SectionRow
-              title="Komik Terbaru"
-              data={comicsData}
-              renderItem={renderComicItem}
-              navigation={navigation}
-              seeMoreType="ComicsList"
-            />
-
-            {/* Novel Terbaru */}
-            <SectionRow
-              title="Novel Terbaru"
-              data={novelData}
-              renderItem={renderNovelItem}
-              navigation={navigation}
-              seeMoreType="NovelsList"
-            />
-
-            {/* Film Terbaru */}
-            <SectionRow
-              title="Film Terbaru"
+              title={t('home.sectionFilmTrending')}
               data={filmData}
               renderItem={renderFilmItem}
               navigation={navigation}
+              isDark={isDark}
+              seeMoreType="FilmList"
+            />
+            <SectionRow
+              title={t('home.sectionComicsNew')}
+              data={comicsData}
+              renderItem={renderComicItem}
+              navigation={navigation}
+              isDark={isDark}
+              seeMoreType="ComicsList"
+            />
+            <SectionRow
+              title={t('home.sectionFilmCinema')}
+              data={latestFilms}
+              renderItem={renderFilmItem}
+              navigation={navigation}
+              isDark={isDark}
+              seeMoreType="FilmList"
+            />
+            <SectionRow
+              title={t('home.sectionComicsPopular')}
+              data={popularComics}
+              renderItem={renderComicItem}
+              navigation={navigation}
+              isDark={isDark}
+              seeMoreType="ComicsPopular"
+            />
+          </>
+        )}
+
+        {selectedCategory === 'anime' && (
+          <>
+            <SectionRow
+              title={t('home.sectionLatestEp')}
+              data={animeData?.newAnime}
+              renderItem={renderAnimeItem}
+              navigation={navigation}
+              isDark={isDark}
+              seeMoreType="AnimeList"
+            />
+            {todayAnime.length > 0 && (
+              <SectionRow
+                title={t('home.sectionTodayRelease', { day: todayDisplay })}
+                data={todayAnime}
+                renderItem={renderScheduleItem}
+                navigation={navigation}
+                isDark={isDark}
+                onCustomSeeMorePress={openSchedule}
+                customSeeMoreLabel={t('home.fullSchedule')}
+              />
+            )}
+            <SectionRow
+              title={t('home.sectionAnimeMovies')}
+              data={animeMovies}
+              renderItem={renderAnimeItem}
+              navigation={navigation}
+              isDark={isDark}
+              seeMoreType="AnimeList"
+            />
+          </>
+        )}
+
+        {selectedCategory === 'film' && (
+          <>
+            <SectionRow
+              title={t('home.sectionFilmTrending')}
+              data={filmData}
+              renderItem={renderFilmItem}
+              navigation={navigation}
+              isDark={isDark}
+              seeMoreType="FilmList"
+            />
+            <SectionRow
+              title={t('home.sectionFilmCinema')}
+              data={latestFilms}
+              renderItem={renderFilmItem}
+              navigation={navigation}
+              isDark={isDark}
               seeMoreType="FilmList"
             />
           </>
-        }
-        data={[]}
-        keyExtractor={(_, i) => String(i)}
-        renderItem={() => <View />}
-        ListFooterComponent={
-          <View style={{ paddingBottom: 20 }}>
-            {/* Jadwal Rilis */}
-            <JadwalRilisSection navigation={navigation} />
-          </View>
-        }
-        showsVerticalScrollIndicator={false}
-      />
+        )}
 
-      <Portal>
-        <Dialog visible={joinDialogVisible} onDismiss={() => setJoinDialogVisible(false)} style={{ backgroundColor: isDark ? '#1e1e1e' : '#fff' }}>
-          <Dialog.Title style={{ color: isDark ? '#fff' : '#000' }}>Join Nobar</Dialog.Title>
-          <Dialog.Content>
-            <Text style={{ color: isDark ? '#aaa' : '#666', marginBottom: 10 }}>
-              Masukkan ID Room dari temanmu untuk menonton bersama.
-            </Text>
-            <TextInput
-              label="ID Room"
-              value={roomIdInput}
-              onChangeText={setRoomIdInput}
-              mode="outlined"
-              autoCapitalize="none"
-              textColor={isDark ? '#fff' : '#000'}
-              style={{ backgroundColor: isDark ? '#121212' : '#fff' }}
-              activeOutlineColor="#3b82f6"
+        {selectedCategory === 'comics' && (
+          <>
+            <SectionRow
+              title={t('home.sectionLatestChapters')}
+              data={comicsData}
+              renderItem={renderComicItem}
+              navigation={navigation}
+              isDark={isDark}
+              seeMoreType="ComicsList"
             />
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setJoinDialogVisible(false)} textColor={isDark ? '#aaa' : '#666'}>Batal</Button>
-            <Button 
-              onPress={() => {
-                if (roomIdInput.trim()) {
-                  setJoinDialogVisible(false);
-                  navigation.dispatch(StackActions.push('JoinNobar', { roomId: roomIdInput.trim() }));
-                }
-              }} 
-              textColor="#3b82f6"
-            >
-              Join
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+            <SectionRow
+              title={t('home.sectionComicsPopular')}
+              data={popularComics}
+              renderItem={renderComicItem}
+              navigation={navigation}
+              isDark={isDark}
+              seeMoreType="ComicsPopular"
+            />
+            <SectionRow
+              title={t('home.sectionManhwa')}
+              data={manhwaList}
+              renderItem={renderComicItem}
+              navigation={navigation}
+              isDark={isDark}
+              seeMoreType="ComicsManhwa"
+            />
+          </>
+        )}
+
+        <View style={{ height: 28 }} />
+      </ScrollView>
+
+      {joinDialogVisible && (
+        <Portal>
+          <Dialog
+            visible
+            onDismiss={() => setJoinDialogVisible(false)}
+            style={{ backgroundColor: isDark ? '#1a1a1a' : '#ffffff', borderRadius: 12 }}>
+            <Dialog.Title style={{ color: isDark ? '#ffffff' : '#111827', fontSize: 16 }}>
+              {t('home.joinRoomDialogTitle')}
+            </Dialog.Title>
+            <Dialog.Content>
+              <Text style={{ color: isDark ? '#9ca3af' : '#64748b', fontSize: 13, marginBottom: 12 }}>
+                {t('home.joinRoomDialogDesc')}
+              </Text>
+              <TextInput
+                label={t('home.joinRoomIdLabel')}
+                value={roomIdInput}
+                onChangeText={setRoomIdInput}
+                mode="outlined"
+                autoCapitalize="none"
+                textColor={isDark ? '#ffffff' : '#000000'}
+                style={{ backgroundColor: isDark ? '#121212' : '#ffffff' }}
+                activeOutlineColor="#3b82f6"
+              />
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button
+                onPress={() => setJoinDialogVisible(false)}
+                textColor={isDark ? '#9ca3af' : '#64748b'}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                onPress={() => {
+                  const raw = roomIdInput.trim();
+                  if (!raw) return;
+                  const queryMatch = raw.match(/[?&](?:room|roomId)=([A-Za-z0-9_-]+)/i);
+                  const pathMatch = raw.match(/(?:naoflix|aniflix):\/\/nobar\/([A-Za-z0-9_-]+)/i);
+                  const cleanRoomId = (
+                    queryMatch?.[1] ||
+                    pathMatch?.[1] ||
+                    raw.replace(/[^A-Za-z0-9_-]/g, '')
+                  ).toUpperCase();
+                  if (cleanRoomId) {
+                    setJoinDialogVisible(false);
+                    setRoomIdInput('');
+                    navigation.dispatch(StackActions.push('JoinNobar', { roomId: cleanRoomId }));
+                  }
+                }}
+                textColor="#3b82f6">
+                {t('home.joinBtn')}
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
+      )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  categoryPillsContainer: { marginVertical: 4 },
+  categoryPillsContent: { paddingHorizontal: 16, gap: 8, flexDirection: 'row' },
+  pillButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+  },
+  pillText: { fontSize: 13 },
+  nobarBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  offlineCardWrap: { paddingHorizontal: 16, marginTop: 4, marginBottom: 8 },
+  offlineCard: { borderRadius: 10, borderWidth: 1, padding: 14 },
+  offlineHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  offlineTitle: { fontSize: 14, fontWeight: '700' },
+  offlineDesc: { fontSize: 12, lineHeight: 17, marginBottom: 12 },
+  offlineActions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  offlinePrimaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  offlinePrimaryText: { color: '#ffffff', fontSize: 12, fontWeight: '700' },
+  offlineSecondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  offlineSecondaryText: { fontSize: 12, fontWeight: '600' },
+  activeDlStrip: {
+    marginHorizontal: 12,
+    marginTop: 4,
+    marginBottom: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  activeDlStripTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  activeDlStripText: {
+    fontSize: 12,
+    fontWeight: '700',
+    flex: 1,
+  },
+  activeDlTrack: {
+    height: 3,
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginTop: 6,
+  },
+  activeDlFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+});
 
 export default memo(HomePage);

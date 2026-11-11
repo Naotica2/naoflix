@@ -6,5 +6,9 @@
   "comics": [
     "Jika chapter komik kurang update, coba lakukan pencarian ulang judul dan dari setiap hasil yang ada, cari yang paling update"
   ],
-  "film": []
+  "film": [],
+  "donghua": [
+    "Gunakan judul donghua atau singkatan resminya agar hasil pencarian lebih akurat",
+    "Pastikan ejaan judul donghua sudah benar"
+  ]
 }

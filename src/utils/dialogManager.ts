@@ -1,3 +1,5 @@
+import { tSync } from '../misc/LanguageContext';
+
 type DialogFn = React.Dispatch<React.SetStateAction<boolean>>;
 type ContentFn = React.Dispatch<
   React.SetStateAction<{
@@ -32,7 +34,7 @@ class DialogManager {
               DialogManager.setDialogVisible(false);
             }
           : () => this.setDialogVisible(false),
-      })) ?? [{ text: 'Ok', onPress: () => this.setDialogVisible(false) }],
+      })) ?? [{ text: tSync('common.ok'), onPress: () => this.setDialogVisible(false) }],
     });
     DialogManager.setDialogVisible?.(true);
   }

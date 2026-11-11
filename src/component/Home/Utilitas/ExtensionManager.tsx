@@ -3,13 +3,16 @@ import { View, StyleSheet, ToastAndroid, ScrollView } from 'react-native';
 import { Avatar, Switch, Text, useTheme } from 'react-native-paper';
 import { DatabaseManager } from '../../../utils/DatabaseManager';
 import { invalidateSourceCache } from '../../../utils/sourcePreferences';
+import { setWebViewOpen } from '../../../utils/CFBypass';
+import DialogManager from '../../../utils/dialogManager';
+import { tSync, TranslationKey, useLanguage } from '../../../misc/LanguageContext';
 
 interface SourceConfig {
   id: string;
   name: string;
-  type: 'Anime' | 'Comics';
+  type: 'Anime' | 'Comics' | 'Movies';
   language: string;
-  description: string;
+  descKey: TranslationKey;
   isDefault: boolean;
   isActive: boolean;
 }
@@ -20,7 +23,7 @@ const INITIAL_SOURCES: SourceConfig[] = [
     name: 'Komiku',
     type: 'Comics',
     language: 'ID',
-    description: 'Sumber komik default dengan koleksi manga, manhwa, dan manhua.',
+    descKey: 'utils.extDescKomiku',
     isDefault: true,
     isActive: true,
   },
@@ -29,7 +32,7 @@ const INITIAL_SOURCES: SourceConfig[] = [
     name: 'MyNimeku',
     type: 'Comics',
     language: 'ID',
-    description: 'Sumber komik dari MyNimeku.',
+    descKey: 'utils.extDescMynimeku',
     isDefault: false,
     isActive: false,
   },
@@ -38,16 +41,7 @@ const INITIAL_SOURCES: SourceConfig[] = [
     name: 'Bacakomik',
     type: 'Comics',
     language: 'ID',
-    description: 'Sumber komik dari Bacakomik.',
-    isDefault: false,
-    isActive: false,
-  },
-  {
-    id: 'mangadex',
-    name: 'MangaDex',
-    type: 'Comics',
-    language: 'EN / GL',
-    description: 'Sumber baca komik global dari MangaDex.',
+    descKey: 'utils.extDescBacakomik',
     isDefault: false,
     isActive: false,
   },
@@ -56,16 +50,34 @@ const INITIAL_SOURCES: SourceConfig[] = [
     name: 'Shinigami',
     type: 'Comics',
     language: 'ID',
-    description: 'Sumber komik dengan koleksi Manhwa, dan Manhua terlengkap.',
+    descKey: 'utils.extDescShinigami',
     isDefault: false,
     isActive: false,
   },
   {
-    id: 'komikcast',
-    name: 'Komikcast',
+    id: 'komikindo',
+    name: 'Komikindo',
     type: 'Comics',
     language: 'ID',
-    description: 'Sumber baca komik dari komikcast',
+    descKey: 'utils.extDescKomikindo',
+    isDefault: false,
+    isActive: false,
+  },
+  {
+    id: 'luvyaa',
+    name: 'Luvyaa (NSFW)',
+    type: 'Comics',
+    language: 'ID',
+    descKey: 'utils.extDescLuvyaa',
+    isDefault: false,
+    isActive: false,
+  },
+  {
+    id: 'voratoon',
+    name: 'Voratoon',
+    type: 'Comics',
+    language: 'ID',
+    descKey: 'utils.extDescVoratoon',
     isDefault: false,
     isActive: false,
   },
@@ -74,23 +86,33 @@ const INITIAL_SOURCES: SourceConfig[] = [
     name: 'OtakuDesu',
     type: 'Anime',
     language: 'ID',
-    description: 'Sumber streaming anime terbesar dengan koleksi terlengkap.',
+    descKey: 'utils.extDescOtakudesu',
     isDefault: true,
     isActive: true,
   },
   {
-    id: 'animelovers',
-    name: 'Animelovers',
+    id: 'nimegami',
+    name: 'Nimegami',
     type: 'Anime',
     language: 'ID',
-    description: 'Sumber alternatif streaming anime dari animelovers.',
+    descKey: 'utils.extDescNimegami',
     isDefault: false,
     isActive: false,
+  },
+  {
+    id: 'lk21',
+    name: 'LK21',
+    type: 'Movies',
+    language: 'ID / EN',
+    descKey: 'utils.extDescLk21',
+    isDefault: true,
+    isActive: true,
   },
 ];
 
 function ExtensionManager() {
   const theme = useTheme();
+  const { t } = useLanguage();
   const [sources, setSources] = useState<SourceConfig[]>(INITIAL_SOURCES);
 
   useEffect(() => {
@@ -105,6 +127,14 @@ function ExtensionManager() {
             }
             return initial;
           });
+          if (!merged.some(s => s.type === 'Movies' && s.isActive)) {
+            const lk21Idx = merged.findIndex(s => s.id === 'lk21');
+            if (lk21Idx >= 0) merged[lk21Idx] = { ...merged[lk21Idx], isActive: true };
+          }
+          if (!merged.some(s => s.type === 'Anime' && s.isActive)) {
+            const otakuIdx = merged.findIndex(s => s.id === 'otakudesu');
+            if (otakuIdx >= 0) merged[otakuIdx] = { ...merged[otakuIdx], isActive: true };
+          }
           setSources(merged);
         } catch (e) {
           console.error('Failed to parse saved preferences', e);
@@ -129,34 +159,86 @@ function ExtensionManager() {
     if (!newActive) {
       const sameTypeActive = sources.filter(s => s.type === targetSource.type && s.id !== id && s.isActive);
       if (sameTypeActive.length === 0) {
-        ToastAndroid.show(`Minimal 1 sumber ${targetSource.type} harus aktif!`, ToastAndroid.SHORT);
+        ToastAndroid.show(tSync('utils.extMinOneActive'), ToastAndroid.SHORT);
         return;
       }
     }
 
-    const updatedSources = sources.map(s => {
-      if (s.id === id) {
-        return { ...s, isActive: newActive };
-      }
-      if (newActive && s.type === targetSource.type) {
-        return { ...s, isActive: false };
-      }
-      return s;
-    });
+    const performToggle = () => {
+      const updatedSources = sources.map(s => {
+        if (s.id === id) {
+          return { ...s, isActive: newActive };
+        }
+        if (newActive && s.type === targetSource.type) {
+          return { ...s, isActive: false };
+        }
+        return s;
+      });
+      savePreferences(updatedSources);
+    };
 
-    savePreferences(updatedSources);
+    if (id === 'luvyaa' && newActive) {
+      DialogManager.alert(
+        tSync('utils.extLuvyaaTitle'),
+        tSync('utils.extLuvyaaDesc'),
+        [
+          { text: tSync('utils.extLuvyaaLater'), onPress: performToggle },
+          { 
+            text: tSync('utils.extLuvyaaLoginNow'), 
+            onPress: () => {
+              performToggle();
+              setWebViewOpen.openWebViewCF(true, 'https://v5.luvyaa.co/login/', true);
+            }
+          }
+        ]
+      );
+      return;
+    }
+
+    performToggle();
   };
 
   const animeSources = sources.filter(s => s.type === 'Anime');
   const comicsSources = sources.filter(s => s.type === 'Comics');
+  const moviesSources = sources.filter(s => s.type === 'Movies');
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <ScrollView style={styles.scrollView}>
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
+            <Avatar.Icon size={36} icon="movie-open" style={{ backgroundColor: theme.colors.primaryContainer }} />
+            <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>{t('utils.extMoviesHeader')}</Text>
+          </View>
+          {moviesSources.map(source => (
+            <View key={source.id} style={[styles.sourceItem, { borderBottomColor: theme.colors.outlineVariant }]}>
+              <View style={styles.sourceInfo}>
+                <View style={styles.sourceNameRow}>
+                  <Text style={[styles.sourceName, { color: theme.colors.onBackground }]}>{source.name}</Text>
+                  <View style={[styles.langBadge, { backgroundColor: theme.colors.secondaryContainer }]}>
+                    <Text style={[styles.langText, { color: theme.colors.onSecondaryContainer }]}>{source.language}</Text>
+                  </View>
+                  {source.isDefault && (
+                    <View style={[styles.defaultBadge, { backgroundColor: theme.colors.tertiaryContainer }]}>
+                      <Text style={[styles.defaultText, { color: theme.colors.onTertiaryContainer }]}>{t('utils.extDefaultBadge')}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={[styles.sourceDesc, { color: theme.colors.onSurfaceVariant }]}>{t(source.descKey)}</Text>
+              </View>
+              <Switch
+                value={source.isActive}
+                onValueChange={() => toggleSource(source.id)}
+                color={theme.colors.primary}
+              />
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
             <Avatar.Icon size={36} icon="film" style={{ backgroundColor: theme.colors.primaryContainer }} />
-            <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Anime</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>{t('utils.extAnimeHeader')}</Text>
           </View>
           {animeSources.map(source => (
             <View key={source.id} style={[styles.sourceItem, { borderBottomColor: theme.colors.outlineVariant }]}>
@@ -168,11 +250,11 @@ function ExtensionManager() {
                   </View>
                   {source.isDefault && (
                     <View style={[styles.defaultBadge, { backgroundColor: theme.colors.tertiaryContainer }]}>
-                      <Text style={[styles.defaultText, { color: theme.colors.onTertiaryContainer }]}>Default</Text>
+                      <Text style={[styles.defaultText, { color: theme.colors.onTertiaryContainer }]}>{t('utils.extDefaultBadge')}</Text>
                     </View>
                   )}
                 </View>
-                <Text style={[styles.sourceDesc, { color: theme.colors.onSurfaceVariant }]}>{source.description}</Text>
+                <Text style={[styles.sourceDesc, { color: theme.colors.onSurfaceVariant }]}>{t(source.descKey)}</Text>
               </View>
               <Switch
                 value={source.isActive}
@@ -186,7 +268,7 @@ function ExtensionManager() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Avatar.Icon size={36} icon="book-open-variant" style={{ backgroundColor: theme.colors.primaryContainer }} />
-            <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Comics</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>{t('utils.extComicsHeader')}</Text>
           </View>
           {comicsSources.map(source => (
             <View key={source.id} style={[styles.sourceItem, { borderBottomColor: theme.colors.outlineVariant }]}>
@@ -198,11 +280,11 @@ function ExtensionManager() {
                   </View>
                   {source.isDefault && (
                     <View style={[styles.defaultBadge, { backgroundColor: theme.colors.tertiaryContainer }]}>
-                      <Text style={[styles.defaultText, { color: theme.colors.onTertiaryContainer }]}>Default</Text>
+                      <Text style={[styles.defaultText, { color: theme.colors.onTertiaryContainer }]}>{t('utils.extDefaultBadge')}</Text>
                     </View>
                   )}
                 </View>
-                <Text style={[styles.sourceDesc, { color: theme.colors.onSurfaceVariant }]}>{source.description}</Text>
+                <Text style={[styles.sourceDesc, { color: theme.colors.onSurfaceVariant }]}>{t(source.descKey)}</Text>
               </View>
               <Switch
                 value={source.isActive}

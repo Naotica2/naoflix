@@ -10,6 +10,8 @@ import {
 } from '../../types/anime';
 import deviceUserAgent from '../deviceUserAgent';
 import { setWebViewOpen } from '../CFBypass';
+import cleanSynopsis from '../cleanSynopsis';
+import getStreamHeaders from '../streamHeaders';
 
 export const __ALIAS = 'otakudesu';
 export let DOMAIN = 'otakudesu.blog';
@@ -18,18 +20,22 @@ const BASE = () => `https://${DOMAIN}`;
 const LEGACY_DOMAINS = ['anime-indo.lol', 'anime-indo.org'];
 
 export async function fetchLatestAnimeIndoDomain(signal?: AbortSignal) {
-  try {
-    const response = await fetch(
-      'https://raw.githubusercontent.com/Naotica2/naoflix/main/SCRAPE_DOMAIN_OTAKUDESU.txt',
-      { signal },
-    );
-    if (!response.ok) return;
-    const text = await response.text();
-    const domain = text.trim();
-    if (domain && domain.includes('.')) {
-      DOMAIN = domain;
+  const remoteUrls = [
+    'https://raw.githubusercontent.com/FightFarewellFearless/AniFlix/master/SCRAPE_DOMAIN.txt',
+    'https://raw.githubusercontent.com/Naotica2/naoflix/main/SCRAPE_DOMAIN_OTAKUDESU.txt',
+  ];
+  for (const url of remoteUrls) {
+    try {
+      const response = await fetch(url, { signal });
+      if (!response.ok) continue;
+      const text = await response.text();
+      const domain = text.trim();
+      if (domain && domain.includes('.') && !domain.includes('404')) {
+        DOMAIN = domain;
+        break;
+      }
+    } catch {
     }
-  } catch {
   }
 }
 
@@ -85,7 +91,7 @@ function normalizeUrl(inputUrl: string): string {
 
 let cachedNonce: string | null = null;
 let nonceTimestamp = 0;
-const NONCE_TTL = 300000; // 5 minutes
+const NONCE_TTL = 300000;
 
 async function getNonce(signal?: AbortSignal): Promise<string> {
   if (cachedNonce && Date.now() - nonceTimestamp < NONCE_TTL) {
@@ -198,9 +204,10 @@ function unpackJS(packed: string): string | null {
   return unpacked;
 }
 
-async function extractVideoFromEmbed(
+export async function extractVideoFromEmbed(
   embedUrl: string,
   signal?: AbortSignal,
+  preferredQuality: string = '360',
 ): Promise<{ url: string; type: 'mp4' | 'hls'; resolutions?: { resolution: string; url: string }[] } | null> {
   try {
     const html = await fetchPage(embedUrl, signal, 8000);
@@ -233,19 +240,26 @@ async function extractVideoFromEmbed(
     }
 
     if (embedUrl.includes('desustream') || embedUrl.includes('ondesu')) {
+      const qNum = preferredQuality.replace(/[^0-9]/g, '') || '360';
       const bloggerMatch = html.match(/src="(https?:\/\/www\.blogger\.com\/video\.g[^"]+)"/i);
       if (bloggerMatch?.[1]) {
-        const bloggerResult = await getBloggerVideo(bloggerMatch[1], '720', signal);
+        const bloggerResult = await getBloggerVideo(bloggerMatch[1], qNum, signal);
         if (bloggerResult) {
           return { url: bloggerResult.url, type: 'mp4', resolutions: bloggerResult.resolutions };
         }
       }
       const iframeMatch = html.match(/<iframe[^>]+src="([^"]*blogger[^"]*)"/i);
       if (iframeMatch?.[1]) {
-        const bloggerResult = await getBloggerVideo(iframeMatch[1], '720', signal);
+        const bloggerResult = await getBloggerVideo(iframeMatch[1], qNum, signal);
         if (bloggerResult) {
           return { url: bloggerResult.url, type: 'mp4', resolutions: bloggerResult.resolutions };
         }
+      }
+
+      // Check for direct videoURL in Desustream lazy player
+      const videoUrlMatch = html.match(/(?:const|var|let)?\s*videoURL\s*=\s*["']([^"']+)["']/i);
+      if (videoUrlMatch?.[1]) {
+        return { url: videoUrlMatch[1], type: videoUrlMatch[1].includes('.m3u8') ? 'hls' : 'mp4' };
       }
     }
 
@@ -254,29 +268,35 @@ async function extractVideoFromEmbed(
       if (dataPageMatch) {
         try {
           const pageData = JSON.parse(dataPageMatch[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
-          if (pageData?.props?.file?.url) {
-            return { url: pageData.props.file.url, type: 'mp4' };
+          const fileUrl = pageData?.props?.url || pageData?.props?.file?.url || pageData?.props?.files?.url;
+          if (typeof fileUrl === 'string' && fileUrl.startsWith('http')) {
+            return { url: normalizeDirectDownloadUrl(fileUrl), type: 'mp4' };
           }
         } catch {}
       }
     }
 
-    const sourceMatch = html.match(/<source\s+src="([^"]+)"/i);
-    if (sourceMatch?.[1]) {
-      const videoUrl = sourceMatch[1];
-      if (videoUrl.endsWith('.mp4') || videoUrl.includes('video')) {
-        return { url: videoUrl, type: 'mp4' };
-      }
-    }
-
-    const jwFileMatch = html.match(/"file"\s*:\s*"([^"]+)"/);
+    // Direct MP4 / M3U8 in PlayerJS or script objects
+    const jwFileMatch = html.match(/["']?file["']?\s*:\s*["']([^"']+)["']/i);
     if (jwFileMatch?.[1]) {
       const fileUrl = jwFileMatch[1];
       if (fileUrl.includes('.m3u8')) {
         return { url: fileUrl.includes('?') ? `${fileUrl}&is_hls=1` : `${fileUrl}?is_hls=1`, type: 'hls' };
       }
-      if (fileUrl.includes('.mp4') || fileUrl.includes('video')) {
+      if (fileUrl.includes('.mp4') || fileUrl.includes('video') || fileUrl.includes('archive.org')) {
         return { url: fileUrl, type: 'mp4' };
+      }
+    }
+
+    // Video tag or Source tag
+    const sourceMatch = html.match(/<source\s+[^>]*src=["']([^"']+)["']/i) || html.match(/<video\s+[^>]*src=["']([^"']+)["']/i);
+    if (sourceMatch?.[1]) {
+      const videoUrl = sourceMatch[1];
+      if (videoUrl.includes('.m3u8')) {
+        return { url: videoUrl.includes('?') ? `${videoUrl}&is_hls=1` : `${videoUrl}?is_hls=1`, type: 'hls' };
+      }
+      if (videoUrl.endsWith('.mp4') || videoUrl.includes('video')) {
+        return { url: videoUrl, type: 'mp4' };
       }
     }
 
@@ -350,14 +370,15 @@ async function getBloggerVideo(
     if (links.length > 1) {
       links.shift();
       const cleanedLinks = links.map(l => {
-        let firstPart = l.split('",')[0].split('\\\\\",')[0].split('"]')[0];
+        let firstPart = l.split('",')[0].split('"}')[0].split('\\\\\",')[0].split('"]')[0];
         firstPart = firstPart.replace(/\\+$/, '');
         let decoded = firstPart
           .replace(/\\u0026/g, '&')
           .replace(/\\u003d/g, '=')
           .replace(/\\\\/g, '\\')
           .replace(/\\/g, '');
-        return `https://rr${decoded}`;
+        const clean = `https://rr${decoded}`.split('"}')[0].split('",')[0].split('"')[0];
+        return clean;
       });
 
       const resolutions: { resolution: string; url: string }[] = [];
@@ -740,7 +761,7 @@ export async function detail(animeUrl: string, signal?: AbortSignal): Promise<An
     type: 'animeDetail',
     title,
     genres,
-    synopsis,
+    synopsis: cleanSynopsis(synopsis),
     detailOnly: false,
     episodeList,
     epsTotal,
@@ -755,7 +776,465 @@ export async function detail(animeUrl: string, signal?: AbortSignal): Promise<An
   };
 }
 
-export async function streaming(episodeUrl: string, signal?: AbortSignal): Promise<AniStreaming> {
+export function normalizeDirectDownloadUrl(rawUrl: string): string {
+  const url = (rawUrl || '').trim();
+  if (!url) return '';
+  if (
+    url.includes('workers-anime.berkasdrive.com/') &&
+    !url.includes('workers-anime.berkasdrive.com/download/')
+  ) {
+    return url.replace(
+      'workers-anime.berkasdrive.com/',
+      'workers-anime.berkasdrive.com/download/',
+    );
+  }
+  return url;
+}
+
+async function extractFiledonSinglePage(
+  pageUrl: string,
+  signal?: AbortSignal,
+): Promise<{ videoUrl: string | null; embedUrl: string | null }> {
+  const html = await fetchPage(pageUrl, signal, 6500);
+  let embedUrl: string | null = null;
+
+  const dataPageMatch = html.match(/data-page="([^"]+)"/);
+  if (dataPageMatch?.[1]) {
+    try {
+      const pageData = JSON.parse(
+        dataPageMatch[1]
+          .replace(/&quot;/g, '"')
+          .replace(/&amp;/g, '&')
+          .replace(/&#039;/g, "'"),
+      );
+      if (typeof pageData?.props?.embed_url === 'string' && pageData.props.embed_url.startsWith('http')) {
+        embedUrl = pageData.props.embed_url;
+      }
+      const fileUrl =
+        pageData?.props?.url ||
+        pageData?.props?.file?.url ||
+        pageData?.props?.files?.url ||
+        pageData?.props?.file?.download_url ||
+        pageData?.props?.downloadUrl;
+      if (typeof fileUrl === 'string' && fileUrl.startsWith('http')) {
+        return { videoUrl: normalizeDirectDownloadUrl(fileUrl), embedUrl };
+      }
+    } catch {}
+  }
+
+  const r2Match = html.match(/https?:\/\/[^"'\s<>]*(?:r2\.dev|cloudflarestorage\.com)[^"'\s<>]*/i);
+  if (r2Match?.[0]) {
+    return {
+      videoUrl: r2Match[0].replace(/\\u0026/g, '&').replace(/&amp;/g, '&'),
+      embedUrl,
+    };
+  }
+
+  const mp4Match = html.match(/https?:\/\/[^"'\s<>]+\.mp4(?:[?#][^"'\s<>]*)?/i);
+  if (mp4Match?.[0]) {
+    return {
+      videoUrl: mp4Match[0].replace(/\\u0026/g, '&').replace(/&amp;/g, '&'),
+      embedUrl,
+    };
+  }
+
+  return { videoUrl: null, embedUrl };
+}
+
+export async function extractFiledonVideoUrl(
+  url: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  try {
+    // Filedon /embed/<slug> includes direct R2 presigned props.url directly, whereas /view/<slug> omits props.url
+    if (url.includes('filedon.co/view/')) {
+      const embedUrl = url.replace('/view/', '/embed/');
+      const embedRes = await extractFiledonSinglePage(embedUrl, signal).catch(() => ({
+        videoUrl: null,
+        embedUrl: null,
+      }));
+      if (embedRes.videoUrl) return embedRes.videoUrl;
+    }
+
+    const first = await extractFiledonSinglePage(url, signal);
+    if (first.videoUrl) return first.videoUrl;
+
+    if (first.embedUrl && first.embedUrl !== url) {
+      const second = await extractFiledonSinglePage(first.embedUrl, signal).catch(() => ({
+        videoUrl: null,
+        embedUrl: null,
+      }));
+      if (second.videoUrl) return second.videoUrl;
+    }
+  } catch {}
+  return null;
+}
+
+export async function probeDirectVideoUrl(
+  url: string,
+  headers?: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<boolean> {
+  const cleanUrl = normalizeDirectDownloadUrl(url);
+  if (!cleanUrl || !cleanUrl.startsWith('http') || cleanUrl.toLowerCase().includes('.m3u8')) {
+    return false;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  const onAbort = () => controller.abort();
+  if (signal) signal.addEventListener('abort', onAbort);
+
+  try {
+    const reqHeaders: Record<string, string> = {
+      'User-Agent': deviceUserAgent,
+      Range: 'bytes=0-15',
+      ...(headers || {}),
+    };
+    const res = await fetch(cleanUrl, {
+      method: 'GET',
+      headers: reqHeaders,
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+
+    const status = res.status;
+    const contentType = (res.headers.get('content-type') || '').toLowerCase();
+    const contentRange = res.headers.get('content-range');
+
+    // React Native whatwg-fetch lacks ReadableStream cancel(), so abort immediately after headers arrive
+    try {
+      await res.body?.cancel?.();
+    } catch {}
+    controller.abort();
+
+    if (status < 200 || status >= 400) {
+      return false;
+    }
+
+    if (
+      contentType.includes('text/html') ||
+      contentType.includes('application/json') ||
+      contentType.includes('application/xhtml') ||
+      contentType.includes('mpegurl') ||
+      contentType.includes('text/plain')
+    ) {
+      return false;
+    }
+
+    if (
+      contentType.includes('video/') ||
+      contentType.includes('application/octet-stream') ||
+      contentType.includes('binary/octet-stream')
+    ) {
+      return true;
+    }
+
+    return status === 206 || Boolean(contentRange);
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeoutId);
+    if (signal) signal.removeEventListener('abort', onAbort);
+  }
+}
+
+export async function resolveOtakudesuDownloadUrl(
+  linkUrl: string,
+  signal?: AbortSignal,
+  refererUrl?: string,
+): Promise<string> {
+  if (!linkUrl) return '';
+  const normalized = normalizeDirectDownloadUrl(linkUrl);
+  if (normalized.includes('pixeldrain.com/api/file/')) return normalized;
+  if (normalized.includes('pixeldrain.com/u/')) {
+    const id = normalized.split('/u/')[1]?.split(/[?#]/)[0];
+    return id ? `https://pixeldrain.com/api/file/${id}` : normalized;
+  }
+  if (normalized.includes('filedon.co/')) {
+    const extracted = await extractFiledonVideoUrl(normalized, signal);
+    return extracted || '';
+  }
+
+  const isShortlink =
+    normalized.includes('link.desustream.com') ||
+    normalized.includes('desustream') ||
+    normalized.includes('desudrive') ||
+    normalized.includes('desuarchive') ||
+    normalized.includes('otakudesu.cloud') ||
+    normalized.includes('otakudesu.blog');
+
+  if (isShortlink) {
+    const referer = refererUrl || `${BASE()}/`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5500);
+    const onAbort = () => controller.abort();
+    if (signal) signal.addEventListener('abort', onAbort);
+
+    try {
+      const res = await fetch(normalized, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: {
+          'User-Agent': deviceUserAgent,
+          Referer: referer,
+        },
+        redirect: 'follow',
+      });
+
+      const finalUrl = res.url || '';
+      const loc = res.headers.get('location') || res.headers.get('Location') || '';
+      const ctype = (res.headers.get('content-type') || '').toLowerCase();
+
+      const resolveDirectTarget = async (targetUrl: string): Promise<string | null> => {
+        if (!targetUrl) return null;
+        if (targetUrl.includes('pixeldrain.com/api/file/')) return targetUrl;
+        if (targetUrl.includes('pixeldrain.com/u/')) {
+          const id = targetUrl.split('/u/')[1]?.split(/[?#]/)[0];
+          return id ? `https://pixeldrain.com/api/file/${id}` : null;
+        }
+        if (targetUrl.includes('filedon.co/')) {
+          return await extractFiledonVideoUrl(targetUrl, signal);
+        }
+        return null;
+      };
+
+      const directFromFinal = await resolveDirectTarget(finalUrl);
+      if (directFromFinal !== null) {
+        try { await res.body?.cancel?.(); } catch {}
+        controller.abort();
+        return directFromFinal;
+      }
+
+      const directFromLoc = await resolveDirectTarget(loc);
+      if (directFromLoc !== null) {
+        try { await res.body?.cancel?.(); } catch {}
+        controller.abort();
+        return directFromLoc;
+      }
+
+      // Never read binary stream into res.text() (React Native would buffer an entire video file and hang)
+      if (ctype.includes('video/') || ctype.includes('octet-stream')) {
+        try { await res.body?.cancel?.(); } catch {}
+        controller.abort();
+        return finalUrl;
+      }
+
+      if (!ctype.includes('text/') && !ctype.includes('html') && !ctype.includes('javascript') && !ctype.includes('json')) {
+        try { await res.body?.cancel?.(); } catch {}
+        controller.abort();
+        return finalUrl && finalUrl !== normalized ? finalUrl : '';
+      }
+
+      const bodyText = await res.text().catch(() => '');
+
+      const pdMatch =
+        bodyText.match(/content="https?:\/\/pixeldrain\.com\/(?:u|api\/file)\/([a-zA-Z0-9_-]+)"/i) ||
+        bodyText.match(/https?:\/\/pixeldrain\.com\/(?:u|api\/file)\/([a-zA-Z0-9_-]+)/i);
+      if (pdMatch && pdMatch[1]) {
+        return `https://pixeldrain.com/api/file/${pdMatch[1]}`;
+      }
+
+      const filedonMatch = bodyText.match(/https?:\/\/filedon\.co\/(?:embed|view)\/[a-zA-Z0-9_-]+/i);
+      if (filedonMatch?.[0]) {
+        const extracted = await extractFiledonVideoUrl(filedonMatch[0], signal);
+        return extracted || '';
+      }
+
+      const match =
+        bodyText.match(/href="([^"]*(?:pixeldrain|filedon|googlevideo|googleusercontent|odcloud|desustream)[^"]*)"/i) ||
+        bodyText.match(/window\.location(?:\.href)?\s*=\s*['"]([^'"]+)['"]/i) ||
+        bodyText.match(/url=([^"'>\s]+)/i);
+      if (match && match[1]) {
+        const target = match[1].replace(/&amp;/g, '&');
+        const directTarget = await resolveDirectTarget(target);
+        if (directTarget !== null) return directTarget;
+        return normalizeDirectDownloadUrl(target);
+      }
+      return '';
+    } catch {
+      return '';
+    } finally {
+      clearTimeout(timeoutId);
+      if (signal) signal.removeEventListener('abort', onAbort);
+    }
+  }
+  return normalized;
+}
+
+async function firstResolvedValidUrl(tasks: Promise<string>[]): Promise<string> {
+  if (tasks.length === 0) return '';
+  return await new Promise<string>(resolve => {
+    let remaining = tasks.length;
+    let settled = false;
+
+    for (const task of tasks) {
+      task
+        .then(url => {
+          if (!settled && url) {
+            settled = true;
+            resolve(url);
+            return;
+          }
+          remaining -= 1;
+          if (!settled && remaining <= 0) resolve('');
+        })
+        .catch(() => {
+          remaining -= 1;
+          if (!settled && remaining <= 0) resolve('');
+        });
+    }
+  });
+}
+
+export async function resolveBestOtakudesuDownload(
+  downloadOptions: { resolution: string; server: string; url: string }[],
+  preferredResolution: string = '360p',
+  refererUrl?: string,
+  fallbackStreamUrl?: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  const candidates: string[] = [];
+
+  if (fallbackStreamUrl && !fallbackStreamUrl.toLowerCase().includes('.m3u8')) {
+    if (
+      fallbackStreamUrl.includes('googlevideo.com') ||
+      fallbackStreamUrl.includes('googleusercontent.com') ||
+      fallbackStreamUrl.includes('odcloud') ||
+      fallbackStreamUrl.includes('stream-stor') ||
+      fallbackStreamUrl.includes('berkasdrive') ||
+      fallbackStreamUrl.includes('r2.cloudflarestorage') ||
+      fallbackStreamUrl.includes('.mp4')
+    ) {
+      candidates.push(normalizeDirectDownloadUrl(fallbackStreamUrl));
+    }
+  }
+
+  const raceController = new AbortController();
+  const overallTimer = setTimeout(() => raceController.abort(), 9500);
+  const onParentAbort = () => raceController.abort();
+  if (signal) signal.addEventListener('abort', onParentAbort);
+
+  const raceSignal = raceController.signal;
+
+  const targetRes = preferredResolution || '360p';
+  const resWeight: Record<string, number> = { '360p': 1, '480p': 2, '720p': 3, '1080p': 4 };
+
+  const viableOpts = (downloadOptions || [])
+    .map((opt, idx) => ({ opt, idx }))
+    .filter(({ opt }) => {
+      const lowerSrv = (opt.server || '').toLowerCase();
+      return !(
+        lowerSrv.includes('mega') ||
+        lowerSrv.includes('acefile') ||
+        lowerSrv.includes('gofile') ||
+        lowerSrv.includes('kfiles') ||
+        lowerSrv.includes('viking') ||
+        lowerSrv.includes('zippy') ||
+        lowerSrv.includes('mediafire') ||
+        lowerSrv.includes('kraken') ||
+        lowerSrv.includes('terabox')
+      );
+    })
+    .sort((a, b) => {
+      const aMatch = a.opt.resolution === targetRes ? 0 : 1;
+      const bMatch = b.opt.resolution === targetRes ? 0 : 1;
+      if (aMatch !== bMatch) return aMatch - bMatch;
+
+      const aResW = resWeight[a.opt.resolution] || 99;
+      const bResW = resWeight[b.opt.resolution] || 99;
+      if (aResW !== bResW) return aResW - bResW;
+
+      const scoreServer = (s: string) => {
+        const lower = s.toLowerCase();
+        // Filedon R2 CDN works cleanly across Indonesian ISPs alongside Pdrain
+        if (lower.includes('filedon')) return 1;
+        if (lower.includes('pdrain') || lower.includes('pixeldrain')) return 2;
+        if (lower.includes('odfiles') || lower.includes('desu')) return 3;
+        return 10;
+      };
+      const srvDiff = scoreServer(a.opt.server) - scoreServer(b.opt.server);
+      if (srvDiff !== 0) return srvDiff;
+      return a.idx - b.idx;
+    })
+    .map(x => x.opt);
+
+  try {
+    // Batch 1: Race direct stream URL + top 4 matching resolution download links in parallel
+    const firstBatchOpts = viableOpts.slice(0, 4);
+    const batch1Tasks: Promise<string>[] = [];
+
+    for (const candidate of candidates) {
+      batch1Tasks.push(
+        (async () => {
+          if (raceSignal.aborted) return '';
+          const ok = await probeDirectVideoUrl(
+            candidate,
+            getStreamHeaders(candidate),
+            raceSignal,
+          );
+          return ok ? candidate : '';
+        })(),
+      );
+    }
+
+    for (const opt of firstBatchOpts) {
+      batch1Tasks.push(
+        (async () => {
+          if (raceSignal.aborted) return '';
+          const resolved = await resolveOtakudesuDownloadUrl(opt.url, raceSignal, refererUrl);
+          if (!resolved || resolved.toLowerCase().includes('.m3u8')) return '';
+          const probeHeaders = {
+            Referer: refererUrl || `${BASE()}/`,
+            ...(getStreamHeaders(resolved) || {}),
+          };
+          const ok = await probeDirectVideoUrl(resolved, probeHeaders, raceSignal);
+          return ok ? resolved : '';
+        })(),
+      );
+    }
+
+    const winner1 = await firstResolvedValidUrl(batch1Tasks);
+    if (winner1) {
+      raceController.abort();
+      return winner1;
+    }
+
+    // Batch 2: Try next 4 backup options if batch 1 all failed and deadline still remains
+    if (!raceSignal.aborted && viableOpts.length > 4) {
+      const secondBatchOpts = viableOpts.slice(4, 8);
+      const batch2Tasks = secondBatchOpts.map(opt =>
+        (async () => {
+          if (raceSignal.aborted) return '';
+          const resolved = await resolveOtakudesuDownloadUrl(opt.url, raceSignal, refererUrl);
+          if (!resolved || resolved.toLowerCase().includes('.m3u8')) return '';
+          const probeHeaders = {
+            Referer: refererUrl || `${BASE()}/`,
+            ...(getStreamHeaders(resolved) || {}),
+          };
+          const ok = await probeDirectVideoUrl(resolved, probeHeaders, raceSignal);
+          return ok ? resolved : '';
+        })(),
+      );
+      const winner2 = await firstResolvedValidUrl(batch2Tasks);
+      if (winner2) {
+        raceController.abort();
+        return winner2;
+      }
+    }
+
+    return candidates[0] || '';
+  } finally {
+    clearTimeout(overallTimer);
+    if (signal) signal.removeEventListener('abort', onParentAbort);
+  }
+}
+
+export async function streaming(
+  episodeUrl: string,
+  signal?: AbortSignal,
+  preferredResolution?: string,
+): Promise<AniStreaming> {
   episodeUrl = normalizeUrl(episodeUrl);
 
   const html = await fetchPage(episodeUrl, signal);
@@ -791,20 +1270,44 @@ export async function streaming(episodeUrl: string, signal?: AbortSignal): Promi
     }
   });
 
-  const nonce = await getNonce(signal);
+  // Extract direct download box links (Pdrain, Acefile, Mega, Gofile, etc.)
+  const downloadOptions: { resolution: string; server: string; url: string }[] = [];
+  $('.download ul li, .download-eps ul li, .smokeurl ul li, .smokedl ul li').each((_, el) => {
+    const rawQuality = $(el).find('strong, b, h4').text().trim();
+    let resClean = '720p';
+    if (rawQuality.includes('360')) resClean = '360p';
+    else if (rawQuality.includes('480')) resClean = '480p';
+    else if (rawQuality.includes('720')) resClean = '720p';
+    else if (rawQuality.includes('1080')) resClean = '1080p';
 
+    $(el).find('a').each((_, a) => {
+      const server = $(a).text().trim();
+      const href = $(a).attr('href');
+      if (href) {
+        downloadOptions.push({ resolution: resClean, server, url: href });
+      }
+    });
+  });
 
   const serverPriority: Record<string, number> = {
-    ondesuhd: 1,
-    ondesu: 2,
-    vidhide: 3,
-    filedon: 4,
-    mega: 5,
+    ondesu2hd: 1,
+    ondesuhd: 2,
+    ondesu: 3,
+    odstream: 4,
+    odcdn: 5,
+    blogs: 6,
+    mega: 7,
+    vidhide: 80, // Deprioritize vidhide because of anti-hotlink block
+    filedon: 99,
   };
 
+  const defaultTargetRes = preferredResolution || '360p';
   const sortedMirrors = [...mirrors].sort((a, b) => {
-    const aP = serverPriority[a.serverName.toLowerCase()] || 99;
-    const bP = serverPriority[b.serverName.toLowerCase()] || 99;
+    const aMatch = a.quality === defaultTargetRes ? 0 : 1;
+    const bMatch = b.quality === defaultTargetRes ? 0 : 1;
+    if (aMatch !== bMatch) return aMatch - bMatch;
+    const aP = serverPriority[a.serverName.toLowerCase()] || 50;
+    const bP = serverPriority[b.serverName.toLowerCase()] || 50;
     return aP - bP;
   });
 
@@ -812,33 +1315,85 @@ export async function streaming(episodeUrl: string, signal?: AbortSignal): Promi
   let streamIsHls = false;
   let streamResolutions: { resolution: string; dataContent: string }[] = [];
 
-  for (const mirror of sortedMirrors) {
-    if (signal?.aborted) break;
+  // 1. If a non-vidhide/non-filedon mirror exists for the requested default resolution (360p), try it FIRST
+  //    so 360p default actually streams 360p instead of inheriting a 720p default iframe.
+  const hasPreferredMirror = sortedMirrors.some(
+    m =>
+      m.quality === defaultTargetRes &&
+      m.serverName.toLowerCase() !== 'filedon' &&
+      m.serverName.toLowerCase() !== 'mega' &&
+      !m.serverName.toLowerCase().includes('vidhide'),
+  );
 
-    const iframeSrc = await getIframeFromMirror(mirror.decoded, nonce, episodeUrl, signal);
-    if (!iframeSrc) continue;
-
-    const extracted = await extractVideoFromEmbed(iframeSrc, signal);
+  const defaultIframeSrc = $('.responsive-embed-stream iframe, .player-embed iframe, #pembed iframe').attr('src');
+  if (!hasPreferredMirror && defaultIframeSrc) {
+    const extracted = await extractVideoFromEmbed(defaultIframeSrc, signal, defaultTargetRes);
     if (extracted) {
       primaryStreamUrl = extracted.url;
       streamIsHls = extracted.type === 'hls';
-
       if (extracted.resolutions && extracted.resolutions.length > 0) {
         streamResolutions = extracted.resolutions.map(r => ({
           resolution: r.resolution,
           dataContent: `direct_url::${r.url}`,
         }));
       }
-      break; // Got a native URL!
     }
   }
 
+  // 2. Try sorted mirrors (prefers requested resolution & non-vidhide native MP4 hosts)
   if (!primaryStreamUrl) {
+    const nonce = await getNonce(signal);
     for (const mirror of sortedMirrors) {
+      if (signal?.aborted) break;
+      const lowerName = mirror.serverName.toLowerCase();
+      if (lowerName === 'filedon' || lowerName === 'mega') continue;
+
       const iframeSrc = await getIframeFromMirror(mirror.decoded, nonce, episodeUrl, signal);
-      if (iframeSrc) {
-        primaryStreamUrl = iframeSrc;
+      if (!iframeSrc) continue;
+
+      const extracted = await extractVideoFromEmbed(iframeSrc, signal, mirror.quality || defaultTargetRes);
+      if (extracted) {
+        primaryStreamUrl = extracted.url;
+        streamIsHls = extracted.type === 'hls';
+
+        if (extracted.resolutions && extracted.resolutions.length > 0) {
+          streamResolutions = extracted.resolutions.map(r => ({
+            resolution: r.resolution,
+            dataContent: `direct_url::${r.url}`,
+          }));
+        }
         break;
+      }
+    }
+  }
+
+  // 2b. Fallback to defaultIframeSrc if sortedMirrors failed
+  if (!primaryStreamUrl && defaultIframeSrc) {
+    const extracted = await extractVideoFromEmbed(defaultIframeSrc, signal, defaultTargetRes);
+    if (extracted) {
+      primaryStreamUrl = extracted.url;
+      streamIsHls = extracted.type === 'hls';
+      if (extracted.resolutions && extracted.resolutions.length > 0) {
+        streamResolutions = extracted.resolutions.map(r => ({
+          resolution: r.resolution,
+          dataContent: `direct_url::${r.url}`,
+        }));
+      }
+    }
+  }
+
+  // 3. Fallback: use default iframe or first mirror as embed
+  if (!primaryStreamUrl) {
+    if (defaultIframeSrc) {
+      primaryStreamUrl = defaultIframeSrc;
+    } else {
+      const nonce = await getNonce(signal);
+      for (const mirror of sortedMirrors) {
+        const iframeSrc = await getIframeFromMirror(mirror.decoded, nonce, episodeUrl, signal);
+        if (iframeSrc) {
+          primaryStreamUrl = iframeSrc;
+          break;
+        }
       }
     }
   }
@@ -859,8 +1414,15 @@ export async function streaming(episodeUrl: string, signal?: AbortSignal): Promi
     }
   }
 
+  // Prioritize 360p > 480p > 720p > 1080p by default
   const resOrder: Record<string, number> = { '360p': 1, '480p': 2, '720p': 3, '1080p': 4 };
   streamResolutions.sort((a, b) => (resOrder[a.resolution] || 99) - (resOrder[b.resolution] || 99));
+
+  // Determine active resolution: default to 360p unless preferredResolution is explicitly passed
+  let activeRes = preferredResolution || '360p';
+  if (!streamResolutions.some(r => r.resolution === activeRes)) {
+    activeRes = streamResolutions.length > 0 ? streamResolutions[0].resolution : '360p';
+  }
 
   const episodeData: { previous?: string; animeDetail: string; next?: string } = {
     animeDetail: '',
@@ -884,12 +1446,15 @@ export async function streaming(episodeUrl: string, signal?: AbortSignal): Promi
   });
 
   if (!episodeData.animeDetail) {
-    const detailLink = $('a[href*="/anime/"]')
-      .filter((_, el) => !$(el).attr('href')?.includes('anime-list'))
+    const breadcrumbLink = $('.flir a, .breadcum a, .breadcrumbs a, .cukder a, .naveps a, .venser a')
+      .filter((_, el) => {
+        const href = $(el).attr('href') || '';
+        return href.includes('/anime/') && !href.includes('anime-list');
+      })
       .first()
       .attr('href');
-    if (detailLink) {
-      episodeData.animeDetail = detailLink.startsWith('/') ? `${BASE()}${detailLink}` : detailLink;
+    if (breadcrumbLink) {
+      episodeData.animeDetail = breadcrumbLink.startsWith('/') ? `${BASE()}${breadcrumbLink}` : breadcrumbLink;
     }
   }
 
@@ -898,12 +1463,27 @@ export async function streaming(episodeUrl: string, signal?: AbortSignal): Promi
   const isNativePlayable =
     primaryStreamUrl.includes('googlevideo.com') ||
     primaryStreamUrl.includes('googleusercontent.com') ||
+    primaryStreamUrl.includes('pixeldrain.com/api/file/') ||
+    primaryStreamUrl.includes('odcloud') ||
+    primaryStreamUrl.includes('desustream') ||
+    primaryStreamUrl.includes('filedon') ||
+    primaryStreamUrl.includes('berkasdrive') ||
+    primaryStreamUrl.includes('.mp4') ||
     primaryStreamUrl.includes('.m3u8') ||
     streamIsHls;
 
+  // Keep initial episode opening fast; direct MP4 stream can be used right away, while box links resolve on demand
   let downloadLink = '';
-  if (primaryStreamUrl.includes('.mp4') && !primaryStreamUrl.includes('.php?')) {
-    downloadLink = primaryStreamUrl;
+  if (
+    primaryStreamUrl &&
+    !primaryStreamUrl.toLowerCase().includes('.m3u8') &&
+    (primaryStreamUrl.includes('googlevideo.com') ||
+      primaryStreamUrl.includes('googleusercontent.com') ||
+      primaryStreamUrl.includes('pixeldrain.com/api/file/') ||
+      primaryStreamUrl.includes('odcloud') ||
+      (primaryStreamUrl.includes('.mp4') && !primaryStreamUrl.includes('.php?')))
+  ) {
+    downloadLink = normalizeDirectDownloadUrl(primaryStreamUrl);
   }
 
   return {
@@ -912,8 +1492,9 @@ export async function streaming(episodeUrl: string, signal?: AbortSignal): Promi
     streamingLink: primaryStreamUrl || '',
     streamingType: isNativePlayable ? 'raw' : 'embed',
     downloadLink,
+    downloadOptions,
     isHls: streamIsHls,
-    resolution: streamResolutions.length > 0 ? streamResolutions[0].resolution : undefined,
+    resolution: activeRes,
     resolutionRaw: streamResolutions,
     thumbnailUrl,
     episodeData,
@@ -978,4 +1559,134 @@ export async function animeList(
   });
 
   return results;
+}
+
+export async function jadwalAnime(
+  signal?: AbortSignal,
+): Promise<
+  Record<
+    string,
+    { title: string; link: string; thumbnailUrl?: string; estimatedEpisode?: string }[]
+  >
+> {
+  const [html, ongoingHtml1, ongoingHtml2] = await Promise.all([
+    fetchPage(`${BASE()}/jadwal-rilis/`, signal).catch(() => ''),
+    fetchPage(`${BASE()}/ongoing-anime/`, signal).catch(() => ''),
+    fetchPage(`${BASE()}/ongoing-anime/page/2/`, signal).catch(() => ''),
+  ]);
+
+  const normalizeHrefKey = (u: string) => u.replace(/\/$/, '').toLowerCase();
+  const metaMap: Record<string, { img: string; ep?: string }> = {};
+  const parseOngoing = (pageHtml: string) => {
+    if (!pageHtml) return;
+    const $og = cheerio.load(pageHtml);
+    $og('.venz ul li').each((_, el) => {
+      let link = $og(el).find('.thumb a').first().attr('href') || '';
+      if (link.startsWith('/')) link = `${BASE()}${link}`;
+      const img = $og(el).find('.thumb img').first().attr('src') || '';
+      const ep = $og(el).find('.epz').first().text().replace(/[\s\n]+/g, ' ').trim();
+      const title = $og(el).find('.jdlflm').first().text().trim().toLowerCase();
+      const linkKey = link ? normalizeHrefKey(link) : '';
+      if (linkKey && (img || ep)) metaMap[linkKey] = { img, ep: ep || undefined };
+      if (title && (img || ep)) metaMap[title] = { img, ep: ep || undefined };
+    });
+  };
+
+  parseOngoing(ongoingHtml1);
+  parseOngoing(ongoingHtml2);
+
+  const $ = cheerio.load(html);
+  const list = $('div.kglist321');
+  const jadwal: Record<
+    string,
+    { title: string; link: string; thumbnailUrl?: string; estimatedEpisode?: string }[]
+  > = {};
+
+  list.each((_, el) => {
+    const $el = $(el);
+    const day = $el.find('h2').text().trim();
+    const arr: {
+      title: string;
+      link: string;
+      thumbnailUrl?: string;
+      estimatedEpisode?: string;
+    }[] = [];
+    $el.find('ul li > a').each((_, a) => {
+      let href = $(a).attr('href') || '';
+      if (href.startsWith('/')) href = `${BASE()}${href}`;
+      const title = $(a).text().trim();
+      const lowerTitle = title.toLowerCase();
+      const meta = metaMap[normalizeHrefKey(href)] || metaMap[lowerTitle];
+      arr.push({
+        title,
+        link: href,
+        thumbnailUrl: meta?.img || undefined,
+        estimatedEpisode: meta?.ep || undefined,
+      });
+    });
+    if (day) {
+      jadwal[day] = arr;
+    }
+  });
+
+  return jadwal;
+}
+
+export const OTAKUDESU_GENRES: { name: string; slug: string }[] = [
+  { name: 'Action', slug: 'action' },
+  { name: 'Adventure', slug: 'adventure' },
+  { name: 'Comedy', slug: 'comedy' },
+  { name: 'Demons', slug: 'demons' },
+  { name: 'Drama', slug: 'drama' },
+  { name: 'Ecchi', slug: 'ecchi' },
+  { name: 'Fantasy', slug: 'fantasy' },
+  { name: 'Game', slug: 'game' },
+  { name: 'Harem', slug: 'harem' },
+  { name: 'Historical', slug: 'historical' },
+  { name: 'Horror', slug: 'horror' },
+  { name: 'Isekai', slug: 'isekai' },
+  { name: 'Josei', slug: 'josei' },
+  { name: 'Magic', slug: 'magic' },
+  { name: 'Martial Arts', slug: 'martial-arts' },
+  { name: 'Mecha', slug: 'mecha' },
+  { name: 'Military', slug: 'military' },
+  { name: 'Music', slug: 'music' },
+  { name: 'Mystery', slug: 'mystery' },
+  { name: 'Parody', slug: 'parody' },
+  { name: 'Psychological', slug: 'psychological' },
+  { name: 'Romance', slug: 'romance' },
+  { name: 'Samurai', slug: 'samurai' },
+  { name: 'School', slug: 'school' },
+  { name: 'Sci-Fi', slug: 'sci-fi' },
+  { name: 'Seinen', slug: 'seinen' },
+  { name: 'Shoujo', slug: 'shoujo' },
+  { name: 'Shounen', slug: 'shounen' },
+  { name: 'Slice of Life', slug: 'slice-of-life' },
+  { name: 'Space', slug: 'space' },
+  { name: 'Sports', slug: 'sports' },
+  { name: 'Super Power', slug: 'super-power' },
+  { name: 'Supernatural', slug: 'supernatural' },
+  { name: 'Thriller', slug: 'thriller' },
+  { name: 'Vampire', slug: 'vampire' },
+];
+
+export async function getOtakudesuGenres(
+  signal?: AbortSignal,
+): Promise<{ name: string; slug: string }[]> {
+  try {
+    const html = await fetchPage(`${BASE()}/genre-list/`, signal);
+    const $ = cheerio.load(html);
+    const genres: { name: string; slug: string }[] = [];
+    $('.genres li a, ul.genre li a, .genre-list li a, a[href*="/genres/"]').each((_, el) => {
+      const name = $(el).text().trim();
+      const href = $(el).attr('href') || '';
+      const match = href.match(/\/genres\/([^\/]+)/);
+      const slug = match ? match[1].trim() : name.toLowerCase().replace(/\s+/g, '-');
+      if (name && slug && !genres.some(g => g.slug === slug)) {
+        genres.push({ name, slug });
+      }
+    });
+    if (genres.length > 0) return genres;
+  } catch {}
+  return OTAKUDESU_GENRES;
 }

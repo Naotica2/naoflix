@@ -25,6 +25,7 @@ import { DatabaseManager, useModifiedKeyValueIfFocused } from '../../utils/Datab
 import controlWatchLater from '../../utils/watchLaterControl';
 import watchLaterJSON from '../../types/watchLaterJSON';
 import { ToastAndroid } from 'react-native';
+import { tSync, useLanguage } from '../../misc/LanguageContext';
 
 type Props = NativeStackScreenProps<RootStackNavigator, 'NovelDetail'>;
 
@@ -36,6 +37,7 @@ type ChapterItem = {
 
 export default function NovelDetail(props: Props) {
   const { data } = props.route.params;
+  const { t } = useLanguage();
   const theme = useTheme();
   const globalStyles = useGlobalStyles();
   const colorScheme = useColorScheme();
@@ -46,7 +48,14 @@ export default function NovelDetail(props: Props) {
 
   const historyListsJson = useModifiedKeyValueIfFocused(
     'historyKeyCollectionsOrder',
-    state => JSON.parse(state) as HistoryItemKey[],
+    state => {
+      try {
+        return JSON.parse(state) as HistoryItemKey[];
+      } catch {
+        return [] as HistoryItemKey[];
+      }
+    },
+    [] as HistoryItemKey[],
   );
   const lastReaded = useMemo(() => {
     let historyKey = historyListsJson.find(
@@ -59,7 +68,12 @@ export default function NovelDetail(props: Props) {
       );
     }
     if (historyKey) {
-      return JSON.parse(DatabaseManager.getSync(historyKey)!) as HistoryJSON;
+      try {
+        const raw = DatabaseManager.getSync(historyKey);
+        return raw ? (JSON.parse(raw) as HistoryJSON) : undefined;
+      } catch {
+        return undefined;
+      }
     } else return undefined;
   }, [historyListsJson, data.title]);
 
@@ -71,7 +85,14 @@ export default function NovelDetail(props: Props) {
 
   const watchLaterListsJson = useModifiedKeyValueIfFocused(
     'watchLater',
-    state => JSON.parse(state) as watchLaterJSON[],
+    state => {
+      try {
+        return JSON.parse(state) as watchLaterJSON[];
+      } catch {
+        return [] as watchLaterJSON[];
+      }
+    },
+    [] as watchLaterJSON[],
   );
   const isInList = useMemo(
     () => watchLaterListsJson.some(item => item.title === data.title && !item.isComics && item.rating === 'Novel'),
@@ -168,7 +189,7 @@ export default function NovelDetail(props: Props) {
           {isRead && (
             <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 8 }}>
               {isLastReadedChapter && <Icon name="book" size={12} color="#3b82f6" style={{ marginRight: 4 }} />}
-              <Text style={{ fontSize: 11, color: '#888', fontWeight: '500' }}>Dibaca</Text>
+              <Text style={{ fontSize: 11, color: '#888', fontWeight: '500' }}>{t('detail.readStatusShort')}</Text>
             </View>
           )}
           <MaterialIcon
@@ -179,13 +200,12 @@ export default function NovelDetail(props: Props) {
         </TouchableOpacity>
       );
     },
-    [isDark, globalStyles.text, lastReadChapterNum, lastReaded, navigateToChapter],
+    [isDark, globalStyles.text, lastReadChapterNum, lastReaded, navigateToChapter, t],
   );
 
   const ListHeader = useMemo(
     () => (
       <View>
-        {/* BLURRED HERO HEADER */}
         <View style={{ height: 180, overflow: 'hidden' }}>
           <ImageLoading
             source={{ uri: data.thumbnailUrl }}
@@ -199,7 +219,6 @@ export default function NovelDetail(props: Props) {
           />
         </View>
 
-        {/* COVER + INFO */}
         <Reanimated.View entering={FadeInUp.duration(400)}>
           <View style={{ flexDirection: 'row', paddingHorizontal: 16, marginTop: -80, gap: 16 }}>
             <ImageLoading
@@ -235,7 +254,6 @@ export default function NovelDetail(props: Props) {
           </View>
         </Reanimated.View>
 
-        {/* META INFO */}
         <View style={{ paddingHorizontal: 16, marginTop: 12, gap: 4 }}>
           {data.author ? (
             <Text style={[globalStyles.text, { fontSize: 13, color: isDark ? '#aaa' : '#666' }]}>{data.author}</Text>
@@ -244,7 +262,7 @@ export default function NovelDetail(props: Props) {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <MaterialIcon name="info-outline" size={14} color={isDark ? '#aaa' : '#666'} />
               <Text style={[globalStyles.text, { fontSize: 13, marginLeft: 4, color: isDark ? '#aaa' : '#666' }]}>
-                {data.status || 'Unknown'}
+                {data.status || t('common.unknown')}
               </Text>
             </View>
             {data.rating ? (
@@ -254,12 +272,11 @@ export default function NovelDetail(props: Props) {
               </View>
             ) : null}
             <Text style={[globalStyles.text, { fontSize: 13, color: isDark ? '#666' : '#999' }]}>
-              {data.chapters.length} Chapter
+              {t('detail.chaptersCount', { count: data.chapters.length })}
             </Text>
           </View>
         </View>
 
-        {/* GENRES */}
         {data.genres.length > 0 && (
           <Reanimated.View entering={FadeInDown.delay(100)} style={{ marginTop: 12 }}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingHorizontal: 16 }}>
@@ -279,26 +296,24 @@ export default function NovelDetail(props: Props) {
           </Reanimated.View>
         )}
 
-        {/* SYNOPSIS */}
         <Reanimated.View entering={FadeInDown.delay(200)} style={{ marginHorizontal: 16, marginTop: 16 }}>
           <Text style={[globalStyles.text, { fontWeight: '700', fontSize: 16, marginBottom: 8, color: isDark ? '#fff' : '#111' }]}>
-            Sinopsis
+            {t('detail.synopsis')}
           </Text>
           <Text
             numberOfLines={showFullSynopsis ? undefined : 5}
             style={[globalStyles.text, { fontSize: 14, lineHeight: 22, color: isDark ? '#bbb' : '#444' }]}>
-            {data.synopsis || 'Sinopsis tidak tersedia.'}
+            {data.synopsis || t('detail.noSynopsis')}
           </Text>
           {data.synopsis.length > 200 && (
             <TouchableOpacity onPress={() => setShowFullSynopsis(!showFullSynopsis)} style={{ marginTop: 4 }}>
               <Text style={{ color: '#3b82f6', fontSize: 13, fontWeight: '600' }}>
-                {showFullSynopsis ? 'Sembunyikan' : 'Selengkapnya'}
+                {showFullSynopsis ? t('detail.showLess') : t('common.readMore')}
               </Text>
             </TouchableOpacity>
           )}
         </Reanimated.View>
 
-        {/* CHAPTER LIST HEADER */}
         <View style={{ marginTop: 20, paddingHorizontal: 16 }}>
           <Button
             buttonColor="rgba(59, 130, 246, 0.15)"
@@ -308,7 +323,7 @@ export default function NovelDetail(props: Props) {
             style={{ borderRadius: 6, marginBottom: 16 }}
             onPress={() => {
               if (!data.chapters[0]) {
-                ToastAndroid.show('Data chapter tidak ditemukan', ToastAndroid.SHORT);
+                ToastAndroid.show(tSync('detail.searchChapterTitle'), ToastAndroid.SHORT);
                 return;
               }
               const watchLaterJson: watchLaterJSON = {
@@ -322,9 +337,9 @@ export default function NovelDetail(props: Props) {
                 isComics: false,
               };
               controlWatchLater('add', watchLaterJson);
-              ToastAndroid.show('Ditambahkan ke tonton nanti', ToastAndroid.SHORT);
+              ToastAndroid.show(tSync('detail.addedReadLaterToast'), ToastAndroid.SHORT);
             }}>
-            {isInList ? 'Sudah Ditambahkan' : 'Baca Nanti'}
+            {isInList ? t('detail.alreadyAddedBtn') : t('detail.readLaterBtn')}
           </Button>
           <View style={{ flexDirection: 'column', gap: 8, marginBottom: 16 }}>
             {lastReaded && lastReaded.episode && (
@@ -337,15 +352,14 @@ export default function NovelDetail(props: Props) {
                 onPress={() => {
                   navigateToChapter(lastReaded.link, { lastDuration: lastReaded.lastDuration ?? 0 });
                 }}>
-                Lanjutkan Membaca ({lastReaded.episode})
+                {t('detail.continueReadingWithEp', { ep: lastReaded.episode })}
               </Button>
             )}
             <Button
               onPress={() => {
-                const chapterData = data.chapters[data.chapters.length - 1]; // Novel chapters usually oldest to newest or newest to oldest?
                 const firstCh = [...data.chapters].reverse()[0];
                 if (!firstCh?.chapterUrl) {
-                  ToastAndroid.show('Chapter tidak ditemukan', ToastAndroid.SHORT);
+                  ToastAndroid.show(tSync('detail.chapterNotFound'), ToastAndroid.SHORT);
                   return;
                 }
                 navigateToChapter(firstCh.chapterUrl);
@@ -354,13 +368,13 @@ export default function NovelDetail(props: Props) {
               buttonColor={isDark ? '#2a2a2a' : '#e0e0e0'}
               textColor={isDark ? '#fff' : '#000'}
               style={{ borderRadius: 6 }}>
-              Baca Chapter Pertama
+              {t('detail.readFirstChapter')}
             </Button>
             <Button
               onPress={() => {
                 const lastCh = data.chapters[0];
                 if (!lastCh?.chapterUrl) {
-                  ToastAndroid.show('Chapter tidak ditemukan', ToastAndroid.SHORT);
+                  ToastAndroid.show(tSync('detail.chapterNotFound'), ToastAndroid.SHORT);
                   return;
                 }
                 navigateToChapter(lastCh.chapterUrl);
@@ -369,7 +383,7 @@ export default function NovelDetail(props: Props) {
               buttonColor={isDark ? '#2a2a2a' : '#e0e0e0'}
               textColor={isDark ? '#fff' : '#000'}
               style={{ borderRadius: 6 }}>
-              Baca Chapter Terbaru
+              {t('detail.readLatestChapter')}
             </Button>
           </View>
           <View
@@ -383,26 +397,25 @@ export default function NovelDetail(props: Props) {
               marginBottom: 4,
             }}>
             <Text style={[globalStyles.text, { fontWeight: '700', fontSize: 18, color: isDark ? '#fff' : '#111' }]}>
-              Daftar Chapter
+              {t('detail.chapters')}
             </Text>
             <TouchableOpacity onPress={() => setSortAsc(!sortAsc)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <MaterialIcon name={sortAsc ? 'arrow-upward' : 'arrow-downward'} size={16} color="#3b82f6" />
               <Text style={[globalStyles.text, { fontSize: 12, color: '#3b82f6', fontWeight: '600' }]}>
-                {sortAsc ? 'Terlama' : 'Terbaru'}
+                {sortAsc ? t('detail.oldest') : t('detail.newest')}
               </Text>
             </TouchableOpacity>
           </View>
         </View>
       </View>
     ),
-    [data, isDark, globalStyles.text, dimensions.width, showFullSynopsis, lastReaded, navigateToChapter, sortAsc],
+    [data, isDark, globalStyles.text, dimensions.width, showFullSynopsis, lastReaded, navigateToChapter, sortAsc, isInList, props.route.params.link, t],
   );
 
   return (
     <View style={{ flex: 1, backgroundColor: isDark ? '#0f0f0f' : '#fafafa' }}>
       <FlashList
         // @ts-ignore
-        estimatedItemSize={200}
         data={chapters}
         renderItem={renderChapter}
         keyExtractor={(item: ChapterItem, index: number) => item.chapterUrl || `ch-${index}`}
@@ -410,7 +423,7 @@ export default function NovelDetail(props: Props) {
         ListEmptyComponent={
           <View style={{ paddingVertical: 40, alignItems: 'center' }}>
             <Text style={[globalStyles.text, { color: isDark ? '#666' : '#999' }]}>
-              Tidak ada chapter
+              {t('detail.noChapters')}
             </Text>
           </View>
         }

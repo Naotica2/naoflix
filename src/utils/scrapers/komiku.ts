@@ -23,24 +23,16 @@ export interface LatestKomikuRelease {
   shortDescription: string;
   additionalInfo: string;
 }
-export async function getLatestKomikuReleases(
-  page: number = 1,
-  signal?: AbortSignal,
-): Promise<LatestKomikuRelease[]> {
-  const response = await fetch(`${API_URL}/manga/page/${page}/`, {
-    headers: { 'User-Agent': deviceUserAgent },
-    signal,
-  });
-  const data = await response.text();
-  const $ = cheerio.load(data);
+function parseBgeList($: ReturnType<typeof cheerio.load>): LatestKomikuRelease[] {
   const list = $('div.bge');
   return list
-    .map((i, el) => {
+    .map((_i, el) => {
       const listItem = $(el);
       const title = listItem.find('div.kan h3').text().trim();
-      const thumbnailUrl = listItem.find('img').attr('src') || '';
+      const imgEl = listItem.find('img').first();
+      const thumbnailUrl = imgEl.attr('data-src') || imgEl.attr('src') || '';
       const detailUrl = listItem.find('a').attr('href') || '';
-      const type = listItem.find('div.tpe1_inf b').text().trim() as LatestKomikuRelease['type'];
+      const type = (listItem.find('div.tpe1_inf b').text().trim() || 'Manga') as LatestKomikuRelease['type'];
       const latestChapter = listItem.find('div.new1').eq(1).find('span').eq(1).text().trim();
       const concept = listItem.find('div.tpe1_inf').clone().find('b').remove().end().text().trim();
       const shortDescription = listItem.find('div.kan p').text().trim();
@@ -56,7 +48,47 @@ export async function getLatestKomikuReleases(
         additionalInfo,
       };
     })
-    .toArray();
+    .toArray()
+    .filter(item => Boolean(item.title && item.detailUrl));
+}
+
+export async function getLatestKomikuReleases(
+  page: number = 1,
+  signal?: AbortSignal,
+): Promise<LatestKomikuRelease[]> {
+  const response = await fetch(`${API_URL}/manga/page/${page}/`, {
+    headers: { 'User-Agent': deviceUserAgent },
+    signal,
+  });
+  const data = await response.text();
+  const $ = cheerio.load(data);
+  return parseBgeList($);
+}
+
+export async function getPopularKomikuReleases(
+  page: number = 1,
+  signal?: AbortSignal,
+): Promise<LatestKomikuRelease[]> {
+  const response = await fetch(`${API_URL}/other/hot/page/${page}/`, {
+    headers: { 'User-Agent': deviceUserAgent },
+    signal,
+  });
+  const data = await response.text();
+  const $ = cheerio.load(data);
+  return parseBgeList($);
+}
+
+export async function getManhwaKomikuReleases(
+  page: number = 1,
+  signal?: AbortSignal,
+): Promise<LatestKomikuRelease[]> {
+  const response = await fetch(`${API_URL}/manga/page/${page}/?tipe=manhwa`, {
+    headers: { 'User-Agent': deviceUserAgent },
+    signal,
+  });
+  const data = await response.text();
+  const $ = cheerio.load(data);
+  return parseBgeList($);
 }
 
 export async function getKomikuByGenre(
@@ -70,30 +102,7 @@ export async function getKomikuByGenre(
   });
   const data = await response.text();
   const $ = cheerio.load(data);
-  const list = $('div.bge');
-  return list
-    .map((i, el) => {
-      const listItem = $(el);
-      const title = listItem.find('div.kan h3').text().trim();
-      const thumbnailUrl = listItem.find('img').attr('src') || '';
-      const detailUrl = listItem.find('a').attr('href') || '';
-      const type = listItem.find('div.tpe1_inf b').text().trim() as LatestKomikuRelease['type'];
-      const latestChapter = listItem.find('div.new1').eq(1).find('span').eq(1).text().trim();
-      const concept = listItem.find('div.tpe1_inf').clone().find('b').remove().end().text().trim();
-      const shortDescription = listItem.find('div.kan p').text().trim();
-      const additionalInfo = listItem.find('span.judul2').text().trim();
-      return {
-        title,
-        thumbnailUrl: normalizeUrl(thumbnailUrl),
-        detailUrl: normalizeUrl(detailUrl),
-        type,
-        latestChapter,
-        concept,
-        shortDescription,
-        additionalInfo,
-      };
-    })
-    .toArray();
+  return parseBgeList($);
 }
 
 export interface KomikuDetail {
@@ -217,8 +226,18 @@ export async function getKomikuReading(url: string, signal?: AbortSignal): Promi
   });
   const titleRaw = $('header > h1').text().trim() || 'Data tidak tersedia';
   const title = he.decode(titleRaw);
-  const chapter =
-    $('div[data-chapter-title]').attr('data-chapter-title')?.trim() || 'Data tidak tersedia';
+  let chapter = $('div[data-chapter-title]').attr('data-chapter-title')?.trim() || '';
+  if (!chapter) {
+    const chapFromTitle = title.match(/(?:Chapter|Ch\.?)\s*\d+(?:[.,]\d+)?/i);
+    const chapFromUrl = url.match(/chapter[-/](\d+(?:[-.]\d+)?)/i);
+    if (chapFromTitle) {
+      chapter = chapFromTitle[0].replace(/^ch\.?\s*/i, 'Chapter ').replace(',', '.').trim();
+    } else if (chapFromUrl?.[1]) {
+      chapter = `Chapter ${chapFromUrl[1].replace('-', '.')}`;
+    } else {
+      chapter = 'Data tidak tersedia';
+    }
+  }
   let thumbnailUrl = data.split("data[5] = '")[1]?.split("'")[0];
   if (!thumbnailUrl) {
     const coverUrl = data
@@ -308,4 +327,46 @@ export async function komikuSearch(query: string, signal?: AbortSignal): Promise
       };
     })
     .toArray();
+}
+
+export async function getKomikuDetailUrlFromChapter(
+  url: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  const initialPath = url.replace(/^https?:\/\/[^/]+/i, '').split(/[?#]/)[0];
+  const initialSegs = initialPath.split('/').filter(Boolean);
+  if (
+    initialSegs.length === 2 &&
+    initialSegs[0].toLowerCase() === 'manga' &&
+    !['page', 'hot', 'genre', 'genres', 'populer'].includes(initialSegs[1].toLowerCase())
+  ) {
+    return `${BASE_URL}/manga/${initialSegs[1]}/`;
+  }
+  const response = await fetch(normalizeUrl(url), {
+    signal,
+    headers: { 'User-Agent': deviceUserAgent },
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const html = await response.text();
+  const $ = cheerio.load(html);
+  const candidates: string[] = [];
+  $(
+    '.nxpr a[href*="/manga/"], #Breadcrumb a[href*="/manga/"], .breadcrumb a[href*="/manga/"], a[title*="Daftar Chapter"][href*="/manga/"], a[href*="/manga/"]',
+  ).each((_i, el) => {
+    const href = $(el).attr('href');
+    if (href) candidates.push(href);
+  });
+
+  for (const href of candidates) {
+    const path = href.replace(/^https?:\/\/[^/]+/i, '').split(/[?#]/)[0];
+    const segs = path.split('/').filter(Boolean);
+    if (
+      segs.length === 2 &&
+      segs[0].toLowerCase() === 'manga' &&
+      !['page', 'hot', 'genre', 'genres', 'populer'].includes(segs[1].toLowerCase())
+    ) {
+      return `${BASE_URL}/manga/${segs[1]}/`;
+    }
+  }
+  return null;
 }

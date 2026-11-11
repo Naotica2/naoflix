@@ -33,8 +33,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useGlobalStyles from '../../assets/style';
 import { ComicsListContext } from '../../misc/context';
 import { HomeNavigator, RootStackNavigator } from '../../types/navigation';
-import { getLatestComicsReleases, LatestComicsRelease, comicsSearch, ComicsSearch, getPopularComicsReleases } from '../../utils/scrapers/comicsv2';
-import { __ALIAS as KomikuAlias, KomikuSearch, komikuSearch, getLatestKomikuReleases, LatestKomikuRelease } from '../../utils/scrapers/komiku';
+import {
+  getLatestComicsReleases,
+  LatestComicsRelease,
+  comicsSearch,
+  ComicsSearch,
+  getPopularComicsReleases,
+  getManhwaWebtoonReleases,
+  getActiveComicSource,
+} from '../../utils/scrapers/comicsv2';
+import { __ALIAS as KomikuAlias, KomikuSearch, komikuSearch } from '../../utils/scrapers/komiku';
+import { getSourceVersion } from '../../utils/sourcePreferences';
 import { ListAnimeComponent } from '../misc/ListAnimeComponent';
 import ImageLoading from '../misc/ImageLoading';
 import DarkOverlay from '../misc/DarkOverlay';
@@ -43,6 +52,7 @@ import { ShowSkeletonLoading, RenderScrollComponent } from './AnimePage';
 import DialogManager from '../../utils/dialogManager';
 import { DatabaseManager, useModifiedKeyValueIfFocused } from '../../utils/DatabaseManager';
 import HeaderInfo from './HeaderInfo';
+import { tSync, useLanguage } from '../../misc/LanguageContext';
 
 type ComicPageProps = BottomTabScreenProps<HomeNavigator, 'HomePage'>;
 
@@ -56,6 +66,7 @@ const ComicPage = memo(ComicPageComponent);
 export default ComicPage;
 
 function ComicPageComponent(props: ComicPageProps) {
+  const { t } = useLanguage();
   const globalStyles = useGlobalStyles();
   const colorScheme = useColorScheme();
   const styles = useStyles();
@@ -74,10 +85,19 @@ function ComicPageComponent(props: ComicPageProps) {
   const isFocus = useRef(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const { setParamsState: setComicsContextData } = useContext(ComicsListContext);
+  const lastSourceVersionRef = useRef(getSourceVersion());
 
   const searchHistory = useModifiedKeyValueIfFocused(
     'searchHistory',
-    result => JSON.parse(result) as string[],
+    result => {
+      try {
+        return JSON.parse(result) as string[];
+      } catch {
+        return [] as string[];
+      }
+    },
+    [] as string[],
   );
 
   const clearSearch = useCallback(() => {
@@ -88,33 +108,48 @@ function ComicPageComponent(props: ComicPageProps) {
 
 
   const submitSearch = useCallback(() => {
-    if (searchText === '') return;
+    const q = searchText.trim();
+    if (!q) return;
     setShowSearchHistory(false);
     setSearchLoading(true);
     textInputRef.current?.blur();
 
-    Promise.allSettled([
-      comicsSearch(searchText, abortController.current?.signal),
-      komikuSearch(searchText, abortController.current?.signal),
-    ])
-      .then(([comicsResponse, komikuResponse]) => {
-        if (comicsResponse.status === 'rejected' && komikuResponse.status === 'rejected') {
-          if (!abortController.current?.signal.aborted) {
-            DialogManager.alert('Error', 'Gagal mencari komik');
+    abortController.current?.abort();
+    const controller = new AbortController();
+    abortController.current = controller;
+
+    getActiveComicSource()
+      .then(activeSource => {
+        const tasks: Promise<any>[] = [comicsSearch(q, controller.signal)];
+        if (activeSource !== 'komiku') {
+          tasks.push(komikuSearch(q, controller.signal));
+        }
+        return Promise.allSettled(tasks).then(results => ({ results, activeSource }));
+      })
+      .then(({ results, activeSource }) => {
+        const primaryResp = results[0];
+        const komikuResp = results[1];
+        const primaryRejected = primaryResp?.status === 'rejected';
+        const secondaryRejected = !komikuResp || komikuResp.status === 'rejected';
+
+        if (primaryRejected && secondaryRejected) {
+          if (!controller.signal.aborted) {
+            DialogManager.alert(tSync('common.error'), tSync('search.searchComicsFailed'));
           }
           return;
         }
-        const comicsResult = comicsResponse.status === 'fulfilled' ? comicsResponse.value : [];
-        const komikuResult = komikuResponse.status === 'fulfilled' ? komikuResponse.value : [];
 
-        const allItems: ComicItem[] = [
-          ...comicsResult,
-          ...komikuResult.map(res => ({ ...res, source: KomikuAlias })),
-        ];
+        const primaryItems = primaryResp?.status === 'fulfilled' ? (primaryResp.value as ComicItem[]) : [];
+        const komikuItems =
+          activeSource !== 'komiku' && komikuResp?.status === 'fulfilled'
+            ? (komikuResp.value as ComicItem[]).map(res => ({ ...res, source: 'Komiku' }))
+            : [];
+
+        const allItems: ComicItem[] = [...primaryItems, ...komikuItems];
 
         const grouped: { [key: string]: ComicItem[] } = {};
         allItems.forEach(item => {
-          const src = item.source || 'Lainnya';
+          const src = item.source || KomikuAlias;
           if (!grouped[src]) grouped[src] = [];
           grouped[src].push(item);
         });
@@ -126,20 +161,24 @@ function ComicPageComponent(props: ComicPageProps) {
         });
 
         setComicsSearchData(sectionedData);
-        setCurrentSearchQuery(searchText);
+        setCurrentSearchQuery(q);
       })
       .finally(() => {
-        if (searchHistory.includes(searchText)) {
-          searchHistory.splice(searchHistory.indexOf(searchText), 1);
-        }
-        searchHistory.unshift(searchText);
-        DatabaseManager.set('searchHistory', JSON.stringify(searchHistory));
+        const nextHistory = searchHistory.filter(h => h !== q);
+        nextHistory.unshift(q);
+        DatabaseManager.set('searchHistory', JSON.stringify(nextHistory));
         setSearchLoading(false);
       });
   }, [searchHistory, searchText]);
 
   useFocusEffect(
     useCallback(() => {
+      const currentVersion = getSourceVersion();
+      if (currentVersion !== lastSourceVersionRef.current) {
+        lastSourceVersionRef.current = currentVersion;
+        setComicsContextData?.(undefined);
+        setRefreshKey(k => k + 1);
+      }
       const timeout = setTimeout(() => {
         isFocus.current = true;
       }, 200);
@@ -150,9 +189,10 @@ function ComicPageComponent(props: ComicPageProps) {
         isFocus.current = false;
         keyboardEvent.remove();
         clearTimeout(timeout);
+        abortController.current?.abort();
         clearSearch();
       };
-    }, [clearSearch]),
+    }, [clearSearch, setComicsContextData]),
   );
 
   useFocusEffect(
@@ -180,16 +220,16 @@ function ComicPageComponent(props: ComicPageProps) {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    setComicsContextData?.(undefined);
     setRefreshKey(k => k + 1);
-    setTimeout(() => setRefreshing(false), 1500);
-  }, []);
+    setTimeout(() => setRefreshing(false), 1200);
+  }, [setComicsContextData]);
 
   const hasSearchResults = comicsSearchData && comicsSearchData.length > 0;
   const isSearchEmpty = !hasSearchResults && comicsSearchData !== null;
 
   return (
     <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
-      {/* SEARCH BAR */}
       <View style={{ paddingTop: insets.top, paddingHorizontal: 12, paddingBottom: 6, backgroundColor: styles.container.backgroundColor }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           {showSearchHistory && (
@@ -209,7 +249,7 @@ function ComicPageComponent(props: ComicPageProps) {
               onIconPress={submitSearch}
               onChangeText={setSearchText}
               onFocus={onTextInputFocus}
-              placeholder="Cari komik..."
+              placeholder={t('search.placeholderComicsShort')}
               value={searchText}
               autoCorrect={false}
               ref={textInputRef}
@@ -222,7 +262,6 @@ function ComicPageComponent(props: ComicPageProps) {
         </View>
       </View>
 
-      {/* GENRE BUTTON */}
       {!showSearchHistory && !hasSearchResults && !isSearchEmpty && !searchLoading && (
         <TouchableOpacityReactNative
           onPress={() => (props.navigation as any).navigate('GenreSelectionScreen', { type: 'comics' })}
@@ -240,7 +279,7 @@ function ComicPageComponent(props: ComicPageProps) {
           }}>
           <Icon name="tags" size={13} color="#F47521" style={{ marginRight: 8 }} />
           <Text style={{ fontWeight: '700', color: '#F47521', fontSize: 13 }}>
-            Jelajahi Berdasarkan Genre
+            {t('search.browseByGenre')}
           </Text>
         </TouchableOpacityReactNative>
       )}
@@ -250,17 +289,16 @@ function ComicPageComponent(props: ComicPageProps) {
       {searchLoading && (
         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, padding: 8 }}>
           <ActivityIndicator size="small" color={theme.colors.primary} />
-          <Text style={[globalStyles.text, { opacity: 0.8 }]}>Mencari komik...</Text>
+          <Text style={[globalStyles.text, { opacity: 0.8 }]}>{t('search.searchingComics')}</Text>
         </View>
       )}
 
       {hasSearchResults && !searchLoading && (
         <View style={{ flex: 1 }}>
           <Text style={[globalStyles.text, { fontWeight: 'bold', fontSize: 13, textAlign: 'center', marginVertical: 4 }]}>
-            Hasil pencarian untuk: {currentSearchQuery}
+            {t('search.resultsPrefix', { query: currentSearchQuery })}
           </Text>
           <FlashList
-        estimatedItemSize={200}
             data={comicsSearchData}
             getItemType={item => {
               if ('type' in item && item.type === 'header') return 'sectionHeader';
@@ -287,9 +325,9 @@ function ComicPageComponent(props: ComicPageProps) {
       {isSearchEmpty && !searchLoading && (
         <Reanimated.View entering={FadeInUp} style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <Icon name="search-minus" size={60} color={theme.colors.outline} style={{ marginBottom: 15 }} />
-          <Text style={[globalStyles.text, { fontSize: 20, fontWeight: 'bold', marginBottom: 8 }]}>Komik tidak ditemukan</Text>
+          <Text style={[globalStyles.text, { fontSize: 20, fontWeight: 'bold', marginBottom: 8 }]}>{t('search.comicsNotFound')}</Text>
           <Text style={[globalStyles.text, { fontSize: 14, opacity: 0.6, textAlign: 'center', paddingHorizontal: 40 }]}>
-            Coba kata kunci lain.
+            {t('search.tryOtherKeywords')}
           </Text>
           <TouchableOpacityAnimated style={comicStyles.closeSearchResult} onPress={clearSearch} entering={ZoomIn} exiting={ZoomOut}>
             <Icon name="times" size={30} style={{ alignSelf: 'center' }} color="#dadada" />
@@ -311,6 +349,7 @@ function ComicPageComponent(props: ComicPageProps) {
           <HeaderInfo />
           <ComicLatestList key={'comiclist' + refreshKey} />
           <KomikuLatestList key={'komikulist' + refreshKey} />
+          <ManhwaWebtoonList key={'manhwalist' + refreshKey} />
         </ScrollView>
       )}
 
@@ -320,7 +359,6 @@ function ComicPageComponent(props: ComicPageProps) {
           exiting={ZoomOut.springify()}
           style={comicStyles.searchHistoryContainer}>
           <FlashList
-        estimatedItemSize={200}
             drawDistance={250}
             keyboardShouldPersistTaps="always"
             data={searchHistory}
@@ -334,7 +372,7 @@ function ComicPageComponent(props: ComicPageProps) {
             ListHeaderComponent={
               <View style={comicStyles.searchHistoryHeader}>
                 <Text style={[globalStyles.text, { fontWeight: 'bold', flex: 1, textAlign: 'center' }]}>
-                  Riwayat Pencarian: {searchHistory.length}
+                  {t('search.recentHistory')}: {searchHistory.length}
                 </Text>
               </View>
             }
@@ -349,6 +387,7 @@ function ComicPageComponent(props: ComicPageProps) {
 
 const ComicLatestList = memo(ComicLatestListComponent);
 function ComicLatestListComponent() {
+  const { t } = useLanguage();
   const styles = useStyles();
   const [isError, setIsError] = useState(false);
   const navigation = useNavigation<NavigationProp<RootStackNavigator, 'AnimeDetail'>>();
@@ -356,11 +395,14 @@ function ComicLatestListComponent() {
 
   useEffect(() => {
     if (data && data.length > 0) return;
-    queueMicrotask(() => {
-      getLatestComicsReleases()
-        .then(z => setData?.(z))
-        .catch(() => setIsError(true));
-    });
+    const controller = new AbortController();
+    setIsError(false);
+    getLatestComicsReleases(1, controller.signal)
+      .then(z => setData?.(z || []))
+      .catch(() => {
+        if (!controller.signal.aborted) setIsError(true);
+      });
+    return () => controller.abort();
   }, [setData, data]);
 
   const renderComics = useCallback(
@@ -380,40 +422,46 @@ function ComicLatestListComponent() {
   return (
     <View style={styles.sectionContainer}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Komik Terbaru</Text>
+        <Text style={styles.sectionTitle}>{t('home.sectionComicsNew')}</Text>
         <TouchableOpacity
           style={styles.seeMoreButton}
           disabled={data?.length === 0}
           onPress={() => {
             navigation.dispatch(StackActions.push('SeeMore', { type: 'ComicsList' }));
           }}>
-          <Text style={styles.seeMoreText}>Lihat Semua</Text>
+          <Text style={styles.seeMoreText}>{t('common.seeMore')}</Text>
           <MaterialIcon name="chevron-right" style={styles.seeMoreText} />
         </TouchableOpacity>
       </View>
 
       {isError && (
-        <View>
+        <View style={styles.errorContainer}>
           <MaterialIcon name="error-outline" size={24} color="#d80000" />
-          <Text style={styles.errorText}>Error mendapatkan data. Silahkan refresh untuk mencoba lagi</Text>
+          <Text style={styles.errorText}>{t('lists.serverDataErrorRefresh')}</Text>
         </View>
       )}
 
-      {data && data?.length !== 0 ? (
+      {data && data.length > 0 ? (
         <FlashList
-        estimatedItemSize={200}
           renderScrollComponent={RenderScrollComponent}
           contentContainerStyle={{ gap: 3 }}
           horizontal
           data={data.slice(0, 24)}
           renderItem={renderComics}
-          keyExtractor={z => z.title}
+          keyExtractor={(z, i) => (z.detailUrl || z.title) + '-' + i}
           extraData={styles}
           showsHorizontalScrollIndicator={false}
         />
-      ) : (
-        !isError && <ShowSkeletonLoading />
-      )}
+      ) : !isError ? (
+        Array.isArray(data) ? (
+          <View style={styles.errorContainer}>
+            <MaterialIcon name="info-outline" size={22} color="#6b7280" />
+            <Text style={[styles.errorText, { color: '#6b7280' }]}>{t('lists.noDataFromSource')}</Text>
+          </View>
+        ) : (
+          <ShowSkeletonLoading />
+        )
+      ) : null}
     </View>
   );
 }
@@ -513,10 +561,16 @@ function HistoryItem({ item, index, onSelect }: { item: string; index: number; o
         <TouchableOpacityReactNative
           hitSlop={14}
           onPress={async () => {
+            let parsed: string[] = [];
+            try {
+              parsed = JSON.parse((await DatabaseManager.get('searchHistory')) ?? '[]');
+            } catch {
+              parsed = [];
+            }
             DatabaseManager.set(
               'searchHistory',
               JSON.stringify(
-                (JSON.parse((await DatabaseManager.get('searchHistory')) ?? '[]') as string[]).filter((_, i) => i !== index),
+                (Array.isArray(parsed) ? parsed : []).filter((_, i) => i !== index),
               ),
             );
           }}>
@@ -655,19 +709,22 @@ function useStyles() {
 
 const KomikuLatestList = memo(KomikuLatestListComponent);
 function KomikuLatestListComponent() {
+  const { t } = useLanguage();
   const styles = useStyles();
   const [isError, setIsError] = useState(false);
   const navigation = useNavigation<NavigationProp<RootStackNavigator, 'AnimeDetail'>>();
   const [data, setData] = useState<LatestComicsRelease[] | null>(null);
 
   useEffect(() => {
-    if (data && data.length > 0) return;
-    queueMicrotask(() => {
-      getPopularComicsReleases()
-        .then(z => setData(z))
-        .catch(() => setIsError(true));
-    });
-  }, [data]);
+    const controller = new AbortController();
+    setIsError(false);
+    getPopularComicsReleases(1, controller.signal)
+      .then(z => setData(z || []))
+      .catch(() => {
+        if (!controller.signal.aborted) setIsError(true);
+      });
+    return () => controller.abort();
+  }, []);
 
   const renderComics = useCallback(
     ({ item }: ListRenderItemInfo<LatestComicsRelease>) => (
@@ -685,14 +742,14 @@ function KomikuLatestListComponent() {
   return (
     <View style={styles.sectionContainer}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Komik Populer</Text>
+        <Text style={styles.sectionTitle}>{t('lists.headerPopularComics')}</Text>
         <TouchableOpacity
           style={styles.seeMoreButton}
           disabled={!data || data.length === 0}
           onPress={() => {
             navigation.dispatch(StackActions.push('SeeMore', { type: 'ComicsPopular' }));
           }}>
-          <Text style={styles.seeMoreText}>Lihat Semua</Text>
+          <Text style={styles.seeMoreText}>{t('common.seeMore')}</Text>
           <MaterialIcon name="chevron-right" style={styles.seeMoreText} />
         </TouchableOpacity>
       </View>
@@ -700,25 +757,110 @@ function KomikuLatestListComponent() {
       {isError && (
         <View style={styles.errorContainer}>
           <MaterialIcon name="error-outline" size={24} color="#d80000" />
-          <Text style={styles.errorText}>Error mendapatkan data. Silahkan refresh untuk mencoba lagi</Text>
+          <Text style={styles.errorText}>{t('lists.serverDataErrorRefresh')}</Text>
         </View>
       )}
 
-      {data && data?.length !== 0 ? (
+      {data && data.length > 0 ? (
         <FlashList
-        estimatedItemSize={200}
           renderScrollComponent={RenderScrollComponent}
           contentContainerStyle={{ gap: 3 }}
           horizontal
           data={data.slice(0, 24)}
           renderItem={renderComics}
-          keyExtractor={z => z.title}
+          keyExtractor={(z, i) => (z.detailUrl || z.title) + '-' + i}
           extraData={styles}
           showsHorizontalScrollIndicator={false}
         />
-      ) : (
-        !isError && <ShowSkeletonLoading />
+      ) : !isError ? (
+        Array.isArray(data) ? (
+          <View style={styles.errorContainer}>
+            <MaterialIcon name="info-outline" size={22} color="#6b7280" />
+            <Text style={[styles.errorText, { color: '#6b7280' }]}>{t('lists.noDataFromSource')}</Text>
+          </View>
+        ) : (
+          <ShowSkeletonLoading />
+        )
+      ) : null}
+    </View>
+  );
+}
+
+const ManhwaWebtoonList = memo(ManhwaWebtoonListComponent);
+function ManhwaWebtoonListComponent() {
+  const { t } = useLanguage();
+  const styles = useStyles();
+  const [isError, setIsError] = useState(false);
+  const navigation = useNavigation<NavigationProp<RootStackNavigator, 'AnimeDetail'>>();
+  const [data, setData] = useState<LatestComicsRelease[] | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setIsError(false);
+    getManhwaWebtoonReleases(1, controller.signal)
+      .then(z => setData(z || []))
+      .catch(() => {
+        if (!controller.signal.aborted) setIsError(true);
+      });
+    return () => controller.abort();
+  }, []);
+
+  const renderComics = useCallback(
+    ({ item }: ListRenderItemInfo<LatestComicsRelease>) => (
+      <ListAnimeComponent
+        gap
+        newAnimeData={item}
+        type="comics"
+        key={'manhwa' + item.title}
+        navigationProp={navigation as any}
+      />
+    ),
+    [navigation],
+  );
+
+  return (
+    <View style={styles.sectionContainer}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{t('home.sectionManhwa')}</Text>
+        <TouchableOpacity
+          style={styles.seeMoreButton}
+          disabled={!data || data.length === 0}
+          onPress={() => {
+            navigation.dispatch(StackActions.push('SeeMore', { type: 'ComicsManhwa' }));
+          }}>
+          <Text style={styles.seeMoreText}>{t('common.seeMore')}</Text>
+          <MaterialIcon name="chevron-right" style={styles.seeMoreText} />
+        </TouchableOpacity>
+      </View>
+
+      {isError && (
+        <View style={styles.errorContainer}>
+          <MaterialIcon name="error-outline" size={24} color="#d80000" />
+          <Text style={styles.errorText}>{t('lists.serverDataErrorRefresh')}</Text>
+        </View>
       )}
+
+      {data && data.length > 0 ? (
+        <FlashList
+          renderScrollComponent={RenderScrollComponent}
+          contentContainerStyle={{ gap: 3 }}
+          horizontal
+          data={data.slice(0, 24)}
+          renderItem={renderComics}
+          keyExtractor={(z, i) => (z.detailUrl || z.title) + '-' + i}
+          extraData={styles}
+          showsHorizontalScrollIndicator={false}
+        />
+      ) : !isError ? (
+        Array.isArray(data) ? (
+          <View style={styles.errorContainer}>
+            <MaterialIcon name="info-outline" size={22} color="#6b7280" />
+            <Text style={[styles.errorText, { color: '#6b7280' }]}>{t('lists.noDataFromSource')}</Text>
+          </View>
+        ) : (
+          <ShowSkeletonLoading />
+        )
+      ) : null}
     </View>
   );
 }

@@ -13,26 +13,29 @@ import Icon from '@react-native-vector-icons/material-icons';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import { CFBypassIsOpenContext } from './CFBypass';
 import deviceUserAgent from './deviceUserAgent';
+import { tSync, useLanguage } from '../misc/LanguageContext';
 
 const { height, width } = Dimensions.get('window');
 
 export default CFBypassWebView;
 function CFBypassWebView() {
-  const theme = useTheme();
-  const styles = useStyles();
   const bypassContext = useContext(CFBypassIsOpenContext);
+  const { t } = useLanguage();
   const webView = useRef<WebView>(null);
+  const theme = useTheme();
   const lastTitle = useRef<string>('');
-
   const [webTitle, setWebTitle] = useState('');
+  const styles = useStyles();
 
   const handleNavigationStateChange = useCallback(
     (event: WebViewNavigation) => {
       const lastTitleLang = ['Just a moment...', 'Tunggu sebentar...'];
       setWebTitle(event.title);
-      if (lastTitleLang.includes(lastTitle.current) && lastTitleLang.includes(event.title)) {
-        bypassContext.setIsOpen(false);
-        ToastAndroid.show('Bypass berhasil, silahkan lanjutkan!', ToastAndroid.SHORT);
+      if (!bypassContext.isLogin) {
+        if (lastTitleLang.includes(lastTitle.current) && !lastTitleLang.includes(event.title)) {
+          bypassContext.setIsOpen(false);
+          ToastAndroid.show(tSync('cf.bypassSuccess'), ToastAndroid.SHORT);
+        }
       }
       if (!event.loading && lastTitleLang.includes(event.title)) {
         lastTitle.current = event.title;
@@ -56,6 +59,7 @@ function CFBypassWebView() {
             </TouchableOpacity>
           </View>
 
+          {/* @ts-ignore */}
           <WebView
             ref={webView}
             userAgent={deviceUserAgent}
@@ -80,7 +84,7 @@ function CFBypassWebView() {
               borderTopColor: theme.colors.surfaceDisabled,
             }}>
             <Text style={{ color: theme.colors.onSurface, textAlign: 'center', fontSize: 13 }}>
-              Selesaikan verifikasi di atas untuk melanjutkan.
+              {t('cf.solveVerification')}
             </Text>
             <TouchableOpacity
               style={{
@@ -90,7 +94,7 @@ function CFBypassWebView() {
               onPress={() => {
                 bypassContext.setIsOpen(false);
               }}>
-              <Text style={styles.closeButtonText}>Batalkan & Tutup</Text>
+              <Text style={styles.closeButtonText}>{t('cf.cancelAndClose')}</Text>
             </TouchableOpacity>
           </View>
         </View>

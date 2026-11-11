@@ -3,10 +3,20 @@ import { supabase } from '../config/supabaseClient';
 import { useAuth } from '../misc/AuthContext';
 
 let globalPresenceChannel: any = null;
+let currentPresenceUserId: string | null = null;
+let lastTrackedActivity: string | null = null;
 const presenceListeners = new Set<(state: any) => void>();
 
 export const initPresence = (userId: string) => {
+  if (globalPresenceChannel && currentPresenceUserId !== userId) {
+    try {
+      supabase.removeChannel(globalPresenceChannel);
+    } catch {}
+    globalPresenceChannel = null;
+    lastTrackedActivity = null;
+  }
   if (!globalPresenceChannel) {
+    currentPresenceUserId = userId;
     globalPresenceChannel = supabase.channel('online-users', {
       config: {
         presence: {
@@ -22,6 +32,7 @@ export const initPresence = (userId: string) => {
 
     globalPresenceChannel.subscribe(async (status: string) => {
       if (status === 'SUBSCRIBED') {
+        lastTrackedActivity = 'Online';
         await globalPresenceChannel.track({
           online: true,
           activity: 'Online',
@@ -44,7 +55,9 @@ export const subscribeToPresence = (callback: (state: any) => void) => {
 };
 
 export const updateActivity = async (activity: string) => {
+  if (lastTrackedActivity === activity) return;
   if (globalPresenceChannel && globalPresenceChannel.state === 'joined') {
+    lastTrackedActivity = activity;
     await globalPresenceChannel.track({
       online: true,
       activity,
@@ -54,7 +67,9 @@ export const updateActivity = async (activity: string) => {
 };
 
 export const clearActivity = async () => {
+  if (lastTrackedActivity === 'Online') return;
   if (globalPresenceChannel && globalPresenceChannel.state === 'joined') {
+    lastTrackedActivity = 'Online';
     await globalPresenceChannel.track({
       online: true,
       activity: 'Online',

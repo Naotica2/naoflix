@@ -5,22 +5,45 @@ export interface FollowCounts {
   following: number;
 }
 
-export async function getFollowCounts(userId: string): Promise<FollowCounts> {
+const FOLLOW_COUNTS_TTL_MS = 60_000;
+const followCountsCache = new Map<string, { counts: FollowCounts; fetchedAt: number }>();
+
+export function invalidateFollowCountsCache(userId?: string) {
+  if (userId) {
+    followCountsCache.delete(userId);
+  } else {
+    followCountsCache.clear();
+  }
+}
+
+export async function getFollowCounts(
+  userId: string,
+  forceRefresh = false,
+): Promise<FollowCounts> {
   if (!userId) return { followers: 0, following: 0 };
-  
+
+  if (!forceRefresh) {
+    const cached = followCountsCache.get(userId);
+    if (cached && Date.now() - cached.fetchedAt < FOLLOW_COUNTS_TTL_MS) {
+      return cached.counts;
+    }
+  }
+
   try {
     const [followersRes, followingRes] = await Promise.all([
       supabase.from('follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', userId),
       supabase.from('follows').select('following_id', { count: 'exact', head: true }).eq('follower_id', userId)
     ]);
 
-    return {
+    const counts: FollowCounts = {
       followers: followersRes.count || 0,
       following: followingRes.count || 0
     };
+    followCountsCache.set(userId, { counts, fetchedAt: Date.now() });
+    return counts;
   } catch (e) {
     console.warn('Failed to get follow counts:', e);
-    return { followers: 0, following: 0 };
+    return followCountsCache.get(userId)?.counts || { followers: 0, following: 0 };
   }
 }
 
@@ -30,7 +53,7 @@ export async function isFollowing(followerId: string, followingId: string): Prom
   try {
     const { count, error } = await supabase
       .from('follows')
-      .select('*', { count: 'exact', head: true })
+      .select('follower_id', { count: 'exact', head: true })
       .eq('follower_id', followerId)
       .eq('following_id', followingId);
       
@@ -54,6 +77,8 @@ export async function followUser(followerId: string, followingId: string): Promi
       if (error.code === '23505') return true; // Already following (Unique violation)
       throw error;
     }
+    invalidateFollowCountsCache(followerId);
+    invalidateFollowCountsCache(followingId);
     return true;
   } catch (e) {
     console.warn('Failed to follow user:', e);
@@ -72,6 +97,8 @@ export async function unfollowUser(followerId: string, followingId: string): Pro
       .eq('following_id', followingId);
       
     if (error) throw error;
+    invalidateFollowCountsCache(followerId);
+    invalidateFollowCountsCache(followingId);
     return true;
   } catch (e) {
     console.warn('Failed to unfollow user:', e);

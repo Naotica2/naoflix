@@ -10,6 +10,7 @@ import {
   listAnimeTypeList,
 } from '../../types/anime';
 import deviceUserAgent from '../deviceUserAgent';
+import cleanSynopsis from '../cleanSynopsis';
 
 import { Buffer } from 'buffer/';
 import { runOnJS, runOnRuntime } from 'react-native-worklets';
@@ -25,17 +26,19 @@ export const BASE = {
 };
 
 const fetchLatestDomain = async (signal?: AbortSignal) => {
-  const domainName = await fetch(
-    'https://raw.githubusercontent.com/FightFarewellFearless/AniFlix/master/SCRAPE_DOMAIN.txt',
-    {
-      signal,
-    },
-  ).then(res => res.text());
-  if (domainName === '404: Not Found') {
-    throw new Error('Domain not found');
+  try {
+    const domainName = await fetch(
+      'https://raw.githubusercontent.com/FightFarewellFearless/AniFlix/master/SCRAPE_DOMAIN.txt',
+      {
+        signal,
+      },
+    ).then(res => res.text());
+    if (domainName && !domainName.includes('404') && domainName.includes('.')) {
+      BASE.domain = domainName.trim();
+      BASE.url = 'https://' + BASE.domain;
+    }
+  } catch {
   }
-  BASE.domain = domainName.trim();
-  BASE.url = 'https://' + BASE.domain;
 };
 
 const newAnime = async (page = 1, signal?: AbortSignal): Promise<NewAnimeList[]> => {
@@ -222,7 +225,7 @@ const fromUrl = async (
       type: 'animeDetail',
       title,
       genres,
-      synopsis: synopsis.join('\n'),
+      synopsis: cleanSynopsis(synopsis.join('\n\n')),
       detailOnly,
       episodeList,
       epsTotal,
@@ -237,11 +240,22 @@ const fromUrl = async (
     };
   } else {
     const title = aniDetail.find('h1.posttl').text().trim();
-    let streamingLink = await getStreamLink(
-      aniDetail.find('div.responsive-embed-stream > iframe').attr('src'),
-      signal,
-    ).catch(() => undefined);
-    const downloadLink = aniDetail.find('div.responsive-embed > iframe').attr('src')!;
+    let downloadLink = '';
+    const downloadItems = aniDetail.find('div.download li');
+    if (downloadItems.length > 0) {
+      const mp4_360 = downloadItems.filter((_, el) => $(el).text().includes('360p'));
+      const mp4_480 = downloadItems.filter((_, el) => $(el).text().includes('480p'));
+      const mp4_720 = downloadItems.filter((_, el) => $(el).text().includes('720p'));
+      const chosenItem = (mp4_360.length ? mp4_360 : (mp4_480.length ? mp4_480 : (mp4_720.length ? mp4_720 : downloadItems))).first();
+      
+      const pdrainLink = chosenItem.find('a').filter((_, a) => $(a).text().toLowerCase().includes('pdrain') || $(a).text().toLowerCase().includes('pixeldrain')).attr('href');
+      const filedonLink = chosenItem.find('a').filter((_, a) => $(a).text().toLowerCase().includes('filedon')).attr('href');
+      const anyLink = chosenItem.find('a').first().attr('href');
+      downloadLink = pdrainLink || filedonLink || anyLink || '';
+    }
+    if (!downloadLink) {
+      downloadLink = aniDetail.find('div.responsive-embed > iframe').attr('src') || '';
+    }
 
     const thumbnailUrl = $('div.cukder > img').attr('src')!;
 
@@ -264,10 +278,10 @@ const fromUrl = async (
     const changeResScript = $('script').eq(16).text();
     const reqNonceAction = changeResScript
       .split('processData:!0,cache:!0,data:{action:"')[1]
-      .split('"')[0];
+      ?.split('"')[0] || '';
     const reqResolutionWithNonceAction = changeResScript
       .split('processData:!0,cache:!0,data:{...e,nonce:window.__x__nonce,action:"')[1]
-      .split('"')[0];
+      ?.split('"')[0] || '';
 
     const isValidResolution = (el: Element) =>
       $(el).text().trim().startsWith('o') ||
@@ -302,16 +316,42 @@ const fromUrl = async (
         dataContent: $(el).attr('data-content')!,
       })),
     ];
-    let resolution: string | undefined;
-    if (streamingLink === undefined && resolutionRaw[0] !== undefined) {
-      streamingLink = await fetchStreamingResolution(
-        resolutionRaw[0].dataContent,
-        reqNonceAction,
-        reqResolutionWithNonceAction,
-        undefined,
+
+    let streamingLink: string | undefined = undefined;
+    let resolution: string | undefined = undefined;
+
+    // Prefer 360p by default (user requirement: default reso 360p)
+    if (resolutionRaw.length > 0 && reqNonceAction && reqResolutionWithNonceAction) {
+      const preferred360 =
+        resolutionRaw.find(r => r.resolution.startsWith('360p') && (r.resolution.includes('filedon') || r.resolution.includes('pdrain') || r.resolution.includes('od'))) ||
+        resolutionRaw.find(r => r.resolution.startsWith('360p')) ||
+        resolutionRaw.find(r => r.resolution.startsWith('480p')) ||
+        resolutionRaw[0];
+
+      if (preferred360) {
+        streamingLink = await fetchStreamingResolution(
+          preferred360.dataContent,
+          reqNonceAction,
+          reqResolutionWithNonceAction,
+          undefined,
+          signal,
+        ).catch(() => undefined);
+
+        if (streamingLink) {
+          resolution = preferred360.resolution;
+        }
+      }
+    }
+
+    // Fallback to default responsive-embed iframe if fetchStreamingResolution did not return a link
+    if (!streamingLink) {
+      streamingLink = await getStreamLink(
+        aniDetail.find('div.responsive-embed-stream > iframe').attr('src'),
         signal,
-      );
-      resolution = resolutionRaw[0].resolution;
+      ).catch(() => undefined);
+      if (streamingLink) {
+        resolution = '360p (Default)';
+      }
     }
 
     const returnObj: AniStreaming = {
@@ -364,6 +404,24 @@ const getStreamLink = async (
       throw errorObj;
     }
     const data = response!.data;
+
+    // 1. Check for modern Otakudesu / Desustream videoURL format (MP4 / HLS direct)
+    const videoUrlMatch = String(data).match(/const\s+videoURL\s*=\s*["']([^"']+)["']/i);
+    if (videoUrlMatch && videoUrlMatch[1]) {
+      return videoUrlMatch[1].trim();
+    }
+
+    // 2. Check for playerjs file URL
+    const playerJsMatch = String(data).match(/\{id\s*:\s*["']playerjs["'],\s*file\s*:\s*["']([^"']+)["']/i);
+    if (playerJsMatch && playerJsMatch[1]) {
+      return playerJsMatch[1].trim();
+    }
+
+    // 3. Check for generic file:"..." or sources: [{file:"..."}]
+    const fileQuoteMatch = String(data).match(/file\s*:\s*["']([^"']+\.(?:mp4|m3u8)[^"']*)["']/i);
+    if (fileQuoteMatch && fileQuoteMatch[1]) {
+      return fileQuoteMatch[1].trim();
+    }
 
     if (data.includes(`otakudesu('{"file":"`)) {
       return data.split(`otakudesu('{"file":"`)[1].split('"')[0];
@@ -560,8 +618,6 @@ const listAnime = async (
           if (streamingCallback !== undefined && listAnimeData.length % 150 === 0) {
             runOnJS(streamingCallback)?.(listAnimeData);
           }
-          // if (listAnimeData.length % 150 === 0)
-          //   await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
       runOnJS(res)(listAnimeData);
@@ -583,18 +639,19 @@ async function fetchStreamingResolution(
       'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
       Accept: '*/*',
       'X-Requested-With': 'XMLHttpRequest',
-      // 'User-Agent': deviceUserAgent
+      'User-Agent': deviceUserAgent,
+      Referer: `${BASE.url}/`,
     },
     timeout: 40_000,
     signal,
   };
   if (!nonce) {
+    const params = new URLSearchParams();
+    params.append('action', reqNonceAction);
     const data = await axios
       .post(
         BASE.url + '/wp-admin/admin-ajax.php',
-        {
-          action: reqNonceAction,
-        },
+        params.toString(),
         requestOptions,
       )
       .then(response => response.data)
@@ -605,7 +662,7 @@ async function fetchStreamingResolution(
     if (err) {
       throw errorObj;
     }
-    if (data.data === undefined) return undefined;
+    if (data?.data === undefined) return undefined;
     return await fetchStreamingResolution(
       requestData,
       reqNonceAction,
@@ -614,16 +671,31 @@ async function fetchStreamingResolution(
       signal,
     );
   }
-  requestData = JSON.parse(Buffer.from(requestData as string, 'base64').toString('utf8')) as Object;
+  let parsedRequestData: Record<string, any> = {};
+  if (typeof requestData === 'string') {
+    try {
+      const decodedJson = JSON.parse(Buffer.from(requestData, 'base64').toString('utf8'));
+      if (decodedJson && typeof decodedJson === 'object') {
+        parsedRequestData = decodedJson;
+      }
+    } catch {
+      return undefined;
+    }
+  } else if (requestData && typeof requestData === 'object') {
+    parsedRequestData = requestData as Record<string, any>;
+  }
+
+  const postParams = new URLSearchParams();
+  for (const [k, v] of Object.entries(parsedRequestData)) {
+    postParams.append(k, String(v));
+  }
+  postParams.append('action', reqResolutionWithNonceAction);
+  postParams.append('nonce', nonce);
 
   const response = await axios
     .post(
       BASE.url + '/wp-admin/admin-ajax.php',
-      {
-        ...requestData,
-        action: reqResolutionWithNonceAction,
-        nonce,
-      },
+      postParams.toString(),
       requestOptions,
     )
     .then(a => a.data)
@@ -634,9 +706,12 @@ async function fetchStreamingResolution(
   if (err) {
     throw errorObj;
   }
-  const data = response.data;
+  const data = response?.data;
+  if (!data) return undefined;
+  const decodedIframe = cheerio.load(Buffer.from(data, 'base64').toString('utf8'))('div > iframe').attr('src');
+  if (!decodedIframe) return undefined;
   return await getStreamLink(
-    cheerio.load(Buffer.from(data, 'base64').toString('utf8'))('div > iframe').attr('src')!,
+    decodedIframe,
     signal,
   );
 }

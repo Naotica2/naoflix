@@ -3,15 +3,15 @@ import { __ALIAS as aliasKomiku, DOMAIN as komikuDomain } from './scrapers/komik
 import { __ALIAS as aliasAnimeindo, DOMAIN as animeindoDomain } from './scrapers/animeindo';
 import { __ALIAS as aliasMeio, DOMAIN as meioDomain } from './scrapers/meionovel';
 
-type Type = 'komiku' | 'anime' | 'movie' | 'komikcast' | 'animeindo' | 'novel';
+type Type = 'komiku' | 'anime' | 'movie' | 'komikindo' | 'animeindo' | 'novel';
 
 export function determineType(url: string): Type {
   const urlObj = new URL(url);
-  if (urlObj.hostname.includes(aliasAnimeindo) || urlObj.hostname.includes('anime-indo')) return 'animeindo';
+  if (urlObj.hostname.includes('otakudesu') || urlObj.hostname.includes(aliasAnime)) return 'anime';
+  if (urlObj.hostname.includes('anime-indo')) return 'animeindo';
   if (urlObj.hostname.includes(aliasKomiku)) return 'komiku';
 
   if (urlObj.hostname.includes(aliasMeio)) return 'novel';
-  if (urlObj.hostname.includes(aliasAnime)) return 'anime';
   return 'movie';
 }
 

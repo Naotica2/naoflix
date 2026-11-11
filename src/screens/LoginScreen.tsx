@@ -1,30 +1,42 @@
-import React, { memo, useCallback, useState, useEffect } from 'react';
+import React, { memo, useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  ScrollView,
   StyleSheet,
   Text,
   ToastAndroid,
   TouchableOpacity,
+  useColorScheme,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { GOOGLE_WEB_CLIENT_ID } from '@env';
 import { supabase } from '../config/supabaseClient';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackNavigator } from '../types/navigation';
 import { useAuth } from '../misc/AuthContext';
-import { useColorScheme } from 'react-native';
+import { tSync, useLanguage } from '../misc/LanguageContext';
+import NaoFlixLogo from '../component/misc/NaoFlixLogo';
 
 GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID });
 
 function LoginScreen() {
   const [loading, setLoading] = useState(false);
+  const { t } = useLanguage();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackNavigator>>();
   const { user, hasProfile, confirmedNoProfile } = useAuth();
   const isDark = useColorScheme() === 'dark';
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+
+  const isCompact = width < 360 || height < 640;
+  const logoSize = Math.round(Math.min(96, Math.max(76, width * 0.22)));
+  const horizontalPad = isCompact ? 24 : 32;
 
   useEffect(() => {
     if (user) {
@@ -59,7 +71,7 @@ function LoginScreen() {
         token: idToken,
       });
       if (error) {
-        ToastAndroid.show('Login gagal: ' + error.message, ToastAndroid.LONG);
+        ToastAndroid.show(tSync('auth.loginFailed', { message: error.message }), ToastAndroid.LONG);
       }
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'code' in error) {
@@ -68,80 +80,146 @@ function LoginScreen() {
           return;
         }
         if (code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-          ToastAndroid.show('Google Play Services tidak tersedia', ToastAndroid.LONG);
+          ToastAndroid.show(tSync('auth.googlePlayUnavailable'), ToastAndroid.LONG);
           return;
         }
       }
-      const msg = error instanceof Error ? error.message : 'Terjadi kesalahan';
-      ToastAndroid.show(msg, ToastAndroid.LONG);
+      const msg = error instanceof Error ? error.message : tSync('common.unknown');
+      ToastAndroid.show(tSync('auth.loginSystemError', { message: msg }), ToastAndroid.LONG);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  const bgColors = isDark
+    ? (['#0b1526', '#060911', '#040508'] as const)
+    : (['#eef4fc', '#f8fafc', '#ffffff'] as const);
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#000' : '#fff' }]}>
-      <View style={styles.content}>
-        <View style={[styles.logoContainer, { backgroundColor: isDark ? '#111' : '#f5f5f5', borderColor: isDark ? '#222' : '#ddd' }]}>
-          <Text style={[styles.logoText, { color: isDark ? '#fff' : '#000' }]}>N</Text>
-          <View style={styles.logoGlow} />
+    <LinearGradient colors={bgColors} style={styles.container}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingHorizontal: horizontalPad,
+            paddingTop: insets.top + (isCompact ? 20 : 28),
+            paddingBottom: Math.max(insets.bottom + 20, 28),
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+        bounces={false}>
+        <View style={styles.topSpacer} />
+
+        <View style={styles.brandSection}>
+          <NaoFlixLogo size={logoSize} style={styles.logoMargin} />
+          <Text
+            style={[
+              styles.appName,
+              {
+                fontSize: isCompact ? 26 : 30,
+                color: isDark ? '#f8fafc' : '#0f172a',
+              },
+            ]}>
+            NaoFlix
+          </Text>
+          <Text style={[styles.tagline, { color: isDark ? '#94a3b8' : '#64748b' }]}>
+            {t('auth.loginSubtitle')}
+          </Text>
         </View>
-        <Text style={[styles.appName, { color: isDark ? '#fff' : '#000' }]}>NaoFlix</Text>
-        <Text style={styles.tagline}>Stream anime favoritmu</Text>
 
         <View style={styles.bottomSection}>
           <TouchableOpacity
-            style={[styles.googleButton, loading && styles.googleButtonDisabled, !isDark && styles.googleButtonLight]}
+            style={[
+              styles.googleButton,
+              loading && styles.googleButtonDisabled,
+              !isDark && styles.googleButtonLight,
+            ]}
             onPress={handleGoogleSignIn}
             disabled={loading}
-            activeOpacity={0.7}>
+            activeOpacity={0.78}>
             {loading ? (
-              <ActivityIndicator color="#000" size="small" />
+              <ActivityIndicator color="#111827" size="small" />
             ) : (
               <>
                 <Image
                   source={{ uri: 'https://developers.google.com/identity/images/g-logo.png' }}
                   style={styles.googleIcon}
                 />
-                <Text style={styles.googleButtonText}>Sign in with Google</Text>
+                <Text style={styles.googleButtonText}>{t('auth.signInWithGoogle')}</Text>
               </>
             )}
           </TouchableOpacity>
-          <Text style={styles.disclaimer}>
-            Dengan masuk, kamu menyetujui ketentuan layanan NaoFlix
+          <Text style={[styles.disclaimer, { color: isDark ? '#64748b' : '#94a3b8' }]}>
+            {t('auth.loginTerms')}
           </Text>
         </View>
-      </View>
-    </SafeAreaView>
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000000' },
-  content: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
-  logoContainer: {
-    width: 100, height: 100, borderRadius: 24, backgroundColor: '#111',
-    justifyContent: 'center', alignItems: 'center', marginBottom: 20,
-    borderWidth: 1, borderColor: '#222',
+  container: { flex: 1 },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  logoGlow: {
-    position: 'absolute', width: 120, height: 120, borderRadius: 60,
-    backgroundColor: 'rgba(99, 102, 241, 0.08)',
+  topSpacer: {
+    height: 16,
   },
-  logoText: { fontSize: 48, fontWeight: '800', color: '#ffffff', letterSpacing: -2 },
-  appName: { fontSize: 32, fontWeight: '700', color: '#ffffff', letterSpacing: 1, marginBottom: 8 },
-  tagline: { fontSize: 14, color: '#666', letterSpacing: 0.5, marginBottom: 60 },
-  bottomSection: { position: 'absolute', bottom: 60, left: 40, right: 40, alignItems: 'center' },
+  brandSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    maxWidth: 340,
+    paddingVertical: 16,
+  },
+  logoMargin: {
+    marginBottom: 18,
+  },
+  appName: {
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    marginBottom: 6,
+  },
+  tagline: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  bottomSection: {
+    width: '100%',
+    maxWidth: 360,
+    alignItems: 'center',
+    paddingBottom: 12,
+  },
   googleButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#ffffff', borderRadius: 28, paddingVertical: 14, paddingHorizontal: 24,
-    width: '100%', elevation: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 28,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    width: '100%',
+    elevation: 2,
   },
-  googleButtonLight: { backgroundColor: '#f0f0f0', borderWidth: 1, borderColor: '#ddd', elevation: 0 },
+  googleButtonLight: {
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    elevation: 0,
+  },
   googleButtonDisabled: { opacity: 0.6 },
   googleIcon: { width: 20, height: 20, marginRight: 12 },
-  googleButtonText: { fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
-  disclaimer: { fontSize: 11, color: '#888', marginTop: 16, textAlign: 'center' },
+  googleButtonText: { fontSize: 15, fontWeight: '700', color: '#111827' },
+  disclaimer: {
+    fontSize: 11,
+    marginTop: 14,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
 });
 
 export default memo(LoginScreen);

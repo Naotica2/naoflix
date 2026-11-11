@@ -1,6 +1,6 @@
 import { useFocusEffect } from '@react-navigation/core';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, View } from 'react-native';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import { SystemBars } from 'react-native-edge-to-edge';
@@ -11,11 +11,13 @@ import { unzip } from 'react-native-zip-archive';
 import { useBackHandler } from '../../hooks/useBackHandler';
 import { RootStackNavigator } from '../../types/navigation';
 import { cbzDir, cleanCbzDir } from '../../utils/cbzCleaner';
+import { useLanguage } from '../../misc/LanguageContext';
 
 type Props = NativeStackScreenProps<RootStackNavigator, 'CbzReader'>;
 
 export default function ComicsReading(props: Props) {
   const theme = useTheme();
+  const { t } = useLanguage();
   const webViewRef = useRef<WebView>(null);
 
   useFocusEffect(
@@ -84,7 +86,7 @@ export default function ComicsReading(props: Props) {
   );
   useEffect(() => {
     props.navigation.setOptions({
-      headerTitle: 'Baca offline',
+      headerTitle: t('reader.readOffline'),
       headerShown: !isFullscreen,
       header: headerProps => (
         <Appbar.Header>
@@ -112,7 +114,7 @@ export default function ComicsReading(props: Props) {
         </Appbar.Header>
       ),
     });
-  }, [isFullscreen, props.navigation]);
+  }, [isFullscreen, props.navigation, t]);
 
   const handleMessage = (event: WebViewMessageEvent) => {
     try {
@@ -168,7 +170,10 @@ export default function ComicsReading(props: Props) {
   const errorSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${errorTextColor}"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`;
   const errorIconUrl = `data:image/svg+xml;base64,${btoa(errorSvg)}`;
 
-  const styles = `
+  const imageLoadFailedText = t('reader.imageLoadFailed');
+
+  const styles = useMemo(
+    () => `
     <style>
       body {
         margin: 0;
@@ -246,7 +251,7 @@ export default function ComicsReading(props: Props) {
       .img-wrapper.is-error::before { display: none; }
       
       .img-wrapper.is-error::after {
-        content: "Gagal memuat gambar. Ketuk untuk ulangi.";
+        content: ${JSON.stringify(imageLoadFailedText)};
         font-family: sans-serif;
         color: ${errorTextColor};
         margin-top: 12px;
@@ -264,7 +269,9 @@ export default function ComicsReading(props: Props) {
       }
       .img-wrapper.is-error img { display: none; }
     </style>
-  `;
+  `,
+    [bgColor, shimmerBase, shimmerHighlight, theme.dark, imageLoadFailedText, errorTextColor, errorIconUrl],
+  );
 
   const body = comicImages
     .map((link, index) => {
@@ -367,6 +374,7 @@ export default function ComicsReading(props: Props) {
         />
       </View>
 
+      {/* @ts-ignore */}
       <WebView
         ref={webViewRef}
         style={{ flex: 1, backgroundColor: bgColor }}
@@ -401,7 +409,7 @@ export default function ComicsReading(props: Props) {
               icon={isAutoScrolling ? 'pause' : 'play'}
               onPress={toggleAutoScroll}
               compact>
-              {isAutoScrolling ? 'Stop' : 'Auto Scroll'}
+              {isAutoScrolling ? t('reader.stop') : t('reader.autoScroll')}
             </Button>
 
             <View style={{ width: 16 }} />
@@ -429,7 +437,7 @@ export default function ComicsReading(props: Props) {
             marginBottom: isFullscreen ? 4 : 0,
             height: 4,
           }}
-          progress={currentlyVisibleImageId / (comicImages.length - 1)}
+          progress={currentlyVisibleImageId / Math.max(1, comicImages.length - 1)}
         />
       </View>
     </View>

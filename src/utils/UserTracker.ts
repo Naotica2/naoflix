@@ -1,33 +1,27 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { DatabaseManager } from './DatabaseManager';
 import { HistoryItemKey } from '../types/databaseTarget';
 import { HistoryJSON } from '../types/historyJSON';
 import URL from 'url';
 
-export type TrackerCategory = 'anime' | 'movie' | 'series' | 'comic' | 'novel';
+export type TrackerCategory = 'anime' | 'movie' | 'comic';
 
 export interface UserStats {
   animeCount: number;
   animeEpisodes: number;
   movieCount: number;
-  seriesCount: number;
-  seriesEpisodes: number;
   comicCount: number;
   comicChapters: number;
-  novelCount: number;
-  novelChapters: number;
   animeTimeMs: number;
   movieTimeMs: number;
-  seriesTimeMs: number;
   comicTimeMs: number;
-  novelTimeMs: number;
 }
 
 export function useTimeTracker(category: TrackerCategory | null) {
   useEffect(() => {
     if (!category) return;
-    
+
     let lastSaveTime = Date.now();
 
     const saveTime = () => {
@@ -38,22 +32,22 @@ export function useTimeTracker(category: TrackerCategory | null) {
         try {
           let rawStats = DatabaseManager.getSync(statsKey as any);
           if (rawStats === 'null' || !rawStats) rawStats = '{}';
-          
+
           let stats: Record<string, number> = {};
           try {
             stats = JSON.parse(rawStats);
             if (!stats || typeof stats !== 'object') stats = {};
-          } catch (e) {
+          } catch {
             stats = {};
           }
-          
+
           const timeKey = `${category}TimeMs`;
           stats[timeKey] = (stats[timeKey] || 0) + timeSpent;
-          
+
           DatabaseManager.setSync(statsKey as any, JSON.stringify(stats));
           lastSaveTime = now;
         } catch (e) {
-          console.error("Failed to save time stats", e);
+          console.error('Failed to save time stats', e);
         }
       }
     };
@@ -85,17 +79,11 @@ export async function getUserStats(): Promise<UserStats> {
     animeCount: 0,
     animeEpisodes: 0,
     movieCount: 0,
-    seriesCount: 0,
-    seriesEpisodes: 0,
     comicCount: 0,
     comicChapters: 0,
-    novelCount: 0,
-    novelChapters: 0,
     animeTimeMs: 0,
     movieTimeMs: 0,
-    seriesTimeMs: 0,
     comicTimeMs: 0,
-    novelTimeMs: 0,
   };
 
   try {
@@ -105,10 +93,8 @@ export async function getUserStats(): Promise<UserStats> {
         const timeStats = JSON.parse(rawTimeStats);
         if (timeStats && typeof timeStats === 'object') {
           stats.animeTimeMs = timeStats.animeTimeMs || 0;
-          stats.movieTimeMs = timeStats.movieTimeMs || 0;
-          stats.seriesTimeMs = timeStats.seriesTimeMs || 0;
+          stats.movieTimeMs = (timeStats.movieTimeMs || 0) + (timeStats.seriesTimeMs || 0);
           stats.comicTimeMs = timeStats.comicTimeMs || 0;
-          stats.novelTimeMs = timeStats.novelTimeMs || 0;
         }
       } catch (e) {
         console.error('Failed to parse user time stats', e);
@@ -120,12 +106,12 @@ export async function getUserStats(): Promise<UserStats> {
       const keyOrder: HistoryItemKey[] = JSON.parse(keyOrderStr);
       const itemsPromises = keyOrder.map(key => DatabaseManager.get(key));
       const items = await Promise.all(itemsPromises);
-      
-      items.forEach((value) => {
+
+      items.forEach(value => {
         if (!value) return;
         try {
           const item: HistoryJSON = JSON.parse(value);
-          
+
           let epNum = 1;
           if (item.episode) {
             const numMatch = item.episode.match(/(\d+)/);
@@ -134,27 +120,30 @@ export async function getUserStats(): Promise<UserStats> {
             }
           }
 
-          const hostname = URL.parse(item.link || '').hostname || '';
-          
+          const hostname = (URL.parse(item.link || '').hostname || '').toLowerCase();
+          if (hostname.includes('meionovel') || hostname.includes('anichin')) {
+            return;
+          }
+
           if (item.isComics) {
-            if (hostname.includes('meionovel')) {
-              stats.novelCount += 1;
-              stats.novelChapters += epNum;
-            } else {
-              stats.comicCount += 1;
-              stats.comicChapters += epNum;
-            }
-          } else if (item.isMovie || hostname.includes('movie-box') || hostname.includes('moviebox') || hostname.includes('lk21') || hostname.includes('nontondrama')) {
+            stats.comicCount += 1;
+            stats.comicChapters += epNum;
+          } else if (
+            item.isMovie ||
+            hostname.includes('movie-box') ||
+            hostname.includes('moviebox') ||
+            hostname.includes('lk21') ||
+            hostname.includes('nontondrama') ||
+            item.link?.startsWith('film://') ||
+            item.link?.includes('se=') ||
+            (typeof item.episode === 'string' && /S\d+E\d+/i.test(item.episode))
+          ) {
             stats.movieCount += 1;
-          } else if (item.link?.includes('se=') || (typeof item.episode === 'string' && /S\d+E\d+/i.test(item.episode))) {
-            stats.seriesCount += 1;
-            stats.seriesEpisodes += epNum;
           } else {
             stats.animeCount += 1;
             stats.animeEpisodes += epNum;
           }
-        } catch (e) {
-        }
+        } catch {}
       });
     }
   } catch (error) {

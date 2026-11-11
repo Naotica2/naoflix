@@ -6,15 +6,17 @@ import { reloadAppAsync } from 'expo';
 import * as DocumentPicker from 'expo-document-picker';
 import { AudioMixingMode } from 'expo-video';
 import moment from 'moment';
-import { JSX, memo, useCallback, useRef, useState } from 'react';
+import { JSX, memo, useCallback, useMemo, useRef, useState } from 'react';
 import {
   Appearance,
   ColorSchemeName,
+  Linking,
   PermissionsAndroid,
   Platform,
   ScrollView,
+  StyleSheet,
+  Text,
   View,
-  Linking,
 } from 'react-native';
 import RNFetchBlob from 'react-native-blob-util';
 import {
@@ -31,6 +33,7 @@ import {
 import { useSharedValue } from 'react-native-reanimated';
 import { createDocument } from 'react-native-saf-x';
 import defaultDatabaseValue from '../../../misc/defaultDatabaseValue.json';
+import { AppLanguage, useLanguage } from '../../../misc/LanguageContext';
 import { HistoryItemKey } from '../../../types/databaseTarget';
 import { HistoryJSON } from '../../../types/historyJSON';
 import { UtilsStackNavigator } from '../../../types/navigation';
@@ -42,7 +45,10 @@ import {
   useModifiedKeyValueIfFocused,
 } from '../../../utils/DatabaseManager';
 import DialogManager from '../../../utils/dialogManager';
+import offlineDownloadManager from '../../../utils/offlineDownloadManager';
+import { invalidateSourceCache } from '../../../utils/sourcePreferences';
 import ReText from '../../misc/ReText';
+import { clearMyListsHistoryCache } from '../MyListsPage';
 import { HistoryDatabaseCache } from '../Saya/History';
 import UserStatsDash from '../../Profile/UserStatsDash';
 
@@ -53,6 +59,7 @@ type BackupJSON = Omit<typeof defaultDatabaseValue, 'historyKeyCollectionsOrder'
 };
 
 interface SettingsData {
+  key: string;
   title: string;
   description: string;
   iconName: FontAwesomeIconName;
@@ -63,9 +70,23 @@ interface SettingsData {
 
 type Props = NativeStackScreenProps<UtilsStackNavigator, 'Setting'>;
 
+function safeParseArray<T = any>(raw: unknown): T[] {
+  if (typeof raw !== 'string' || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 function Setting(_props: Props) {
   const theme = useTheme();
+  const { language, setLanguage, t } = useLanguage();
+
   const enableBatteryTimeInfo = useKeyValueIfFocused('enableBatteryTimeInfo');
+
+  const languageDropdown = useRef<IDropdownRef>(null);
 
   const appTheme = useKeyValueIfFocused('colorScheme');
   const appThemeDropdown = useRef<IDropdownRef>(null);
@@ -101,58 +122,100 @@ function Setting(_props: Props) {
   const [modalVisible, setModalVisible] = useState(false);
   const modalText = useSharedValue('');
 
+  const dropdownLanguageData = useMemo<{ label: string; value: AppLanguage }[]>(
+    () => [
+      { label: t('settings.languageId'), value: 'id' },
+      { label: t('settings.languageEn'), value: 'en' },
+    ],
+    [t],
+  );
+
+  const dropdownThemeData = useMemo(
+    () => [
+      { label: t('settings.themeAuto'), value: 'auto' },
+      { label: t('settings.themeLight'), value: 'light' },
+      { label: t('settings.themeDark'), value: 'dark' },
+    ],
+    [t],
+  );
+
+  const dropdownAudioMixingData = useMemo<{ label: string; value: AudioMixingMode }[]>(
+    () => [
+      { label: t('settings.audioAuto'), value: 'auto' },
+      { label: t('settings.audioDoNotMix'), value: 'doNotMix' },
+      { label: t('settings.audioMix'), value: 'mixWithOthers' },
+      { label: t('settings.audioDuck'), value: 'duckOthers' },
+    ],
+    [t],
+  );
+
   const backupData = useCallback(async () => {
     try {
-      const isGranted = await PermissionsAndroid.check(
-        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-      );
-      if (isGranted || Number(Platform.Version) >= 33) {
-        backup();
-      } else {
-        const granted = await PermissionsAndroid.request(
+      const needsLegacyWritePermission = Number(Platform.Version) < 29;
+      if (needsLegacyWritePermission) {
+        const isGranted = await PermissionsAndroid.check(
           PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
         );
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          backup();
-        } else {
-          DialogManager.alert(
-            'Akses ditolak',
-            'Gagal mencadangkan data dikarenakan akses ke penyimpanan di tolak',
+        if (!isGranted) {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
           );
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            DialogManager.alert(
+              t('settings.accessDeniedTitle'),
+              t('settings.backupPermissionDenied'),
+            );
+            return;
+          }
         }
       }
-      async function backup() {
-        const fileuri = 'NaoFlix_backup_' + moment().format('YYYY-MM-DD_HH-mm-ss') + '.naoflix.txt';
-        modalText.set('Membuat Backup Data...');
-        setModalVisible(true);
-        const data = Buffer.from(
-          JSON.stringify(await DatabaseManager.getDataForBackup()),
-          'utf8',
-        ).toString('base64');
+
+      const fileuri =
+        'NaoFlix_backup_' + moment().format('YYYY-MM-DD_HH-mm-ss') + '.naoflix.txt';
+      modalText.set(t('settings.backingUpModal'));
+      setModalVisible(true);
+
+      let encoded = '';
+      let offlineCount = 0;
+      try {
+        const backupPayload = await DatabaseManager.getDataForBackup();
+        offlineCount = safeParseArray(backupPayload.offlineAnimeList).length;
+        encoded = Buffer.from(JSON.stringify(backupPayload), 'utf8').toString('base64');
+      } finally {
         setModalVisible(false);
-        const backupFile = await createDocument(data, {
-          initialName: fileuri,
-          mimeType: 'text/plain',
-        });
-        if (backupFile) {
-          DialogManager.alert('Berhasil', `Data berhasil di backup!`);
-        }
+      }
+
+      const backupFile = await createDocument(encoded, {
+        initialName: fileuri,
+        mimeType: 'text/plain',
+      });
+      if (backupFile) {
+        DialogManager.alert(
+          t('common.success'),
+          t('settings.backupSuccess', { count: offlineCount }),
+        );
       }
     } catch (e: any) {
-      DialogManager.alert('Error', e.message);
+      DialogManager.alert(
+        t('common.error'),
+        t('settings.backupFailed', { message: e?.message || t('common.unknown') }),
+      );
     }
-  }, [modalText]);
+  }, [modalText, t]);
 
   const restoreHistoryOrWatchLater = useCallback(
     async (
       restoreDataFromBackup: (HistoryJSON | watchLaterJSON)[],
       target: 'history' | 'watchLater',
     ) => {
-      const currentData: typeof restoreDataFromBackup = JSON.parse(
-        (await DatabaseManager.getDataForBackup())[target],
-      );
+      if (!Array.isArray(restoreDataFromBackup)) return;
+      const backupSnapshot = await DatabaseManager.getDataForBackup();
+      const currentData = safeParseArray<HistoryJSON | watchLaterJSON>(backupSnapshot[target]);
 
       for (const result of restoreDataFromBackup) {
+        if (!result || typeof result !== 'object' || typeof result.title !== 'string') {
+          continue;
+        }
         const dataINDEX = currentData.findIndex(
           val =>
             val.title?.trim() === result.title?.trim() &&
@@ -161,14 +224,14 @@ function Setting(_props: Props) {
         );
 
         if (dataINDEX >= 0) {
-          if (currentData[dataINDEX].date > result.date) {
+          if ((currentData[dataINDEX].date || 0) > (result.date || 0)) {
             continue;
           }
           currentData.splice(dataINDEX, 1);
         }
         currentData.push(result);
       }
-      currentData.sort((a, b) => b.date - a.date);
+      currentData.sort((a, b) => (b.date || 0) - (a.date || 0));
       if (target === 'history') {
         await DANGER_MIGRATE_OLD_HISTORY(currentData as HistoryJSON[]);
       } else {
@@ -178,12 +241,12 @@ function Setting(_props: Props) {
     [],
   );
 
-  const restoreSearchHistory = useCallback(async (restoreData: string[]) => {
-    const currentSearchHistory: string[] = JSON.parse(
-      (await DatabaseManager.getDataForBackup()).searchHistory,
-    );
-    restoreData.reverse().forEach(val => {
-      if (!currentSearchHistory.includes(val)) {
+  const restoreSearchHistory = useCallback(async (restoreItems: string[]) => {
+    if (!Array.isArray(restoreItems)) return;
+    const rawCurrent = (await DatabaseManager.get('searchHistory')) ?? '[]';
+    const currentSearchHistory = safeParseArray<string>(rawCurrent);
+    [...restoreItems].reverse().forEach(val => {
+      if (typeof val === 'string' && val.trim() && !currentSearchHistory.includes(val)) {
         currentSearchHistory.unshift(val);
       }
     });
@@ -191,273 +254,455 @@ function Setting(_props: Props) {
   }, []);
 
   const restoreData = useCallback(async () => {
+    let pickedUri: string | undefined;
     try {
       const doc = await DocumentPicker.getDocumentAsync({
-        type: 'text/plain',
+        type: ['text/plain', 'application/octet-stream', '*/*'],
         copyToCacheDirectory: true,
       });
 
-      if (!doc.assets) return;
+      if (!doc.assets || doc.assets.length === 0) return;
+      pickedUri = doc.assets[0].uri;
 
-      const data = await RNFetchBlob.fs.readFile(doc.assets?.[0].uri, 'utf8');
-      const backupDataJSON: BackupJSON = JSON.parse(Buffer.from(data, 'base64').toString('utf8'));
-      await RNFetchBlob.fs.unlink(doc.assets?.[0].uri);
-      modalText.set('Memulihkan data kamu mohon tunggu...');
-      setModalVisible(true);
+      const rawEncoded = await RNFetchBlob.fs.readFile(pickedUri, 'utf8');
+      let backupDataJSON: BackupJSON | null = null;
       try {
-        for (const value of Object.keys(backupDataJSON) as (keyof BackupJSON)[]) {
-          if (defaultDatabaseValueKeys.includes(value) || value === 'history') {
-            if (value === 'history' || value === 'watchLater') {
-              modalText.set('Memulihkan daftar ' + value);
-              await restoreHistoryOrWatchLater(JSON.parse(backupDataJSON[value]), value);
-            } else {
-              const restoredData = backupDataJSON[value];
-              if (value === 'colorScheme') {
-                modalText.set('Memulihkan tema aplikasi');
-                Appearance.setColorScheme(
-                  restoredData === 'auto' ? undefined : (restoredData as ColorSchemeName),
-                );
-              } else if (value === 'searchHistory') {
-                modalText.set('Memulihkan histori pencarian');
-                await restoreSearchHistory(JSON.parse(restoredData));
-              } else {
-                modalText.set('Memulihkan ' + value);
-                await DatabaseManager.set(value, restoredData);
+        const decoded = Buffer.from(rawEncoded, 'base64').toString('utf8');
+        const parsed = JSON.parse(decoded);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          backupDataJSON = parsed as BackupJSON;
+        }
+      } catch {
+        backupDataJSON = null;
+      }
+
+      if (!backupDataJSON) {
+        DialogManager.alert(t('common.error'), t('settings.restoreInvalid'));
+        return;
+      }
+
+      modalText.set(t('settings.restoringModal'));
+      setModalVisible(true);
+
+      let offlineKept = 0;
+      let offlineDropped = 0;
+      let hadOfflineInBackup = false;
+      let restoredExtensions = false;
+
+      for (const value of Object.keys(backupDataJSON) as (keyof BackupJSON)[]) {
+        if (!defaultDatabaseValueKeys.includes(value) && value !== 'history') {
+          continue;
+        }
+
+        const rawField = backupDataJSON[value];
+        if (typeof rawField !== 'string') {
+          continue;
+        }
+
+        modalText.set(t('settings.restoreKeyModal', { key: value }));
+
+        if (value === 'history' || value === 'watchLater') {
+          const items = safeParseArray(rawField);
+          await restoreHistoryOrWatchLater(items, value);
+        } else if (value === 'searchHistory') {
+          const searchItems = safeParseArray<string>(rawField);
+          await restoreSearchHistory(searchItems);
+        } else if (value === 'colorScheme') {
+          Appearance.setColorScheme(
+            rawField === 'auto' ? undefined : (rawField as ColorSchemeName),
+          );
+          await DatabaseManager.set('colorScheme', rawField);
+        } else if (value === 'language') {
+          const targetLang: AppLanguage = rawField === 'en' ? 'en' : 'id';
+          await setLanguage(targetLang);
+        } else if (value === 'offlineAnimeList') {
+          const backupOfflineItems = safeParseArray<any>(rawField);
+          hadOfflineInBackup = backupOfflineItems.length > 0;
+          const existingCurrent = offlineDownloadManager.getOfflineAnimeList();
+          const mergedMap = new Map<string, any>();
+
+          for (const cur of existingCurrent) {
+            if (cur && typeof cur.filePath === 'string' && cur.id) {
+              const exists = await RNFetchBlob.fs.exists(cur.filePath).catch(() => false);
+              if (exists) {
+                mergedMap.set(cur.id, cur);
               }
             }
           }
+
+          for (const item of backupOfflineItems) {
+            if (!item || typeof item !== 'object' || typeof item.filePath !== 'string' || !item.id) {
+              offlineDropped++;
+              continue;
+            }
+            const exists = await RNFetchBlob.fs.exists(item.filePath).catch(() => false);
+            if (exists) {
+              const prev = mergedMap.get(item.id);
+              mergedMap.set(
+                item.id,
+                prev
+                  ? {
+                      ...item,
+                      lastPositionSeconds: Math.max(
+                        Number(prev.lastPositionSeconds) || 0,
+                        Number(item.lastPositionSeconds) || 0,
+                      ),
+                      downloadedAt: Math.max(
+                        Number(prev.downloadedAt) || 0,
+                        Number(item.downloadedAt) || 0,
+                      ),
+                    }
+                  : item,
+              );
+              offlineKept++;
+            } else {
+              offlineDropped++;
+            }
+          }
+
+          await DatabaseManager.set(
+            'offlineAnimeList',
+            JSON.stringify(Array.from(mergedMap.values())),
+          );
+        } else if (value === 'pausedDownloads') {
+          const backupPaused = safeParseArray<any>(rawField).filter(
+            entry =>
+              entry &&
+              typeof entry === 'object' &&
+              typeof entry.id === 'string' &&
+              typeof entry.filePath === 'string',
+          );
+          await DatabaseManager.set('pausedDownloads', JSON.stringify(backupPaused));
+        } else {
+          if (value === 'extensionPreferences') {
+            restoredExtensions = true;
+          }
+          await DatabaseManager.set(value, rawField);
         }
-        DialogManager.alert('Restore berhasil!', 'Kamu berhasil kembali ke backup sebelumnya!');
-      } catch (e: any) {
-        DialogManager.alert('Restore gagal!', e.message);
       }
+
+      HistoryDatabaseCache.clear();
+      clearMyListsHistoryCache();
+      if (restoredExtensions) {
+        invalidateSourceCache();
+      }
+      await offlineDownloadManager.reloadFromStorage();
+
+      const msg = hadOfflineInBackup
+        ? `${t('settings.restoreSuccess')}\n\n${t('settings.restoreOfflineRevalidated', {
+            kept: offlineKept,
+            dropped: offlineDropped,
+          })}`
+        : t('settings.restoreSuccess');
+      DialogManager.alert(t('common.success'), msg);
     } catch (e: any) {
       const errMessage =
-        e.message === 'Network Error'
-          ? 'Permintaan gagal.\nPastikan kamu terhubung dengan internet'
-          : 'Error tidak diketahui: ' + e.message;
-      DialogManager.alert('Restore gagal!', errMessage);
+        e?.message === 'Network Error'
+          ? t('settings.errorNetwork')
+          : t('settings.restoreFailed', { message: e?.message || t('common.unknown') });
+      DialogManager.alert(t('common.error'), errMessage);
     } finally {
       setModalVisible(false);
+      if (pickedUri) {
+        await RNFetchBlob.fs.unlink(pickedUri).catch(() => {});
+      }
     }
-  }, [modalText, restoreHistoryOrWatchLater, restoreSearchHistory]);
+  }, [modalText, restoreHistoryOrWatchLater, restoreSearchHistory, setLanguage, t]);
 
   const clearHistory = useCallback(() => {
-    DialogManager.alert(
-      'Peringatan!!!',
-      'Ini akan menghapus semua histori tontonan kamu.\nApakah kamu yakin ingin lanjut?',
-      [
-        {
-          text: 'Batal',
+    DialogManager.alert(t('settings.clearHistoryTitle'), t('settings.clearHistoryConfirm'), [
+      {
+        text: t('common.cancel'),
+      },
+      {
+        text: t('common.delete'),
+        onPress: async () => {
+          modalText.set(t('settings.clearingModal'));
+          setModalVisible(true);
+          await new Promise<void>(res => setTimeout(() => res(), 10));
+          try {
+            const keyOrder = safeParseArray<HistoryItemKey>(
+              DatabaseManager.getSync('historyKeyCollectionsOrder') ?? '[]',
+            );
+            for (const key of keyOrder) {
+              if (typeof key !== 'string') continue;
+              const title = key.split(':').slice(1, -2).join(':');
+              modalText.set(t('settings.clearingKeyModal', { title }));
+              await DatabaseManager.delete(key);
+            }
+            await DatabaseManager.set('historyKeyCollectionsOrder', '[]');
+            HistoryDatabaseCache.clear();
+            clearMyListsHistoryCache();
+            DialogManager.alert(t('common.success'), t('settings.clearHistorySuccess'));
+          } catch (e: any) {
+            DialogManager.alert(
+              t('settings.clearHistoryFailed'),
+              e?.message || t('common.unknown'),
+            );
+          } finally {
+            setModalVisible(false);
+          }
         },
-        {
-          text: 'Lanjut dan hapus',
-          onPress: async () => {
-            modalText.set('Menghapus histori tontonan kamu...');
-            setModalVisible(true);
-            await new Promise(res => setTimeout(res, 1));
-            try {
-              const keyOrder: HistoryItemKey[] = JSON.parse(
-                DatabaseManager.getSync('historyKeyCollectionsOrder') ?? '[]',
-              );
-              for (const key of keyOrder) {
-                modalText.set(`Menghapus\n${key.split(':').slice(1, -2).join(':')}`);
-                await DatabaseManager.delete(key);
+      },
+    ]);
+  }, [modalText, t]);
+
+  const dropdownStyles = useMemo(
+    () => ({
+      style: {
+        width: 148,
+        backgroundColor: theme.colors.elevation.level2,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 8,
+        borderWidth: 0,
+      },
+      containerStyle: {
+        borderRadius: 8,
+        backgroundColor: theme.colors.elevation.level2,
+        borderWidth: 0,
+      },
+      itemTextStyle: {
+        color: theme.colors.onSurface,
+        fontSize: 13,
+      },
+      itemContainerStyle: {
+        backgroundColor: theme.colors.elevation.level2,
+      },
+      selectedTextStyle: {
+        color: theme.colors.onSurface,
+        fontSize: 13,
+      },
+    }),
+    [theme.colors.elevation.level2, theme.colors.onSurface],
+  );
+
+  const settingsData = useMemo<SettingsData[]>(
+    () => [
+      {
+        key: 'language',
+        title: t('settings.languageLabel'),
+        description: t('settings.languageDesc'),
+        iconName: 'language',
+        rightComponent: (
+          <Dropdown
+            data={dropdownLanguageData}
+            onChange={item => {
+              void setLanguage(item.value);
+            }}
+            ref={languageDropdown}
+            value={language}
+            labelField="label"
+            valueField="value"
+            maxHeight={200}
+            activeColor={theme.colors.primaryContainer}
+            placeholderStyle={{ color: theme.colors.onSurfaceVariant }}
+            {...dropdownStyles}
+          />
+        ),
+        handler: () => {
+          languageDropdown.current?.open();
+        },
+      },
+      {
+        key: 'theme',
+        title: t('settings.colorSchemeLabel'),
+        description: t('settings.colorSchemeDesc'),
+        iconName: 'paint-brush',
+        rightComponent: (
+          <Dropdown
+            data={dropdownThemeData}
+            onChange={item => {
+              if (item.value === 'light' || item.value === 'dark') {
+                Appearance.setColorScheme(item.value);
+              } else if (item.value === 'auto') {
+                Appearance.setColorScheme(undefined);
               }
-              DatabaseManager.set('historyKeyCollectionsOrder', '[]');
-              HistoryDatabaseCache.clear();
-              DialogManager.alert('Histori dihapus', 'Histori tontonan kamu sudah di hapus');
-            } catch (e: any) {
-              DialogManager.alert('Gagal menghapus histori!', e.message);
-            } finally {
-              setModalVisible(false);
-            }
-          },
+              DatabaseManager.set('colorScheme', item.value);
+            }}
+            ref={appThemeDropdown}
+            value={appTheme}
+            labelField="label"
+            valueField="value"
+            maxHeight={300}
+            activeColor={theme.colors.primaryContainer}
+            placeholderStyle={{ color: theme.colors.onSurfaceVariant }}
+            {...dropdownStyles}
+          />
+        ),
+        handler: () => {
+          appThemeDropdown.current?.open();
         },
-      ],
-    );
-  }, [modalText]);
-
-  const dropdownStyles = {
-    style: {
-      width: 140,
-      backgroundColor: theme.colors.elevation.level2,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 8,
-      borderWidth: 0,
-    },
-    containerStyle: {
-      borderRadius: 8,
-      backgroundColor: theme.colors.elevation.level2,
-      borderWidth: 0,
-    },
-    itemTextStyle: {
-      color: theme.colors.onSurface,
-      fontSize: 13,
-    },
-    itemContainerStyle: {
-      backgroundColor: theme.colors.elevation.level2,
-    },
-    selectedTextStyle: {
-      color: theme.colors.onSurface,
-      fontSize: 13,
-    },
-  };
-
-  const settingsData: SettingsData[] = [
-    {
-      title: 'Tema aplikasi',
-      description: 'Beralih ke tema gelap atau terang',
-      iconName: 'paint-brush',
-      rightComponent: (
-        <Dropdown
-          data={DROPDOWN_THEME_DATA}
-          onChange={data => {
-            if (data.value === 'light' || data.value === 'dark') {
-              Appearance.setColorScheme(data.value);
-            } else if (data.value === 'auto') {
-              Appearance.setColorScheme(undefined);
-            }
-            DatabaseManager.set('colorScheme', data.value);
-          }}
-          ref={appThemeDropdown}
-          value={appTheme}
-          labelField={'label'}
-          valueField={'value'}
-          maxHeight={300}
-          activeColor={theme.colors.primaryContainer}
-          placeholderStyle={{ color: theme.colors.onSurfaceVariant }}
-          {...dropdownStyles}
-        />
-      ),
-      handler: () => {
-        appThemeDropdown.current?.open();
       },
-    },
-    {
-      title: 'Mode mixing audio',
-      description: 'Tentukan perilaku audio saat aplikasi lain memutar suara',
-      iconName: 'music',
-      rightComponent: (
-        <Dropdown
-          data={DROPDOWN_AUDIOMIXING_DATA}
-          onChange={data => {
-            DatabaseManager.set('audioMixingMode', data.value);
-          }}
-          ref={AMMDropdown}
-          value={audioMixingMode}
-          labelField={'label'}
-          valueField={'value'}
-          maxHeight={300}
-          activeColor={theme.colors.primaryContainer}
-          placeholderStyle={{ color: theme.colors.onSurfaceVariant }}
-          {...dropdownStyles}
-        />
-      ),
-      handler: () => {
-        AMMDropdown.current?.open();
+      {
+        key: 'audioMixing',
+        title: t('settings.audioMixingLabel'),
+        description: t('settings.audioMixingDesc'),
+        iconName: 'music',
+        rightComponent: (
+          <Dropdown
+            data={dropdownAudioMixingData}
+            onChange={item => {
+              DatabaseManager.set('audioMixingMode', item.value);
+            }}
+            ref={AMMDropdown}
+            value={audioMixingMode}
+            labelField="label"
+            valueField="value"
+            maxHeight={300}
+            activeColor={theme.colors.primaryContainer}
+            placeholderStyle={{ color: theme.colors.onSurfaceVariant }}
+            {...dropdownStyles}
+          />
+        ),
+        handler: () => {
+          AMMDropdown.current?.open();
+        },
       },
-    },
-    {
-      title: 'Info baterai & waktu',
-      description: 'Tampilkan persentase baterai dan jam saat mode layar penuh',
-      iconName: 'battery-3',
-      rightComponent: (
-        <Switch value={batteryTimeInfoSwitch} onValueChange={batteryTimeSwitchHandler} />
-      ),
-      handler: batteryTimeSwitchHandler,
-    },
-    {
-      title: 'Notifikasi & PiP',
-      description: 'Aktifkan notifikasi "Now Playing" dan fitur Picture-in-Picture',
-      iconName: 'bell',
-      rightComponent: (
-        <Switch
-          value={nowPlayingNotificationSwitch}
-          onValueChange={nowPlayingNotificationSwitchHandler}
-        />
-      ),
-      handler: nowPlayingNotificationSwitchHandler,
-    },
-    {
-      title: 'Forum Chat Mengambang',
-      description: 'Tampilkan tombol obrolan global di layar utama',
-      iconName: 'comments',
-      rightComponent: <Switch value={forumChatSwitch} onValueChange={forumChatSwitchHandler} />,
-      handler: forumChatSwitchHandler,
-    },
-    {
-      title: 'Cadangkan data',
-      description: 'Simpan seluruh data aplikasi ke file',
-      iconName: 'cloud-upload',
-      handler: backupData,
-    },
-    {
-      title: 'Pulihkan data',
-      description: 'Kembalikan data aplikasi dari file backup',
-      iconName: 'history',
-      handler: restoreData,
-    },
-    {
-      title: 'Hapus histori',
-      description: 'Hapus permanen semua riwayat tontonan',
-      iconName: 'trash',
-      iconColor: theme.colors.error,
-      handler: clearHistory,
-    },
-    {
-      title: 'Muat ulang',
-      description: 'Restart aplikasi secara manual',
-      iconName: 'refresh',
-      handler: () => {
-        DialogManager.alert('Reload aplikasi', 'Aplikasi akan di muat ulang', [
-          {
-            text: 'Batal',
-          },
-          {
-            text: 'Lanjut',
-            onPress: () => {
-              reloadAppAsync('setting.restart');
+      {
+        key: 'batteryTime',
+        title: t('settings.batteryTimeLabel'),
+        description: t('settings.batteryTimeDesc'),
+        iconName: 'battery-3',
+        rightComponent: (
+          <Switch value={batteryTimeInfoSwitch} onValueChange={batteryTimeSwitchHandler} />
+        ),
+        handler: batteryTimeSwitchHandler,
+      },
+      {
+        key: 'nowPlaying',
+        title: t('settings.nowPlayingLabel'),
+        description: t('settings.nowPlayingDesc'),
+        iconName: 'bell',
+        rightComponent: (
+          <Switch
+            value={nowPlayingNotificationSwitch}
+            onValueChange={nowPlayingNotificationSwitchHandler}
+          />
+        ),
+        handler: nowPlayingNotificationSwitchHandler,
+      },
+      {
+        key: 'forumChat',
+        title: t('settings.forumChatLabel'),
+        description: t('settings.forumChatDesc'),
+        iconName: 'comments',
+        rightComponent: <Switch value={forumChatSwitch} onValueChange={forumChatSwitchHandler} />,
+        handler: forumChatSwitchHandler,
+      },
+      {
+        key: 'backup',
+        title: t('settings.backupBtn'),
+        description: t('settings.backupDesc'),
+        iconName: 'cloud-upload',
+        handler: backupData,
+      },
+      {
+        key: 'restore',
+        title: t('settings.restoreBtn'),
+        description: t('settings.restoreDesc'),
+        iconName: 'history',
+        handler: restoreData,
+      },
+      {
+        key: 'clearHistory',
+        title: t('settings.clearHistoryBtn'),
+        description: t('settings.clearHistoryDesc'),
+        iconName: 'trash',
+        iconColor: theme.colors.error,
+        handler: clearHistory,
+      },
+      {
+        key: 'reload',
+        title: t('settings.reloadBtn'),
+        description: t('settings.reloadDesc'),
+        iconName: 'refresh',
+        handler: () => {
+          DialogManager.alert(t('settings.reloadTitle'), t('settings.reloadConfirm'), [
+            {
+              text: t('common.cancel'),
             },
-          },
-        ]);
+            {
+              text: t('common.ok'),
+              onPress: () => {
+                reloadAppAsync('setting.restart');
+              },
+            },
+          ]);
+        },
       },
-    },
-    {
-      title: 'Manajemen Ekstensi',
-      description: 'Ganti sumber API untuk Anime, Komik, atau Novel',
-      iconName: 'plug',
-      handler: () => {
-        _props.navigation.navigate('ExtensionManager');
+      {
+        key: 'homePrefs',
+        title: t('settings.homePrefsBtn'),
+        description: t('settings.homePrefsDesc'),
+        iconName: 'home',
+        handler: () => {
+          _props.navigation.navigate('HomePreferences');
+        },
       },
-    },
-    {
-      title: 'Dukung Developer',
-      description: 'Bantu dan dukung pengembangan NaoFlix',
-      iconName: 'heart',
-      iconColor: theme.colors.error,
-      handler: () => {
-        Linking.openURL('https://saweria.co/naotica');
+      {
+        key: 'sourcePrefs',
+        title: t('settings.sourcePrefsBtn'),
+        description: t('settings.sourcePrefsDesc'),
+        iconName: 'plug',
+        handler: () => {
+          _props.navigation.navigate('ExtensionManager');
+        },
       },
-    },
-    {
-      title: 'Tentang Aplikasi',
-      description: 'Lihat info pengembang, lisensi, dan disklaimer',
-      iconName: 'info-circle',
-      handler: () => {
-        _props.navigation.navigate('About');
+      {
+        key: 'donate',
+        title: t('settings.donateTitle'),
+        description: t('settings.donateDesc'),
+        iconName: 'heart',
+        iconColor: theme.colors.error,
+        handler: () => {
+          Linking.openURL('https://saweria.co/naotica');
+        },
       },
-    },
-    {
-      title: 'Changelog & Info',
-      description: 'Lihat pembaruan dan informasi rilis NaoFlix',
-      iconName: 'list-alt',
-      handler: () => {
-        _props.navigation.navigate('Changelog');
+      {
+        key: 'about',
+        title: t('settings.aboutBtnTitle'),
+        description: t('settings.aboutBtnDesc'),
+        iconName: 'info-circle',
+        handler: () => {
+          _props.navigation.navigate('About');
+        },
       },
-    },
-  ] as const;
+      {
+        key: 'changelog',
+        title: t('settings.changelogBtn'),
+        description: t('settings.changelogDesc'),
+        iconName: 'list-alt',
+        handler: () => {
+          _props.navigation.navigate('Changelog');
+        },
+      },
+    ],
+    [
+      _props.navigation,
+      appTheme,
+      audioMixingMode,
+      backupData,
+      batteryTimeInfoSwitch,
+      batteryTimeSwitchHandler,
+      clearHistory,
+      dropdownAudioMixingData,
+      dropdownLanguageData,
+      dropdownStyles,
+      dropdownThemeData,
+      forumChatSwitch,
+      forumChatSwitchHandler,
+      language,
+      nowPlayingNotificationSwitch,
+      nowPlayingNotificationSwitchHandler,
+      restoreData,
+      setLanguage,
+      t,
+      theme.colors.error,
+      theme.colors.onSurfaceVariant,
+      theme.colors.primaryContainer,
+    ],
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -485,9 +730,10 @@ function Setting(_props: Props) {
 
       <ScrollView contentContainerStyle={{ paddingVertical: 8 }}>
         <UserStatsDash />
+
         {settingsData.map((item, index) => (
           <Surface
-            key={item.title}
+            key={item.key}
             elevation={0}
             style={{ backgroundColor: theme.colors.background }}>
             <TouchableRipple
@@ -531,23 +777,62 @@ function Setting(_props: Props) {
             </TouchableRipple>
           </Surface>
         ))}
+
+        <View
+          style={[
+            styles.infoCard,
+            {
+              backgroundColor: theme.colors.elevation.level1,
+              borderColor: theme.colors.outlineVariant,
+            },
+          ]}>
+          <View style={styles.infoCardHeader}>
+            <Icon name="info-circle" size={16} color={theme.colors.primary} />
+            <Text style={[styles.infoCardTitle, { color: theme.colors.onSurface }]}>
+              {t('settings.storageInfoTitle')}
+            </Text>
+          </View>
+          <Text style={[styles.infoCardItem, { color: theme.colors.onSurfaceVariant }]}>
+            {t('settings.storageInfoUpdate')}
+          </Text>
+          <Text style={[styles.infoCardItem, { color: theme.colors.onSurfaceVariant }]}>
+            {t('settings.storageInfoClearData')}
+          </Text>
+          <Text style={[styles.infoCardItem, { color: theme.colors.onSurfaceVariant }]}>
+            {t('settings.storageInfoBackup')}
+          </Text>
+        </View>
+
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
 }
 
-const DROPDOWN_THEME_DATA = [
-  { label: 'Sistem', value: 'auto' },
-  { label: 'Terang', value: 'light' },
-  { label: 'Gelap', value: 'dark' },
-];
-
-const DROPDOWN_AUDIOMIXING_DATA: { label: string; value: AudioMixingMode }[] = [
-  { label: 'Otomatis', value: 'auto' },
-  { label: 'Mute Lain', value: 'doNotMix' },
-  { label: 'Campur', value: 'mixWithOthers' },
-  { label: 'Kecilkan Lain', value: 'duckOthers' },
-];
+const styles = StyleSheet.create({
+  infoCard: {
+    marginHorizontal: 16,
+    marginTop: 18,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  infoCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  infoCardTitle: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    flex: 1,
+  },
+  infoCardItem: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+});
 
 export default memo(Setting);

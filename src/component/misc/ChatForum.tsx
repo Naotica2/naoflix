@@ -3,7 +3,9 @@ import {
   Animated,
   FlatList,
   Image,
+  InteractionManager,
   KeyboardAvoidingView,
+  Linking,
   PanResponder,
   Platform,
   StyleSheet,
@@ -25,6 +27,7 @@ import Icon from '@react-native-vector-icons/fontawesome';
 import MaterialIcons from '@react-native-vector-icons/material-icons';
 import { supabase } from '../../config/supabaseClient';
 import { useAuth } from '../../misc/AuthContext';
+import { tSync, useLanguage } from '../../misc/LanguageContext';
 import { navigationRef } from '../../misc/NavigationService';
 import { DatabaseManager } from '../../utils/DatabaseManager';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -36,15 +39,25 @@ type ChatMessage = {
   avatar_url: string | null;
   text: string;
   created_at: string;
-  profiles?: { is_vip: boolean };
 };
 
 const COOLDOWN_MS = 5000;
-const MAX_MESSAGES = 100;
-const LOAD_COUNT = 50;
+const MAX_MESSAGES = 80;
+const LOAD_COUNT = 40;
+const FORUM_CACHE_TTL_MS = 25_000;
+const CHAT_MESSAGE_COLUMNS = 'id, user_id, username, avatar_url, text, created_at';
 
 const HIDDEN_SCREENS = new Set([
-  'Video', 'FilmPlayer', 'ComicsReading', 'NovelReading', 'CbzReader',
+  'Video',
+  'FilmPlayer',
+  'ComicsReading',
+  'NovelReading',
+  'CbzReader',
+  'ForumPage',
+  'ForumComposer',
+  'ForumPostDetail',
+  'ForumUserFeed',
+  'OfflineVideoPlayer',
 ]);
 
 const EMOJI_RE = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/u;
@@ -76,43 +89,29 @@ const ChatItem = React.memo(function ChatItem({ msg, isMe }: { msg: ChatMessage;
     return colors[Math.abs(hash) % colors.length];
   }, [msg.username]);
 
-  const isUserVip = msg.profiles?.is_vip === true;
-
   const avatar = msg.avatar_url ? (
     <View style={styles.avatarContainer}>
-      <Image source={{ uri: msg.avatar_url }} style={[styles.avatar, isUserVip && styles.avatarVIP]} />
-      {isUserVip && (
-        <View style={styles.vipBadgeContainerSmall}>
-          <MaterialIcons name="workspace-premium" size={10} color="#FFD700" />
-        </View>
-      )}
+      <Image source={{ uri: msg.avatar_url }} style={styles.avatar} />
     </View>
   ) : (
     <View style={styles.avatarContainer}>
-      <View style={[styles.avatar, { backgroundColor: fallbackColor }, isUserVip && styles.avatarVIP]}>
+      <View style={[styles.avatar, { backgroundColor: fallbackColor }]}>
         <Text style={styles.avatarFallback}>
           {(msg.username || '?')[0].toUpperCase()}
         </Text>
       </View>
-      {isUserVip && (
-        <View style={styles.vipBadgeContainerSmall}>
-          <MaterialIcons name="workspace-premium" size={10} color="#FFD700" />
-        </View>
-      )}
     </View>
   );
 
   return (
     <View style={[styles.msgRow, isMe && styles.msgRowMe]}>
-      {/* Avatar for others (left side) */}
       {!isMe && avatar}
       <View style={[styles.msgContent, isMe && styles.msgContentMe]}>
         {!isMe && (
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-            <Text style={[styles.msgUser, { color: isDark ? '#8ab4f8' : '#1a73e8' }, isUserVip && styles.usernameVIP]}>
+            <Text style={[styles.msgUser, { color: isDark ? '#8ab4f8' : '#1a73e8' }]}>
               {msg.username}
             </Text>
-            {isUserVip && <MaterialIcons name="verified" size={12} color="#F59E0B" style={{ marginLeft: 4 }} />}
           </View>
         )}
         <View style={[styles.msgBubble, isMe ? styles.msgBubbleMe : styles.msgBubbleOther]}>
@@ -129,9 +128,9 @@ const ChatItem = React.memo(function ChatItem({ msg, isMe }: { msg: ChatMessage;
                       key={i} 
                       style={{ textDecorationLine: 'underline', color: isMe ? '#e0e0e0' : '#3b82f6' }}
                       onPress={() => {
-                        import('react-native').then(({ Linking, ToastAndroid }) => {
-                          Linking.openURL(part).catch(() => ToastAndroid.show('Tidak dapat membuka link', ToastAndroid.SHORT));
-                        });
+                        Linking.openURL(part).catch(() =>
+                          ToastAndroid.show(tSync('common.cannotOpenLink'), ToastAndroid.SHORT),
+                        );
                       }}
                     >
                       {part}
@@ -147,18 +146,19 @@ const ChatItem = React.memo(function ChatItem({ msg, isMe }: { msg: ChatMessage;
           {formatTime(msg.created_at)}
         </Text>
       </View>
-      {/* Avatar for me (right side) */}
       {isMe && avatar}
     </View>
   );
 });
 
 
-export default function ChatForum() {
+function ChatForum() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const { user, profile } = useAuth();
+  const { t } = useLanguage();
 
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -171,8 +171,12 @@ export default function ChatForum() {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const cooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSendTime = useRef(0);
+  const lastFetchedAtRef = useRef(0);
 
   const [isForumEnabled, setIsForumEnabled] = useState(() => DatabaseManager.getSync('enableForumChat') !== 'false');
+  const [currentScreen, setCurrentScreen] = useState('');
+  const currentScreenRef = useRef('');
+  const revealTaskRef = useRef<{ cancel: () => void } | null>(null);
 
   useEffect(() => {
     const listener = DatabaseManager.listenOnValueChanged((key) => {
@@ -183,11 +187,59 @@ export default function ChatForum() {
     return () => listener.remove();
   }, []);
 
+  useEffect(() => {
+    const syncRoute = () => {
+      const nextName = navigationRef.getCurrentRoute?.()?.name || '';
+      if (nextName === currentScreenRef.current) return;
+      const wasHidden = HIDDEN_SCREENS.has(currentScreenRef.current);
+      currentScreenRef.current = nextName;
+      revealTaskRef.current?.cancel();
+      revealTaskRef.current = null;
+
+      if (HIDDEN_SCREENS.has(nextName)) {
+        setCurrentScreen(nextName);
+      } else if (wasHidden) {
+        revealTaskRef.current = InteractionManager.runAfterInteractions(() => {
+          revealTaskRef.current = null;
+          if (currentScreenRef.current === nextName) {
+            setCurrentScreen(nextName);
+          }
+        });
+      } else {
+        setCurrentScreen(nextName);
+      }
+    };
+
+    const unsubscribe = navigationRef.addListener?.('state', syncRoute);
+    syncRoute();
+    return () => {
+      unsubscribe?.();
+      revealTaskRef.current?.cancel();
+      revealTaskRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (cooldownTimer.current) {
+        clearInterval(cooldownTimer.current);
+        cooldownTimer.current = null;
+      }
+    };
+  }, []);
+
+  const isHiddenScreen = HIDDEN_SCREENS.has(currentScreen);
+
   const hideForum = useCallback(() => {
     setIsOpen(false);
     DatabaseManager.set('enableForumChat', 'false');
-    ToastAndroid.show('Forum disembunyikan. Kamu bisa membukanya kembali di Pengaturan.', ToastAndroid.LONG);
+    ToastAndroid.show(tSync('forum.hiddenToast'), ToastAndroid.LONG);
   }, []);
+
+  const expandedPanelHeight = useMemo(
+    () => Math.min(340, Math.round(screenHeight * 0.48)),
+    [screenHeight],
+  );
 
   const panelHeight = useSharedValue(0);
   const panelStyle = useAnimatedStyle(() => ({
@@ -197,23 +249,42 @@ export default function ChatForum() {
   const togglePanel = useCallback(() => {
     setIsOpen(prev => {
       const next = !prev;
-      panelHeight.value = withTiming(next ? 420 : 0, { duration: 250 });
+      panelHeight.value = withTiming(next ? expandedPanelHeight : 0, { duration: 220 });
       if (next) setUnreadCount(0);
       return next;
     });
-  }, [panelHeight]);
+  }, [expandedPanelHeight, panelHeight]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setMessages([]);
+      lastFetchedAtRef.current = 0;
+      setIsOpen(false);
+      panelHeight.value = 0;
+    }
+  }, [user, panelHeight]);
 
-    supabase
-      .from('chat_messages')
-      .select('*, profiles(is_vip)')
-      .order('created_at', { ascending: false })
-      .limit(LOAD_COUNT)
-      .then(({ data }) => {
-        if (data) setMessages(data.reverse() as ChatMessage[]);
-      });
+  useEffect(() => {
+    if (!user || !profile || !isForumEnabled || !isOpen || isHiddenScreen) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const now = Date.now();
+    if (lastFetchedAtRef.current === 0 || now - lastFetchedAtRef.current >= FORUM_CACHE_TTL_MS) {
+      supabase
+        .from('chat_messages')
+        .select(CHAT_MESSAGE_COLUMNS)
+        .order('created_at', { ascending: false })
+        .limit(LOAD_COUNT)
+        .then(({ data }) => {
+          if (!cancelled && data) {
+            lastFetchedAtRef.current = Date.now();
+            setMessages((data as ChatMessage[]).slice().reverse());
+          }
+        });
+    }
 
     const channel = supabase
       .channel('chat_forum')
@@ -222,19 +293,12 @@ export default function ChatForum() {
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
         (payload) => {
           const newMsg = payload.new as ChatMessage;
-          if (newMsg.user_id === user.id) {
-            newMsg.profiles = { is_vip: profile?.is_vip || false };
-          }
           setMessages(prev => {
             if (prev.some(m => m.id === newMsg.id)) return prev;
-            
             const updated = [...prev, newMsg];
             if (updated.length > MAX_MESSAGES) updated.shift();
             return updated;
           });
-          if (!isOpen && newMsg.user_id !== user.id) {
-            setUnreadCount(prev => prev + 1);
-          }
           setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
         },
       )
@@ -243,13 +307,13 @@ export default function ChatForum() {
     channelRef.current = channel;
 
     return () => {
+      cancelled = true;
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, profile, isForumEnabled, isOpen, isHiddenScreen]);
 
   useEffect(() => {
     if (isOpen) setUnreadCount(0);
@@ -276,14 +340,19 @@ export default function ChatForum() {
     if (isSending) return;
 
     setIsSending(true);
-    const { data, error } = await supabase.from('chat_messages').insert({
-      user_id: user.id,
-      username: profile.username,
-      avatar_url: profile.avatar_url,
-      text: inputText.trim().slice(0, 500), // max 500 chars
-    }).select('*, profiles(is_vip)').single();
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .insert({
+        user_id: user.id,
+        username: profile.username,
+        avatar_url: profile.avatar_url,
+        text: inputText.trim().slice(0, 500),
+      })
+      .select(CHAT_MESSAGE_COLUMNS)
+      .single();
 
     if (!error && data) {
+      lastFetchedAtRef.current = Date.now();
       setMessages(prev => {
         if (prev.some(m => m.id === data.id)) return prev;
         const updated = [...prev, data as ChatMessage];
@@ -299,12 +368,9 @@ export default function ChatForum() {
 
   const canSend = inputText.trim().length > 0 && cooldownLeft === 0 && !isSending;
 
-  const [currentScreen, setCurrentScreen] = useState('');
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-
-  const FAB_SIZE = 50;
-  const fabX = useRef(new Animated.Value(screenWidth - FAB_SIZE - 16)).current;
-  const fabY = useRef(new Animated.Value(screenHeight - insets.bottom - 120)).current;
+  const FAB_SIZE = 38;
+  const fabX = useRef(new Animated.Value(screenWidth - FAB_SIZE - 14)).current;
+  const fabY = useRef(new Animated.Value(screenHeight - insets.bottom - 122)).current;
   const didDragRef = useRef(false);
 
   const panResponder = useMemo(() => PanResponder.create({
@@ -322,7 +388,7 @@ export default function ChatForum() {
       fabX.setValue(g.dx);
       fabY.setValue(g.dy);
     },
-    onPanResponderRelease: (_e, g) => {
+    onPanResponderRelease: (_e, _g) => {
       fabX.flattenOffset();
       fabY.flattenOffset();
 
@@ -344,43 +410,36 @@ export default function ChatForum() {
   }), [screenWidth, screenHeight, insets.top, insets.bottom, togglePanel, fabX, fabY]);
 
   useEffect(() => {
-    const unsubscribe = navigationRef.addListener?.('state', () => {
-      const route = navigationRef.getCurrentRoute?.();
-      setCurrentScreen(route?.name || '');
-    });
-    const route = navigationRef.getCurrentRoute?.();
-    setCurrentScreen(route?.name || '');
-    return () => { unsubscribe?.(); };
-  }, []);
-
-  const isHiddenScreen = HIDDEN_SCREENS.has(currentScreen);
-
-  useEffect(() => {
     if (isHiddenScreen && isOpen) {
       setIsOpen(false);
       panelHeight.value = withTiming(0, { duration: 150 });
     }
   }, [isHiddenScreen, isOpen, panelHeight]);
 
+  const userId = user?.id ?? null;
+  const keyExtractor = useCallback((item: ChatMessage) => item.id, []);
+  const renderMessageItem = useCallback(
+    ({ item }: { item: ChatMessage }) => (
+      <ChatItem msg={item} isMe={item.user_id === userId} />
+    ),
+    [userId],
+  );
+
   if (!user || !profile || isHiddenScreen || !isForumEnabled) return null;
 
   return (
     <>
-      {/* Draggable Floating Chat Button */}
       {!isOpen && (
         <Animated.View
           {...panResponder.panHandlers}
           style={[
             styles.fab,
             {
-              left: fabX,
-              top: fabY,
-              right: undefined,
-              bottom: undefined,
+              transform: [{ translateX: fabX }, { translateY: fabY }],
               backgroundColor: isDark ? '#1a73e8' : '#3b82f6',
             },
           ]}>
-          <Icon name="comment" size={22} color="#fff" />
+          <Icon name="comment" size={16} color="#fff" />
           {unreadCount > 0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
@@ -389,53 +448,61 @@ export default function ChatForum() {
         </Animated.View>
       )}
 
-      {/* Chat Panel Overlay */}
       {isOpen && (
         <View style={styles.overlay} pointerEvents="box-none">
-          {/* Backdrop */}
           <TouchableOpacity
             style={styles.backdrop}
             activeOpacity={1}
             onPress={togglePanel}
           />
 
-          {/* Panel */}
           <Reanimated.View
             style={[
               styles.panel,
               panelStyle,
               {
-                bottom: insets.bottom + 60,
-                backgroundColor: isDark ? '#1a1a1a' : '#fff',
-                borderColor: isDark ? '#333' : '#ddd',
+                bottom: insets.bottom + 56,
+                left: screenWidth > 456 ? undefined : 8,
+                right: 8,
+                width: screenWidth > 456 ? 440 : undefined,
+                backgroundColor: isDark ? '#141418' : '#fff',
+                borderColor: isDark ? '#27272f' : '#e4e4e7',
               },
             ]}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-              {/* Header */}
-              <View style={[styles.panelHeader, { borderBottomColor: isDark ? '#333' : '#eee' }]}>
+              <View style={[styles.panelHeader, { borderBottomColor: isDark ? '#27272f' : '#eee' }]}>
                 <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-                  <Icon name="comments" size={16} color={isDark ? '#e0e0e0' : '#111'} style={{ marginRight: 6 }} />
-                  <Text style={[styles.panelTitle, { color: isDark ? '#fff' : '#111' }]}>Live Forum</Text>
+                  <Icon name="comments" size={14} color={isDark ? '#e0e0e0' : '#111'} style={{ marginRight: 6 }} />
+                  <Text style={[styles.panelTitle, { color: isDark ? '#fff' : '#111' }]} numberOfLines={1}>
+                    {t('forum.title')}
+                  </Text>
                 </View>
-                
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIsOpen(false);
+                      panelHeight.value = 0;
+                      (navigationRef as any).navigate('Home', { screen: 'ForumPage' });
+                    }}
+                    accessibilityLabel={t('forum.openFullForum')}
+                    style={styles.closeBtn}>
+                    <MaterialIcons name="forum" size={18} color="#3b82f6" />
+                  </TouchableOpacity>
                   <TouchableOpacity onPress={hideForum} style={styles.closeBtn}>
-                    <MaterialIcons name="visibility-off" size={20} color={isDark ? '#888' : '#666'} />
+                    <MaterialIcons name="visibility-off" size={18} color={isDark ? '#888' : '#666'} />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={togglePanel} style={styles.closeBtn}>
-                    <Icon name="chevron-down" size={20} color={isDark ? '#888' : '#666'} />
+                    <Icon name="chevron-down" size={17} color={isDark ? '#888' : '#666'} />
                   </TouchableOpacity>
                 </View>
               </View>
 
-              {/* Messages */}
               <FlatList
                 ref={flatListRef}
                 data={messages}
-                keyExtractor={item => item.id}
-                renderItem={({ item }) => (
-                  <ChatItem msg={item} isMe={item.user_id === user.id} />
-                )}
+                keyExtractor={keyExtractor}
+                renderItem={renderMessageItem}
                 style={{ flex: 1, paddingHorizontal: 10 }}
                 contentContainerStyle={{ paddingVertical: 8 }}
                 onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
@@ -444,12 +511,11 @@ export default function ChatForum() {
                 windowSize={7}
               />
 
-              {/* Input */}
               <View style={[styles.inputRow, { borderTopColor: isDark ? '#333' : '#eee', backgroundColor: isDark ? '#1a1a1a' : '#fff' }]}>
                 <TextInput
                   value={inputText}
                   onChangeText={setInputText}
-                  placeholder={cooldownLeft > 0 ? `Tunggu ${cooldownLeft}s...` : 'Ketik pesan...'}
+                  placeholder={cooldownLeft > 0 ? t('forum.rateLimit', { seconds: cooldownLeft }) : t('forum.placeholder')}
                   placeholderTextColor={isDark ? '#666' : '#999'}
                   editable={cooldownLeft === 0}
                   maxLength={500}
@@ -482,9 +548,11 @@ export default function ChatForum() {
 const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    left: 0,
+    top: 0,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 6,
@@ -492,19 +560,19 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: 'absolute',
-    top: -4,
-    right: -4,
+    top: -3,
+    right: -3,
     backgroundColor: '#ef4444',
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 3,
   },
   badgeText: {
     color: '#fff',
-    fontSize: 11,
+    fontSize: 9.5,
     fontWeight: '800',
   },
   overlay: {
@@ -527,7 +595,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 8,
     right: 8,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
     overflow: 'hidden',
     elevation: 10,
@@ -535,14 +603,14 @@ const styles = StyleSheet.create({
   panelHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     gap: 8,
   },
   panelTitle: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 13.5,
     fontWeight: '700',
   },
   closeBtn: {
@@ -641,22 +709,6 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: 'relative',
   },
-  avatarVIP: {
-    borderColor: '#F59E0B',
-    borderWidth: 1.5,
-  },
-  vipBadgeContainerSmall: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    backgroundColor: '#111',
-    borderRadius: 6,
-    padding: 2,
-    borderWidth: 0.5,
-    borderColor: '#F59E0B',
-  },
-  usernameVIP: {
-    color: '#F59E0B',
-    fontWeight: '800',
-  }
 });
+
+export default React.memo(ChatForum);
